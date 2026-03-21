@@ -138,3 +138,83 @@ def get_analytics():
             for row in monthly_count
         ]
     }
+
+def get_itc_summary():
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    # Current month ITC
+    cursor.execute("""
+        SELECT 
+            COALESCE(SUM(cgst), 0) as total_cgst,
+            COALESCE(SUM(sgst), 0) as total_sgst,
+            COALESCE(SUM(igst), 0) as total_igst,
+            COALESCE(SUM(cgst + sgst + igst), 0) as total_itc,
+            COUNT(*) as invoice_count
+        FROM invoices
+        WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)
+    """)
+    current = cursor.fetchone()
+
+    # Previous month ITC
+    cursor.execute("""
+        SELECT 
+            COALESCE(SUM(cgst + sgst + igst), 0) as total_itc
+        FROM invoices
+        WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE - INTERVAL '1 month')
+    """)
+    previous = cursor.fetchone()
+
+    # Supplier wise ITC breakdown
+    cursor.execute("""
+        SELECT 
+            seller_name,
+            seller_gstin,
+            COALESCE(SUM(cgst), 0) as cgst,
+            COALESCE(SUM(sgst), 0) as sgst,
+            COALESCE(SUM(igst), 0) as igst,
+            COALESCE(SUM(cgst + sgst + igst), 0) as total_itc
+        FROM invoices
+        WHERE DATE_TRUNC('month', created_at) = DATE_TRUNC('month', CURRENT_DATE)
+        GROUP BY seller_name, seller_gstin
+        ORDER BY total_itc DESC
+    """)
+    suppliers = cursor.fetchall()
+
+    cursor.close()
+    conn.close()
+
+    # Calculate percentage change vs last month
+    current_itc = float(current[3])
+    previous_itc = float(previous[0])
+
+    if previous_itc > 0:
+        percentage_change = round(
+            ((current_itc - previous_itc) / previous_itc) * 100, 1
+        )
+    else:
+        percentage_change = 0
+
+    return {
+        "current_month": {
+            "total_cgst": float(current[0]),
+            "total_sgst": float(current[1]),
+            "total_igst": float(current[2]),
+            "total_itc": current_itc,
+            "invoice_count": current[4]
+        },
+        "previous_month_itc": previous_itc,
+        "percentage_change": percentage_change,
+        "supplier_breakdown": [
+            {
+                "seller_name": row[0],
+                "seller_gstin": row[1],
+                "cgst": float(row[2]),
+                "sgst": float(row[3]),
+                "igst": float(row[4]),
+                "total_itc": float(row[5])
+            }
+            for row in suppliers
+        ],
+        "disclaimer": "ITC calculated based on invoices scanned in this app only. Ensure all purchase invoices are uploaded for accurate results."
+    }
