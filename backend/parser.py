@@ -12,10 +12,8 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 def extract_invoice_data(file_bytes: bytes, content_type: str):
 
-    # Convert image to base64
     image = PIL.Image.open(io.BytesIO(file_bytes))
     
-    # Convert to RGB if needed
     if image.mode != "RGB":
         image = image.convert("RGB")
     
