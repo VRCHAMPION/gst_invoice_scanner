@@ -1,23 +1,95 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from parser import extract_invoice_data
-from database import save_invoice, get_all_invoices, get_analytics, get_itc_summary
+from database import (
+    save_invoice, get_all_invoices, get_analytics, get_itc_summary,
+    init_users_table, seed_admin_user, create_user, get_user_by_username
+)
 from validator import calculate_health_score
+from auth import (
+    get_current_user, hash_password, verify_password,
+    create_access_token, LoginRequest, RegisterRequest
+)
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 import openpyxl
 import io
 
-app = FastAPI()
+# ── App Setup ─────────────────────────────────────────────────────────
+app = FastAPI(title="GST Invoice Scanner API")
+
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://127.0.0.1:5500",
+        "http://localhost:5500",
+        "http://127.0.0.1:8000",
+        "http://localhost:8000",
+    ],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+# ── Startup Event ─────────────────────────────────────────────────────
+@app.on_event("startup")
+def on_startup():
+    init_users_table()
+    seed_admin_user()
+
+# ── Rate Limit Error Handler ─────────────────────────────────────────
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    raise HTTPException(status_code=429, detail="Rate limit exceeded. Please try again later.")
+
+# ── Auth Routes (PUBLIC) ──────────────────────────────────────────────
+@app.post("/api/login")
+async def login(req: LoginRequest):
+    user = get_user_by_username(req.username)
+    if not user or not verify_password(req.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = create_access_token(data={"sub": user["username"], "name": user["name"]})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {"username": user["username"], "name": user["name"]}
+    }
+
+@app.post("/api/register")
+async def register(req: RegisterRequest):
+    existing = get_user_by_username(req.username)
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+    
+    hashed = hash_password(req.password)
+    user_id = create_user(req.name, req.username, hashed)
+    if user_id is None:
+        raise HTTPException(status_code=400, detail="Registration failed")
+    
+    token = create_access_token(data={"sub": req.username, "name": req.name})
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": {"username": req.username, "name": req.name}
+    }
+
+# ── Protected Routes ──────────────────────────────────────────────────
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
 @app.post("/scan")
-async def scan_invoice(file: UploadFile = File(...)):
+@limiter.limit("10/minute")
+async def scan_invoice(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: str = Depends(get_current_user)
+):
     allowed_types = [
         "image/jpeg", "image/png", "image/jpg", 
         "application/pdf", 
@@ -26,7 +98,13 @@ async def scan_invoice(file: UploadFile = File(...)):
     ]
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Only Images, PDF, and Word docs are allowed")
+    
     contents = await file.read()
+    
+    # File size validation
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
+    
     data = extract_invoice_data(contents, file.content_type)
     invoice_id = save_invoice(data)
     data["id"] = invoice_id
@@ -35,7 +113,7 @@ async def scan_invoice(file: UploadFile = File(...)):
     return data
 
 @app.post("/export")
-async def export_invoice(data: dict):
+async def export_invoice(data: dict, current_user: str = Depends(get_current_user)):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "GST Invoice"
@@ -74,7 +152,7 @@ async def export_invoice(data: dict):
     )
 
 @app.get("/invoices")
-async def get_invoices():
+async def get_invoices(current_user: str = Depends(get_current_user)):
     rows = get_all_invoices()
     invoices = []
     for row in rows:
@@ -90,15 +168,15 @@ async def get_invoices():
     return invoices
 
 @app.get("/analytics")
-async def get_analytics_data():
+async def get_analytics_data(current_user: str = Depends(get_current_user)):
     data = get_analytics()
     return data
 
 @app.get("/itc-summary")
-async def get_itc_data():
+async def get_itc_data(current_user: str = Depends(get_current_user)):
     data = get_itc_summary()
     return data
 
 @app.get("/")
 async def root():
-    return {"message": "GST Invoice Scanner API is running!"}
+    return {"message": "GST Invoice Scanner API is running!", "auth": "JWT Required"}

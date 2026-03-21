@@ -9,6 +9,71 @@ def get_connection():
     conn = psycopg2.connect(os.getenv("DATABASE_URL"))
     return conn
 
+# ── Users Table ───────────────────────────────────────────────────────
+def init_users_table():
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username VARCHAR(100) UNIQUE NOT NULL,
+            password_hash VARCHAR(255) NOT NULL,
+            name VARCHAR(200) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+def seed_admin_user():
+    from auth import hash_password
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE username = 'admin'")
+    if cursor.fetchone() is None:
+        hashed = hash_password("admin123")
+        cursor.execute(
+            "INSERT INTO users (username, password_hash, name) VALUES (%s, %s, %s)",
+            ("admin", hashed, "Admin User")
+        )
+        conn.commit()
+    cursor.close()
+    conn.close()
+
+def create_user(name: str, username: str, password_hash: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO users (name, username, password_hash) VALUES (%s, %s, %s) RETURNING id",
+            (name, username, password_hash)
+        )
+        user_id = cursor.fetchone()[0]
+        conn.commit()
+        return user_id
+    except psycopg2.errors.UniqueViolation:
+        conn.rollback()
+        return None
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_user_by_username(username: str):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, username, password_hash, name FROM users WHERE username = %s",
+        (username,)
+    )
+    row = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    if row:
+        return {"id": row[0], "username": row[1], "password_hash": row[2], "name": row[3]}
+    return None
+
+# ── Invoices ──────────────────────────────────────────────────────────
 def save_invoice(data):
     conn = get_connection()
     cursor = conn.cursor()

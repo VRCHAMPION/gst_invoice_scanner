@@ -1,22 +1,23 @@
-const DEFAULT_USER = {
-    username: "admin",
-    password: "admin123",
-    name: "Admin User"
-};
+const API_BASE = 'http://127.0.0.1:8000';
 
-// Initialize default user
-if (!localStorage.getItem('users')) {
-    localStorage.setItem('users', JSON.stringify([DEFAULT_USER]));
+// ── Auth Token Management ────────────────────────────────────────────
+function getToken() {
+    return sessionStorage.getItem('authToken');
+}
+
+function getAuthHeaders() {
+    const token = getToken();
+    return token ? { 'Authorization': `Bearer ${token}` } : {};
 }
 
 function checkAuth() {
-    const user = sessionStorage.getItem('currentUser');
+    const token = getToken();
     const path = window.location.pathname;
     const isAuthPage = path.includes('login.html') || path.includes('register.html');
 
-    if (!user && !isAuthPage) {
+    if (!token && !isAuthPage) {
         window.location.href = 'login.html';
-    } else if (user && isAuthPage) {
+    } else if (token && isAuthPage) {
         window.location.href = 'index.html';
     }
 }
@@ -24,29 +25,54 @@ function checkAuth() {
 // RUN IMMEDIATELY TO PREVENT BLINK
 checkAuth();
 
-function login(username, password) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = users.find(u => u.username === username && u.password === password);
-    
-    if (user) {
-        sessionStorage.setItem('currentUser', JSON.stringify(user));
+// ── Login (API-based) ────────────────────────────────────────────────
+async function login(username, password) {
+    try {
+        const response = await fetch(`${API_BASE}/api/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            return { success: false, message: err.detail || 'Invalid credentials' };
+        }
+
+        const data = await response.json();
+        sessionStorage.setItem('authToken', data.access_token);
+        sessionStorage.setItem('currentUser', JSON.stringify(data.user));
         return { success: true };
+    } catch (error) {
+        return { success: false, message: 'Server connection failed' };
     }
-    return { success: false, message: 'Invalid credentials' };
 }
 
-function register(name, username, password) {
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.some(u => u.username === username)) {
-        return { success: false, message: 'Username already exists' };
+// ── Register (API-based) ─────────────────────────────────────────────
+async function register(name, username, password) {
+    try {
+        const response = await fetch(`${API_BASE}/api/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, username, password })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            return { success: false, message: err.detail || 'Registration failed' };
+        }
+
+        const data = await response.json();
+        sessionStorage.setItem('authToken', data.access_token);
+        sessionStorage.setItem('currentUser', JSON.stringify(data.user));
+        return { success: true };
+    } catch (error) {
+        return { success: false, message: 'Server connection failed' };
     }
-    
-    users.push({ name, username, password });
-    localStorage.setItem('users', JSON.stringify(users));
-    return { success: true };
 }
 
 function logout() {
+    sessionStorage.removeItem('authToken');
     sessionStorage.removeItem('currentUser');
     window.location.href = 'login.html';
 }
@@ -55,7 +81,7 @@ function getCurrentUser() {
     return JSON.parse(sessionStorage.getItem('currentUser'));
 }
 
-// Global UI Updates
+// ── Global UI Updates ────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     const user = getCurrentUser();
     if (user) {
@@ -70,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }));
 });
 
-// Format Indian Currency
+// ── Utility: Format Indian Currency ──────────────────────────────────
 function formatCurrency(amount) {
     if (amount === undefined || amount === null) return '₹0.00';
     return new Intl.NumberFormat('en-IN', {
@@ -80,7 +106,7 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
-// Format Date
+// ── Utility: Format Date ─────────────────────────────────────────────
 function formatDate(dateString) {
     if (!dateString) return '-';
     try {
@@ -96,7 +122,7 @@ function formatDate(dateString) {
     }
 }
 
-// Counter Animation
+// ── Utility: Counter Animation ───────────────────────────────────────
 function animateCounter(el, target) {
     let current = 0;
     const duration = 1500;

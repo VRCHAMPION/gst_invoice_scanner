@@ -163,11 +163,12 @@
             }
         }
 
-        document.getElementById('loginForm').addEventListener('submit', (e) => {
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
             const remember = document.getElementById('rememberMe').checked;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
             
             if (remember) {
                 localStorage.setItem('rememberedUser', user);
@@ -175,13 +176,18 @@
                 localStorage.removeItem('rememberedUser');
             }
 
-            const result = login(user, pass);
+            submitBtn.textContent = 'AUTHENTICATING...';
+            submitBtn.disabled = true;
+
+            const result = await login(user, pass);
             if (result.success) {
                 window.location.href = 'index.html';
             } else {
                 const error = document.getElementById('errorMessage');
                 error.textContent = result.message.toUpperCase();
                 error.style.display = 'block';
+                submitBtn.textContent = 'INITIALIZE ACCESS';
+                submitBtn.disabled = false;
             }
         });
 

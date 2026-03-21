@@ -67,13 +67,14 @@
 
     <script src="js/auth.js"></script>
     <script>
-        document.getElementById('registerForm').addEventListener('submit', (e) => {
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('name').value;
             const user = document.getElementById('username').value;
             const pass = document.getElementById('password').value;
             const confirmPass = document.getElementById('confirmPassword').value;
             const error = document.getElementById('errorMessage');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
 
             if (pass !== confirmPass) {
                 error.textContent = "PASSWORDS DO NOT MATCH";
@@ -81,13 +82,17 @@
                 return;
             }
 
-            const result = register(name, user, pass);
+            submitBtn.textContent = 'REGISTERING...';
+            submitBtn.disabled = true;
+
+            const result = await register(name, user, pass);
             if (result.success) {
-                alert("REGISTRATION SUCCESSFUL. REDIRECTING TO LOGIN.");
-                window.location.href = 'login.html';
+                window.location.href = 'index.html';
             } else {
                 error.textContent = result.message.toUpperCase();
                 error.style.display = 'block';
+                submitBtn.textContent = 'AUTHENTICATE & REGISTER';
+                submitBtn.disabled = false;
             }
         });
     </script>

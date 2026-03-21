@@ -11,7 +11,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadAnalytics() {
     try {
-        const response = await fetch('http://127.0.0.1:8000/analytics');
+        const response = await fetch('http://127.0.0.1:8000/analytics', {
+            headers: getAuthHeaders()
+        });
         if (!response.ok) throw new Error('FAILED TO FETCH ANALYTICS');
         const data = await response.json();
 
@@ -31,7 +33,9 @@ async function loadAnalytics() {
 
 async function loadItcSummary() {
     try {
-        const response = await fetch('http://127.0.0.1:8000/itc-summary');
+        const response = await fetch('http://127.0.0.1:8000/itc-summary', {
+            headers: getAuthHeaders()
+        });
         if (!response.ok) throw new Error('FAILED TO FETCH ITC');
         const data = await response.json();
 
