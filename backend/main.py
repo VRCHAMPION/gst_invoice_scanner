@@ -2,12 +2,13 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from parser import extract_invoice_data
-from database import save_invoice, get_all_invoices
+from database import save_invoice, get_all_invoices, get_analytics
+from validator import calculate_health_score
 import openpyxl
 import io
-import json
 
 app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -15,19 +16,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
 @app.post("/scan")
 async def scan_invoice(file: UploadFile = File(...)):
     allowed_types = ["image/jpeg", "image/png", "image/jpg"]
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Only JPG and PNG images are allowed")
-
     contents = await file.read()
-
     data = extract_invoice_data(contents, file.content_type)
     invoice_id = save_invoice(data)
     data["id"] = invoice_id
+    health = calculate_health_score(data)
+    data["health_score"] = health
     return data
+
 @app.post("/export")
 async def export_invoice(data: dict):
     wb = openpyxl.Workbook()
@@ -41,7 +42,6 @@ async def export_invoice(data: dict):
     ws.append(["Invoice Number", data.get("invoice_number", "")])
     ws.append(["Invoice Date", data.get("invoice_date", "")])
     ws.append([])
-
     ws.append(["ITEMS"])
     ws.append(["Description", "Quantity", "Rate", "Amount"])
     items = data.get("items", [])
@@ -62,7 +62,6 @@ async def export_invoice(data: dict):
     stream = io.BytesIO()
     wb.save(stream)
     stream.seek(0)
-
     return StreamingResponse(
         stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -84,6 +83,12 @@ async def get_invoices():
             "created_at": str(row[6])
         })
     return invoices
+
+@app.get("/analytics")
+async def get_analytics_data():
+    data = get_analytics()
+    return data
+
 @app.get("/")
 async def root():
     return {"message": "GST Invoice Scanner API is running!"}

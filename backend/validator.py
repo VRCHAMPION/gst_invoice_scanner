@@ -3,21 +3,21 @@ import re
 
 def validate_gstin(gstin: str) -> dict:
     if not gstin:
-        return{"valid" : false, "message": "gstin is missing"}
+        return{"valid" : False, "message": "gstin is missing"}
 
     if len(gstin) != 15:
-        return{"valid" : false, "message": "gstin must be 15 characters long"}
+        return{"valid" : False, "message": "gstin must be 15 characters long"}
     pattern = r'^[0-3][0-9][A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$'
-    if not re.match(pattern, gstin):
-        return{"valid" : false, "message": "invalid gstin format"}
+    if not re.match(pattern, gstin.upper()):
+        return{"valid" : False, "message": "invalid gstin format"}
     
     state_code = int(gstin[:2])
     if state_code < 1 or state_code > 37:
         return {"valid": False, "message": f"Invalid state code: {gstin[:2]}"}
 
-    return {"valid" : true, "message": "gstin is valid"}
+    return {"valid" : True, "message": "gstin is valid"}
 
-def validation_math(data: dict) -> dict:
+def validate_mathematics(data: dict) -> dict:
     issues=[]
 
     items = data.get("items")
