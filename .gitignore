@@ -1,0 +1,36 @@
+# Secret keys - never push these
+.env
+.env.local
+.env.production
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Node modules (frontend)
+node_modules/
+
+# React build folder
+/frontend/build
+/frontend/dist
+
+# VS Code settings
+.vscode/
+
+# Windows files
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Uploaded files (if you store locally)
+uploads/
