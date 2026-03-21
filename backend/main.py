@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from parser import extract_invoice_data
-from database import save_invoice, get_all_invoices
+from database import save_invoice, get_all_invoices, get_analytics
 import openpyxl
 import io
 import json
@@ -84,6 +84,11 @@ async def get_invoices():
             "created_at": str(row[6])
         })
     return invoices
+
+@app.get("/analytics")
+async def get_analytics_data():
+    data = get_analytics()
+    return data
 @app.get("/")
 async def root():
     return {"message": "GST Invoice Scanner API is running!"}
