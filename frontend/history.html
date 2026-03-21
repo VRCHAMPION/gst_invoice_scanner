@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice History | GST Invoice Scanner</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/auth.js"></script>
+    <style>
+        .history-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            background: #0c0c0f;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+        }
+
+        .search-container {
+            flex: 1;
+            max-width: 500px;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 0.8rem 1rem 0.8rem 2.5rem !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 0 !important;
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .sort-icon {
+            font-size: 0.6rem;
+            margin-left: 0.5rem;
+            display: inline-block;
+            transition: 0.3s;
+        }
+
+        .sortable {
+            cursor: pointer;
+        }
+
+        .sortable:hover {
+            color: var(--primary-accent);
+        }
+
+        tr[data-id] {
+            cursor: pointer;
+        }
+
+        .empty-state {
+            padding: 4rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-family: 'Syne', sans-serif;
+            text-transform: uppercase;
+            font-weight: 800;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="nav-logo brand-font">GST SCANNER</a>
+        <ul class="nav-links">
+            <li><a href="index.html">Upload</a></li>
+            <li><a href="history.html" class="active">History</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+        </ul>
+        <div class="user-info">
+            <span class="display-user-name" style="font-weight: 600; text-transform: uppercase;">Operator</span>
+            <button class="logout-btn logout-trigger">LOGOUT</button>
+        </div>
+    </nav>
+
+    <div class="container animate-fade-up">
+        <header class="mb-2">
+            <h1 class="brand-font" style="font-size: 2.5rem;">TRANSACTION ARCHIVE</h1>
+            <p class="text-muted data-font">Accessing local data nodes for past GST scan records.</p>
+        </header>
+
+        <div class="history-controls">
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="SEARCH BY SELLER, BUYER, OR INVOICE NUMBER...">
+            </div>
+            <div class="data-font" style="font-size: 0.8rem; color: var(--primary-accent);">
+                TOTAL RECORDS: <span id="recordCount">0</span>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="historyTable">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="id">ID <span class="sort-icon">▼</span></th>
+                        <th class="sortable" data-sort="seller_name">SELLER <span class="sort-icon">▼</span></th>
+                        <th class="sortable" data-sort="buyer_name">BUYER <span class="sort-icon">▼</span></th>
+                        <th class="sortable" data-sort="invoice_number">INVOICE NO <span class="sort-icon">▼</span></th>
+                        <th class="sortable" data-sort="invoice_date">DATE <span class="sort-icon">▼</span></th>
+                        <th class="sortable" data-sort="total">TOTAL <span class="sort-icon">▼</span></th>
+                        <th class="sortable" data-sort="created_at">SCANNED AT <span class="sort-icon">▼</span></th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <!-- Rows populated by JS -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div id="emptyState" class="empty-state" style="display: none;">
+            NO INVOICES SCANNED YET — UPLOAD YOUR FIRST INVOICE
+        </div>
+    </div>
+
+    <script src="js/history.js"></script>
+</body>
+</html>

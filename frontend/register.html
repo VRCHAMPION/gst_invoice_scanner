@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register | GST Invoice Scanner</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/auth.js"></script>
+    <style>
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .register-card {
+            max-width: 500px;
+            width: 100%;
+            border-left: 8px solid var(--secondary-accent);
+        }
+        .register-header {
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .register-header h2 {
+            font-size: 2.5rem;
+            color: var(--primary-accent);
+        }
+    </style>
+</head>
+<body>
+    <div class="register-card card animate-fade-up">
+        <div class="register-header">
+            <h2 class="brand-font">NEW REGISTRATION</h2>
+            <p>Create your operator account to begin scanning.</p>
+        </div>
+
+        <form id="registerForm">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="name" required placeholder="e.g. Rajesh Kumar">
+            </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" required placeholder="Choose operator ID">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" required>
+            </div>
+            <div class="form-group">
+                <label>Confirm Password</label>
+                <input type="password" id="confirmPassword" required>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                AUTHENTICATE & REGISTER
+            </button>
+        </form>
+
+        <p class="mt-2" style="font-size: 0.9rem; text-align: center; color: var(--text-muted);">
+            Already have an account? <a href="login.html" style="color: var(--primary-accent); text-decoration: none; font-weight: 600;">BACK TO LOGIN</a>
+        </p>
+
+        <div id="errorMessage" class="mt-1" style="color: var(--danger); font-weight: 600; text-align: center; display: none;"></div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const name = document.getElementById('name').value;
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+            const error = document.getElementById('errorMessage');
+
+            if (pass !== confirmPass) {
+                error.textContent = "PASSWORDS DO NOT MATCH";
+                error.style.display = 'block';
+                return;
+            }
+
+            const result = register(name, user, pass);
+            if (result.success) {
+                alert("REGISTRATION SUCCESSFUL. REDIRECTING TO LOGIN.");
+                window.location.href = 'login.html';
+            } else {
+                error.textContent = result.message.toUpperCase();
+                error.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>

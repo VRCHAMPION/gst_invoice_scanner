@@ -1,0 +1,116 @@
+document.addEventListener('DOMContentLoaded', () => {
+    const data = JSON.parse(sessionStorage.getItem('lastScanResults'));
+    if (!data) {
+        window.location.href = 'index.html';
+        return;
+    }
+
+    populateData(data);
+    setupActions(data);
+});
+
+function populateData(data) {
+    // Header info
+    document.getElementById('invoiceId').textContent = data.id || 'N/A';
+    document.getElementById('processedTime').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+
+    // Entities
+    document.getElementById('sellerName').textContent = (data.seller_name || 'UNKNOWN').toUpperCase();
+    document.getElementById('sellerGstin').textContent = data.seller_gstin || 'NOT DETECTED';
+    document.getElementById('buyerName').textContent = (data.buyer_name || 'UNKNOWN').toUpperCase();
+    document.getElementById('buyerGstin').textContent = data.buyer_gstin || 'NOT DETECTED';
+
+    // Invoice details
+    document.getElementById('invoiceNumber').textContent = data.invoice_number || '---';
+    document.getElementById('invoiceDate').textContent = formatDate(data.invoice_date);
+    document.getElementById('itemCount').textContent = data.items ? data.items.length : 0;
+
+    // Items table
+    const tableBody = document.getElementById('itemsTableBody');
+    tableBody.innerHTML = '';
+    if (data.items && data.items.length > 0) {
+        data.items.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td style="font-weight: 600;">${(item.description || 'Item').toUpperCase()}</td>
+                <td class="data-font">${item.quantity || 0}</td>
+                <td class="data-font">${formatCurrency(item.rate)}</td>
+                <td class="data-font" style="color: var(--primary-accent); font-weight: 700;">${formatCurrency(item.amount)}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    } else {
+        tableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">NO LINE ITEMS DETECTED</td></tr>';
+    }
+
+    // Health Score
+    const health = data.health_score || { score: 0, grade: 'F', status: 'Incomplete', issues: [], warnings: [], summary: 'No health data available' };
+    
+    // Animate score
+    animateCounter(document.getElementById('scoreValue'), health.score);
+    
+    document.getElementById('gradeBadge').textContent = health.grade;
+    document.getElementById('healthStatus').textContent = `HEALTH: ${health.status.toUpperCase()}`;
+    document.getElementById('scoreSummary').textContent = health.summary;
+
+    // Issues & Warnings
+    const issuesContainer = document.getElementById('issuesContainer');
+    issuesContainer.innerHTML = '';
+    
+    health.issues.forEach(issue => {
+        const div = document.createElement('div');
+        div.className = 'issue-card';
+        div.innerHTML = `<span style="color: var(--danger); font-weight: 1000;">●</span> ${issue.toUpperCase()}`;
+        issuesContainer.appendChild(div);
+    });
+
+    health.warnings.forEach(warning => {
+        const div = document.createElement('div');
+        div.className = 'warning-card';
+        div.innerHTML = `<span style="color: var(--secondary-accent); font-weight: 1000;">●</span> ${warning.toUpperCase()}`;
+        issuesContainer.appendChild(div);
+    });
+
+    // Tax Summary
+    animateCounterValue('subtotalValue', data.subtotal || 0);
+    animateCounterValue('cgstValue', data.cgst || 0);
+    animateCounterValue('sgstValue', data.sgst || 0);
+    animateCounterValue('igstValue', data.igst || 0);
+    animateCounterValue('totalValue', data.total || 0);
+}
+
+function animateCounterValue(id, target) {
+    const el = document.getElementById(id);
+    el.dataset.type = 'currency';
+    animateCounter(el, target);
+}
+
+function setupActions(data) {
+    document.getElementById('exportBtn').addEventListener('click', async () => {
+        try {
+            const response = await fetch('http://127.0.0.1:8000/export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            if (!response.ok) throw new Error('EXPORT FAILED');
+            
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `invoice_${data.invoice_number || 'export'}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (error) {
+            alert('ERROR EXPORTING: ' + error.message);
+        }
+    });
+
+    document.getElementById('whatsappBtn').addEventListener('click', () => {
+        const text = `Invoice Report: ${data.invoice_number}\nTotal: ${formatCurrency(data.total)}\nHealth Score: ${data.health_score.score}/100`;
+        window.open('https://wa.me/?text=' + encodeURIComponent(text));
+    });
+}

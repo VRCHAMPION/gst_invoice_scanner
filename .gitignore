@@ -1,36 +1,19 @@
-# Secret keys - never push these
+# Environment files
 .env
-.env.local
-.env.production
 
-# Python cache files
+# Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-
-# Virtual environment
+*.py[cod]
+*$py.class
 venv/
 env/
-.venv/
 
-# Node modules (frontend)
-node_modules/
+# Data & Tests
+test_invoices/
+batch_test_results.json
+debug_extraction.py
+test_all_invoices.py
 
-# React build folder
-/frontend/build
-/frontend/dist
-
-# VS Code settings
-.vscode/
-
-# Windows files
+# OS
+.DS_Store
 Thumbs.db
-desktop.ini
-
-# Logs
-*.log
-
-# Uploaded files (if you store locally)
-uploads/

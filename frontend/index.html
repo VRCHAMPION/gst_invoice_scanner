@@ -1,14 +1,218 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Upload Invoice | GST Invoice Scanner</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/auth.js"></script>
+    <style>
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 4rem;
+            align-items: center;
+            min-height: calc(100vh - 150px);
+        }
+
+        .drop-zone {
+            border: 3px dashed var(--border-color);
+            padding: 4rem;
+            text-align: center;
+            background: white;
+            transition: var(--transition-slow);
+            cursor: pointer;
+            position: relative;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--secondary-accent);
+            background: var(--hover-bg);
+            transform: scale(1.02);
+        }
+
+        .drop-zone-icon {
+            font-size: 4rem;
+            color: var(--primary-accent);
+            margin-bottom: 2rem;
+        }
+
+        .drop-zone-text {
+            font-family: 'Syne', sans-serif;
+            font-weight: 800;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .preview-container {
+            margin-top: 2rem;
+            display: none;
+            width: 100%;
+        }
+
+        .file-info {
+            background: #fafaf8;
+            padding: 1rem;
+            border: 1px solid var(--border-color);
+            border-left: 4px solid var(--data-accent);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .processing-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(245, 245, 240, 0.95);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .pulse {
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        .scan-btn {
+            width: 100%;
+            margin-top: 2rem;
+            padding: 1.2rem;
+            font-size: 1.2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .scan-btn::after {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transform: skewX(-25deg);
+            transition: 0.5s;
+        }
+
+        .scan-btn:hover::after {
+            left: 150%;
+        }
+
+        .stat-mini-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+    </style>
 </head>
-
 <body>
+    <nav>
+        <a href="index.html" class="nav-logo brand-font">GST SCANNER</a>
+        <ul class="nav-links">
+            <li><a href="index.html" class="active">Upload</a></li>
+            <li><a href="history.html">History</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+        </ul>
+        <div class="user-info">
+            <span class="display-user-name" style="font-weight: 600; text-transform: uppercase;">Operator</span>
+            <button class="logout-btn logout-trigger">LOGOUT</button>
+        </div>
+    </nav>
 
+    <div class="container">
+        <div class="upload-section">
+            <div class="animate-fade-up">
+                <h1 class="brand-font" style="font-size: 4rem; line-height: 0.9; margin-bottom: 2rem;">
+                    FINANCIAL DATA<br>TERMINAL
+                </h1>
+                <p style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 2rem;">
+                    Upload purchase invoices for real-time GST validation, ITC calculation, and spend analysis.
+                </p>
+                
+                <ul class="feature-list" style="color: var(--primary-accent); font-weight: 700;">
+                    <li class="feature-item stagger-1"><div class="feature-dot" style="background: var(--data-accent);"></div> 99.8% OCR ACCURACY</li>
+                    <li class="feature-item stagger-2"><div class="feature-dot" style="background: var(--secondary-accent);"></div> INSTANT GSTIN VERIFICATION</li>
+                    <li class="feature-item stagger-3"><div class="feature-dot" style="background: var(--success);"></div> AUTOMATED ITC BREAKDOWN</li>
+                </ul>
+
+                <div class="stat-mini-grid">
+                    <div class="stat-card stagger-3" style="border-left-color: var(--data-accent);">
+                        <div class="stat-label">System Status</div>
+                        <div class="stat-value" style="font-size: 1.2rem; display: flex; align-items: center;">
+                            <span class="status-dot status-success"></span> OPERATIONAL
+                        </div>
+                    </div>
+                    <div class="stat-card stagger-4">
+                        <div class="stat-label">Data Nodes</div>
+                        <div class="stat-value" style="font-size: 1.2rem;">LOCAL-STORAGE</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="animate-fade-up stagger-1">
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-icon">⎗</div>
+                    <p class="drop-zone-text">DRAG & DROP INVOICE</p>
+                    <p style="color: var(--text-muted); margin-top: 1rem;">JPEG, PNG accepted (Max 10MB)</p>
+                    <input type="file" id="fileInput" accept="image/jpeg, image/png">
+                    
+                    <div class="preview-container" id="previewContainer">
+                        <div class="file-info">
+                            <div>
+                                <strong id="fileName" class="data-font">invoice.jpg</strong>
+                                <div id="fileSize" style="font-size: 0.8rem; color: var(--text-muted);">0 KB</div>
+                            </div>
+                            <span style="color: var(--success); font-weight: 800;">READY</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="scanBtn" class="btn btn-primary scan-btn" disabled>
+                    START SYSTEM SCAN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing Overlay -->
+    <div class="processing-overlay" id="overlay">
+        <h2 class="brand-font" style="font-size: 3rem; margin-bottom: 3rem;">SYSTEM SCANNING...</h2>
+        
+        <div class="steps-container" style="width: 600px;">
+            <div class="step" id="step1">01</div>
+            <div class="step" id="step2">02</div>
+            <div class="step" id="step3">03</div>
+            <div class="step" id="step4">04</div>
+        </div>
+        
+        <div style="margin-top: 2rem; width: 600px; display: flex; justify-content: space-between; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">
+            <span>Uploading</span>
+            <span>AI Reading</span>
+            <span>Validating</span>
+            <span>Saving</span>
+        </div>
+
+        <p id="processStatus" class="mt-2 pulse data-font" style="color: var(--secondary-accent); font-weight: 600;">INITIALIZING OCR ENGINE...</p>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/upload.js"></script>
 </body>
-
 </html>

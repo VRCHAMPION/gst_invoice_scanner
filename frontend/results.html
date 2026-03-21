@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Results | GST Invoice Scanner</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/auth.js"></script>
+    <style>
+        .results-grid {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .score-hero {
+            text-align: center;
+            padding: 3rem;
+            background: #0c0c0f;
+            border: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .score-circle {
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            border: 8px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            position: relative;
+        }
+
+        .score-circle::after {
+            content: '';
+            position: absolute;
+            top: -8px; left: -8px; right: -8px; bottom: -8px;
+            border-radius: 50%;
+            border: 8px solid var(--primary-accent);
+            border-top-color: transparent;
+            transform: rotate(45deg);
+        }
+
+        .score-value {
+            font-size: 3.5rem;
+            font-weight: 500;
+            font-family: 'DM Mono', monospace;
+            color: var(--primary-accent);
+        }
+
+        .grade-badge {
+            font-family: 'Syne', sans-serif;
+            font-size: 3rem;
+            font-weight: 800;
+            position: absolute;
+            top: 20px; right: 20px;
+            color: var(--secondary-accent);
+            opacity: 0.5;
+        }
+
+        .issue-card {
+            padding: 1rem;
+            border-left: 3px solid var(--danger);
+            background: rgba(255, 51, 85, 0.05);
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .warning-card {
+            padding: 1rem;
+            border-left: 3px solid var(--secondary-accent);
+            background: rgba(255, 107, 0, 0.05);
+            margin-bottom: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .tax-summary-box {
+            background: #0c0c0f;
+            border: 1px solid var(--border-color);
+            padding: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .tax-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-family: 'DM Mono', monospace;
+        }
+
+        .tax-row.total {
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+            margin-top: 1rem;
+            color: var(--primary-accent);
+            font-size: 1.2rem;
+            font-weight: 700;
+        }
+
+        .action-bar {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="index.html" class="nav-logo brand-font">GST SCANNER</a>
+        <ul class="nav-links">
+            <li><a href="index.html">Upload</a></li>
+            <li><a href="history.html">History</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+        </ul>
+        <div class="user-info">
+            <span class="display-user-name" style="font-weight: 600; text-transform: uppercase;">Operator</span>
+            <button class="logout-btn logout-trigger">LOGOUT</button>
+        </div>
+    </nav>
+
+    <div class="container animate-fade-up">
+        <header style="display: flex; justify-content: space-between; align-items: flex-end;">
+            <div>
+                <h1 class="brand-font" style="font-size: 2.5rem;">EXTRACTION RESULTS</h1>
+                <p class="text-muted data-font">ID: <span id="invoiceId">0000</span> | Processed at <span id="processedTime">--:--</span></p>
+            </div>
+            <div class="action-bar">
+                <button id="exportBtn" class="btn btn-outline" style="font-size: 0.7rem;">EXPORT EXCEL</button>
+                <button id="whatsappBtn" class="btn btn-outline" style="font-size: 0.7rem;">SHARE WHATSAPP</button>
+                <a href="index.html" class="btn btn-primary" style="font-size: 0.7rem;">SCAN ANOTHER</a>
+            </div>
+        </header>
+
+        <div class="results-grid">
+            <div class="main-report">
+                <div class="card mb-2">
+                    <h3 class="mb-1" style="font-size: 0.9rem; color: var(--primary-accent);">INVOICE ENTITIES</h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <label class="text-muted" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Seller Details</label>
+                            <div id="sellerName" class="brand-font mt-1" style="font-size: 1.2rem;">--</div>
+                            <div id="sellerGstin" class="data-font text-muted mt-1" style="letter-spacing: 1px;">--</div>
+                        </div>
+                        <div>
+                            <label class="text-muted" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Buyer Details</label>
+                            <div id="buyerName" class="brand-font mt-1" style="font-size: 1.2rem;">--</div>
+                            <div id="buyerGstin" class="data-font text-muted mt-1" style="letter-spacing: 1px;">--</div>
+                        </div>
+                    </div>
+                    <div class="divider" style="margin: 2rem 0;"></div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 2rem;">
+                        <div>
+                            <label class="text-muted" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Invoice Number</label>
+                            <div id="invoiceNumber" class="data-font mt-1">--</div>
+                        </div>
+                        <div>
+                            <label class="text-muted" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Invoice Date</label>
+                            <div id="invoiceDate" class="data-font mt-1">--</div>
+                        </div>
+                        <div>
+                            <label class="text-muted" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Total Items</label>
+                            <div id="itemCount" class="data-font mt-1">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Qty</th>
+                                <th>Rate</th>
+                                <th>Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="itemsTableBody">
+                            <!-- Items populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="analysis-sidebar">
+                <div class="score-hero">
+                    <div class="grade-badge" id="gradeBadge">A</div>
+                    <div class="score-circle">
+                        <div class="score-value" id="scoreValue">00</div>
+                    </div>
+                    <h3 class="brand-font" id="healthStatus">HEALTH: --</h3>
+                    <p class="text-muted data-font" style="font-size: 0.8rem; margin-top: 0.5rem;" id="scoreSummary">System validation summary...</p>
+                </div>
+
+                <div id="issuesContainer">
+                    <!-- Issues populated by JS -->
+                </div>
+
+                <div class="tax-summary-box animate-fade-up stagger-2">
+                    <h4 class="brand-font mb-1" style="font-size: 0.8rem;">TAX COMPUTATION</h4>
+                    <div class="tax-row">
+                        <span>Subtotal</span>
+                        <span id="subtotalValue">₹0.00</span>
+                    </div>
+                    <div class="tax-row">
+                        <span>CGST</span>
+                        <span id="cgstValue">₹0.00</span>
+                    </div>
+                    <div class="tax-row">
+                        <span>SGST</span>
+                        <span id="sgstValue">₹0.00</span>
+                    </div>
+                    <div class="tax-row">
+                        <span>IGST</span>
+                        <span id="igstValue">₹0.00</span>
+                    </div>
+                    <div class="tax-row total">
+                        <span>GRAND TOTAL</span>
+                        <span id="totalValue">₹0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/results.js"></script>
+</body>
+</html>

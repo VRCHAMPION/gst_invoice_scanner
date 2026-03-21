@@ -50,19 +50,23 @@ def validate_mathematics(data: dict) -> dict:
                 f"Subtotal mismatch: items sum to ₹{calculated_subtotal} "
                 f"but subtotal shows ₹{subtotal}"
             )
-    expected_total = round((subtotal or 0) + cgst + sgst + igst, 2)
+    cgst_val = cgst or 0
+    sgst_val = sgst or 0
+    igst_val = igst or 0
+    
+    expected_total = round((subtotal or 0) + cgst_val + sgst_val + igst_val, 2)
     if total and abs(expected_total - total) > 1:
         issues.append(
-            f"Total mismatch: subtotal({subtotal}) + taxes({cgst + sgst + igst}) "
+            f"Total mismatch: subtotal({subtotal}) + taxes({cgst_val + sgst_val + igst_val}) "
             f"= {expected_total} but total shows {total}"
         )
-    if cgst and sgst and abs(cgst - sgst) > 1:
+    if cgst_val and sgst_val and abs(cgst_val - sgst_val) > 1:
         issues.append(
-            f"CGST (₹{cgst}) ≠ SGST (₹{sgst}) — "
+            f"CGST (₹{cgst_val}) ≠ SGST (₹{sgst_val}) — "
             f"for intrastate transactions they must be equal"
         )
-    if igst and igst > 0:
-        if cgst and cgst > 0:
+    if igst_val and igst_val > 0:
+        if cgst_val and cgst_val > 0:
             issues.append(
                 "IGST and CGST both present — "
                 "interstate invoices should only have IGST"

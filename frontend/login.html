@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | GST Invoice Scanner</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/auth.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--surface-color);
+        }
+        .login-left {
+            flex: 1.2;
+            background-color: var(--primary-accent);
+            color: white;
+            padding: 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+        .login-left::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(#ffffff11 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+        }
+        .login-right {
+            flex: 1;
+            padding: 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background-color: var(--surface-color);
+        }
+        .app-title {
+            font-size: 4rem;
+            line-height: 0.9;
+            margin-bottom: 2rem;
+        }
+        .feature-list {
+            list-style: none;
+            margin-top: 3rem;
+        }
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+        .feature-dot {
+            width: 12px;
+            height: 12px;
+            background: var(--secondary-accent);
+            border-radius: 50%;
+        }
+        .login-form-card {
+            max-width: 400px;
+            width: 100%;
+        }
+        .login-header {
+            margin-bottom: 3rem;
+        }
+        .login-header h2 {
+            font-size: 2.5rem;
+            color: var(--primary-accent);
+        }
+        .toggle-password {
+            float: right;
+            margin-top: -30px;
+            position: relative;
+            z-index: 2;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .remember-me {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            font-size: 0.9rem;
+            color: var(--text-muted);
+        }
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            max-width: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-left animate-fade-up">
+        <h1 class="app-title brand-font">GST<br>INVOICE<br>SCANNER</h1>
+        <p class="tagline">Precision data extraction with industrial-grade GST validation.</p>
+        
+        <ul class="feature-list">
+            <li class="feature-item stagger-1"><div class="feature-dot"></div> AI-Powered OCR Extraction</li>
+            <li class="feature-item stagger-2"><div class="feature-dot"></div> Intelligent Health Scoring</li>
+            <li class="feature-item stagger-3"><div class="feature-dot"></div> Seamless ITC Calculator</li>
+        </ul>
+    </div>
+
+    <div class="login-right animate-fade-up stagger-1">
+        <div class="login-form-card">
+            <div class="login-header">
+                <h2>SECURE LOGIN</h2>
+                <p>Welcome back. Access your financial data terminal.</p>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required autocomplete="current-password">
+                    <span class="toggle-password" onclick="togglePassword()">Show</span>
+                </div>
+                
+                <label class="remember-me">
+                    <input type="checkbox" id="rememberMe"> Remember this terminal
+                </label>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%;">
+                    INITIALIZE ACCESS
+                </button>
+            </form>
+
+            <p class="mt-2" style="font-size: 0.9rem; color: var(--text-muted);">
+                New operator? <a href="register.html" style="color: var(--secondary-accent); text-decoration: none; font-weight: 600;">REGISTER ACCOUNT</a>
+            </p>
+            
+            <div id="errorMessage" class="mt-1" style="color: var(--danger); font-weight: 600; display: none;"></div>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script>
+        function togglePassword() {
+            const pwd = document.getElementById('password');
+            const toggle = document.querySelector('.toggle-password');
+            if (pwd.type === 'password') {
+                pwd.type = 'text';
+                toggle.textContent = 'Hide';
+            } else {
+                pwd.type = 'password';
+                toggle.textContent = 'Show';
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const user = document.getElementById('username').value;
+            const pass = document.getElementById('password').value;
+            const remember = document.getElementById('rememberMe').checked;
+            
+            if (remember) {
+                localStorage.setItem('rememberedUser', user);
+            } else {
+                localStorage.removeItem('rememberedUser');
+            }
+
+            const result = login(user, pass);
+            if (result.success) {
+                window.location.href = 'index.html';
+            } else {
+                const error = document.getElementById('errorMessage');
+                error.textContent = result.message.toUpperCase();
+                error.style.display = 'block';
+            }
+        });
+
+        // Load remembered user
+        window.onload = () => {
+            const saved = localStorage.getItem('rememberedUser');
+            if (saved) {
+                document.getElementById('username').value = saved;
+                document.getElementById('rememberMe').checked = true;
+            }
+        };
+    </script>
+</body>
+</html>
