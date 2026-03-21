@@ -1,5 +1,6 @@
 import psycopg2
 import os
+import json
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -31,7 +32,7 @@ def save_invoice(data):
         data.get("igst"),
         data.get("subtotal"),
         data.get("total"),
-        str(data.get("items"))
+        json.dumps(data.get("items"))
     ))
     
     invoice_id = cursor.fetchone()[0]
