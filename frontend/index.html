@@ -170,8 +170,8 @@
                 <div class="drop-zone" id="dropZone">
                     <div class="drop-zone-icon">⎗</div>
                     <p class="drop-zone-text">DRAG & DROP INVOICE</p>
-                    <p style="color: var(--text-muted); margin-top: 1rem;">JPEG, PNG accepted (Max 10MB)</p>
-                    <input type="file" id="fileInput" accept="image/jpeg, image/png">
+                    <p style="color: var(--text-muted); margin-top: 1rem;">JPEG, PNG, PDF, Word accepted (Batch Upload Enabled)</p>
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" multiple>
                     
                     <div class="preview-container" id="previewContainer">
                         <div class="file-info">
@@ -185,7 +185,7 @@
                 </div>
 
                 <button id="scanBtn" class="btn btn-primary scan-btn" disabled>
-                    START SYSTEM SCAN
+                    START BATCH SCAN
                 </button>
             </div>
         </div>

@@ -18,9 +18,14 @@ app.add_middleware(
 
 @app.post("/scan")
 async def scan_invoice(file: UploadFile = File(...)):
-    allowed_types = ["image/jpeg", "image/png", "image/jpg"]
+    allowed_types = [
+        "image/jpeg", "image/png", "image/jpg", 
+        "application/pdf", 
+        "application/msword",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    ]
     if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Only JPG and PNG images are allowed")
+        raise HTTPException(status_code=400, detail="Only Images, PDF, and Word docs are allowed")
     contents = await file.read()
     data = extract_invoice_data(contents, file.content_type)
     invoice_id = save_invoice(data)

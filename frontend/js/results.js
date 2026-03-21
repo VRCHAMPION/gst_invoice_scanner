@@ -1,12 +1,49 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const data = JSON.parse(sessionStorage.getItem('lastScanResults'));
-    if (!data) {
+    const rawData = JSON.parse(sessionStorage.getItem('lastScanResults'));
+    if (!rawData) {
         window.location.href = 'index.html';
         return;
     }
 
-    populateData(data);
-    setupActions(data);
+    const isBatch = Array.from(Array.isArray(rawData) ? rawData : [rawData]).length > 1 || Array.isArray(rawData);
+    const results = Array.isArray(rawData) ? rawData : [rawData];
+    let currentIndex = 0;
+
+    if (isBatch) {
+        const batchNav = document.getElementById('batchNav');
+        const batchIndicator = document.getElementById('batchIndicator');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        batchNav.style.display = 'flex';
+        
+        const updateBatchUI = () => {
+            batchIndicator.textContent = `${currentIndex + 1} / ${results.length}`;
+            prevBtn.disabled = currentIndex === 0;
+            nextBtn.disabled = currentIndex === results.length - 1;
+            populateData(results[currentIndex]);
+            setupActions(results[currentIndex]);
+        };
+
+        prevBtn.addEventListener('click', () => {
+            if (currentIndex > 0) {
+                currentIndex--;
+                updateBatchUI();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentIndex < results.length - 1) {
+                currentIndex++;
+                updateBatchUI();
+            }
+        });
+
+        updateBatchUI();
+    } else {
+        populateData(results[0]);
+        setupActions(results[0]);
+    }
 });
 
 function populateData(data) {
@@ -86,7 +123,16 @@ function animateCounterValue(id, target) {
 }
 
 function setupActions(data) {
-    document.getElementById('exportBtn').addEventListener('click', async () => {
+    // Clone buttons to clear existing listeners (important for batch navigation)
+    const exportBtn = document.getElementById('exportBtn');
+    const newExportBtn = exportBtn.cloneNode(true);
+    exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
+
+    const whatsappBtn = document.getElementById('whatsappBtn');
+    const newWhatsappBtn = whatsappBtn.cloneNode(true);
+    whatsappBtn.parentNode.replaceChild(newWhatsappBtn, whatsappBtn);
+
+    newExportBtn.addEventListener('click', async () => {
         try {
             const response = await fetch('http://127.0.0.1:8000/export', {
                 method: 'POST',
@@ -109,7 +155,7 @@ function setupActions(data) {
         }
     });
 
-    document.getElementById('whatsappBtn').addEventListener('click', () => {
+    newWhatsappBtn.addEventListener('click', () => {
         const text = `Invoice Report: ${data.invoice_number}\nTotal: ${formatCurrency(data.total)}\nHealth Score: ${data.health_score.score}/100`;
         window.open('https://wa.me/?text=' + encodeURIComponent(text));
     });

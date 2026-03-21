@@ -123,9 +123,14 @@
     </nav>
 
     <div class="container animate-fade-up">
-        <header style="display: flex; justify-content: space-between; align-items: flex-end;">
+        <header style="display: flex; justify-content: space-between; align-items: flex-end; position: relative;">
             <div>
-                <h1 class="brand-font" style="font-size: 2.5rem;">EXTRACTION RESULTS</h1>
+                <div id="batchNav" style="display: none; align-items: center; gap: 1rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); padding: 0.6rem 1.2rem; background: #fafaf8; width: fit-content; border-left: 4px solid var(--secondary-accent);">
+                    <button id="prevBtn" class="btn btn-outline" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; min-width: auto;">PREV</button>
+                    <span id="batchIndicator" class="data-font" style="font-weight: 800; font-size: 0.9rem; color: var(--primary-accent);">1 / 5</span>
+                    <button id="nextBtn" class="btn btn-outline" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; min-width: auto;">NEXT</button>
+                </div>
+                <h1 class="brand-font" style="font-size: 2.5rem; line-height: 1; margin-bottom: 0.5rem;">EXTRACTION<br>RESULTS</h1>
                 <p class="text-muted data-font">ID: <span id="invoiceId">0000</span> | Processed at <span id="processedTime">--:--</span></p>
             </div>
             <div class="action-bar">
