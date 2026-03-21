@@ -2,7 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from parser import extract_invoice_data
-from database import save_invoice, get_all_invoices, get_analytics
+from database import save_invoice, get_all_invoices, get_analytics, get_itc_summary
 from validator import calculate_health_score
 import openpyxl
 import io
@@ -87,6 +87,11 @@ async def get_invoices():
 @app.get("/analytics")
 async def get_analytics_data():
     data = get_analytics()
+    return data
+
+@app.get("/itc-summary")
+async def get_itc_data():
+    data = get_itc_summary()
     return data
 
 @app.get("/")
