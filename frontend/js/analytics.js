@@ -1,8 +1,7 @@
 document.addEventListener('DOMContentLoaded', async () => {
-    // Set chart defaults for dark theme
-    Chart.defaults.color = '#52526b';
-    Chart.defaults.font.family = "'Outfit', sans-serif";
-    Chart.defaults.borderColor = '#1c1c24';
+    Chart.defaults.color = '#8a8580';
+    Chart.defaults.font.family = "'Geist', sans-serif";
+    Chart.defaults.borderColor = '#ddd9d2';
 
     await loadAnalytics();
     await loadItcSummary();
@@ -21,7 +20,7 @@ async function loadAnalytics() {
         animateCounter(document.getElementById('totalInvoices'), data.total_invoices);
         animateCounterValue('totalSpend', data.total_spend);
         animateCounterValue('totalTax', data.total_tax);
-        
+
         // Render Charts
         renderSpendChart(data.monthly_spend);
         renderSuppliersChart(data.top_suppliers);
@@ -41,12 +40,12 @@ async function loadItcSummary() {
 
         animateCounterValue('totalItc', data.current_month.total_itc);
         animateCounterValue('currentMonthItc', data.current_month.total_itc);
-        
+
         const trendEl = document.getElementById('itcTrend');
         const change = data.percentage_change;
         trendEl.textContent = `${change > 0 ? '+' : ''}${change}%`;
         trendEl.style.color = change >= 0 ? 'var(--success)' : 'var(--danger)';
-        
+
         document.getElementById('itcDisclaimer').textContent = data.disclaimer;
 
         const tbody = document.getElementById('itcTableBody');
@@ -59,7 +58,7 @@ async function loadItcSummary() {
                 <td class="data-font">${formatCurrency(row.cgst)}</td>
                 <td class="data-font">${formatCurrency(row.sgst)}</td>
                 <td class="data-font">${formatCurrency(row.igst)}</td>
-                <td class="data-font" style="color: var(--primary-accent); font-weight: 700;">${formatCurrency(row.total_itc)}</td>
+                <td class="data-font" style="color: var(--accent); font-weight: 500;">${formatCurrency(row.total_itc)}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -78,14 +77,14 @@ function renderSpendChart(monthlyData) {
                 {
                     label: 'TOTAL SPEND',
                     data: monthlyData.map(d => d.total),
-                    backgroundColor: '#00ff88',
-                    hoverBackgroundColor: '#ffffff'
+                    backgroundColor: '#2d6a4f',
+                    hoverBackgroundColor: '#52b788'
                 },
                 {
                     label: 'TAX PAID',
                     data: monthlyData.map(d => d.tax),
-                    backgroundColor: '#ff6b00',
-                    hoverBackgroundColor: '#ffffff'
+                    backgroundColor: '#c87941',
+                    hoverBackgroundColor: '#e8956d'
                 }
             ]
         },
@@ -123,7 +122,7 @@ function renderSuppliersChart(suppliers) {
             labels: suppliers.map(s => s.name),
             datasets: [{
                 data: suppliers.map(s => s.total_spend),
-                backgroundColor: ['#00ff88', '#00c3ff', '#ff6b00', '#ff3355', '#52526b'],
+                backgroundColor: ['#2d6a4f', '#2c5f8a', '#c87941', '#7b5ea7', '#c0392b'],
                 borderWidth: 0,
                 hoverOffset: 20
             }]
@@ -155,11 +154,11 @@ function renderVolumeChart(volumeData) {
             datasets: [{
                 label: 'INVOICES SCANNED',
                 data: volumeData.map(d => d.count),
-                borderColor: '#00c3ff',
-                backgroundColor: 'rgba(0, 195, 255, 0.1)',
+                borderColor: '#2c5f8a',
+                backgroundColor: 'rgba(44,95,138,0.08)',
                 fill: true,
                 tension: 0.4,
-                pointBackgroundColor: '#00c3ff'
+                pointBackgroundColor: '#2c5f8a'
             }]
         },
         options: {
@@ -169,7 +168,7 @@ function renderVolumeChart(volumeData) {
                 y: {
                     beginAtZero: true,
                     ticks: { stepSize: 1 },
-                    grid: { color: '#1c1c24' }
+                    grid: { color: '#ddd9d2' }
                 },
                 x: {
                     grid: { display: false }
@@ -196,10 +195,10 @@ function calculateDeadlines() {
             // If passed, next month deadline
             deadlineDate = new Date(currentYear, currentMonth + 1, dl.day);
         }
-        
+
         const diffTime = deadlineDate - today;
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         document.getElementById(dl.id).textContent = diffDays;
     });
 }
