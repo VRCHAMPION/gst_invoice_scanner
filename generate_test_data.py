@@ -25,7 +25,7 @@ def generate_invoice(invoice_id, status="valid"):
     # Base data
     seller_name = f"SELLER_{invoice_id} LIMITED"
     seller_gstin = "27ABCDE1234F1Z5" # Valid Maharashtra GSTIN
-    buyer_name = "URMI TECHNOLOGIES PVT LTD"
+    buyer_name = "UXYZ COMPANY PVT LTD"
     buyer_gstin = "27AAACU1234A1Z1"
     invoice_no = f"INV/2026/{invoice_id:04d}"
     invoice_date = (datetime.now() - timedelta(days=random.randint(1, 30))).strftime("%d/%m/%Y")
