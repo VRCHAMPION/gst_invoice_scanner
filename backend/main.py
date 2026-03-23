@@ -1,4 +1,5 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request
+import uuid
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from parser import extract_invoice_data
@@ -83,34 +84,55 @@ async def register(req: RegisterRequest):
 # ── Protected Routes ──────────────────────────────────────────────────
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
+scan_jobs = {}
+
+def process_invoice_background(job_id: str, file_bytes: bytes, content_type: str):
+    try:
+        data = extract_invoice_data(file_bytes, content_type)
+        if data.get("status") == "failed":
+            scan_jobs[job_id] = data
+            return
+            
+        invoice_id = save_invoice(data)
+        data["id"] = invoice_id
+        health = calculate_health_score(data)
+        data["health_score"] = health
+        data["status"] = "completed"
+        scan_jobs[job_id] = data
+    except Exception as e:
+        scan_jobs[job_id] = {"status": "failed", "error": str(e)}
+
 @app.post("/scan")
 @limiter.limit("10/minute")
 async def scan_invoice(
     request: Request,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     current_user: str = Depends(get_current_user)
 ):
     allowed_types = [
         "image/jpeg", "image/png", "image/jpg", 
-        "application/pdf", 
-        "application/msword",
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        "application/pdf"
     ]
     if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Only Images, PDF, and Word docs are allowed")
+        raise HTTPException(status_code=400, detail="Only Images and PDFs are allowed")
     
     contents = await file.read()
     
-    # File size validation
     if len(contents) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
     
-    data = extract_invoice_data(contents, file.content_type)
-    invoice_id = save_invoice(data)
-    data["id"] = invoice_id
-    health = calculate_health_score(data)
-    data["health_score"] = health
-    return data
+    job_id = str(uuid.uuid4())
+    scan_jobs[job_id] = {"status": "processing"}
+    background_tasks.add_task(process_invoice_background, job_id, contents, file.content_type)
+    
+    return {"job_id": job_id, "status": "processing"}
+
+@app.get("/scan/status/{job_id}")
+async def get_scan_status(job_id: str, current_user: str = Depends(get_current_user)):
+    if job_id not in scan_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return scan_jobs[job_id]
 
 @app.post("/export")
 async def export_invoice(data: dict, current_user: str = Depends(get_current_user)):

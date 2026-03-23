@@ -112,10 +112,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!selectedFile) return;
 
         overlay.style.display = 'flex';
-        uploadProgress.style.width = '0%';
+        uploadProgress.style.width = '10%'; // initial progress
+        processStatus.textContent = 'INITIATING SECURE UPLOAD...';
 
-        await runAnimatedProgress();
-        
         try {
             const formData = new FormData();
             formData.append('file', selectedFile);
@@ -126,11 +125,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: formData
             });
 
-            if (!response.ok) throw new Error(`SCAN FAILED`);
+            if (!response.ok) throw new Error(`UPLOAD FAILED`);
 
             const data = await response.json();
-            sessionStorage.setItem('lastScanResults', JSON.stringify(data));
-            window.location.href = 'results.html';
+            if (data.job_id) {
+                pollJobStatus(data.job_id);
+            } else {
+                throw new Error("Invalid response from server");
+            }
         } catch (error) {
             console.error(error);
             alert(`CRITICAL ERROR DURING SCAN: ${error.message}`);
@@ -138,23 +140,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    async function runAnimatedProgress() {
-        const stages = [
-            { text: 'UPLOADING DOCUMENT TO SECURE NODE...', progress: 20, time: 600 },
-            { text: 'AI OCR ENGINE: EXTRACTING LINE ITEMS...', progress: 45, time: 1000 },
-            { text: 'VALIDATING GSTIN & MATHEMATICAL PRECISION...', progress: 75, time: 1200 },
-            { text: 'COMMITTING DATA TO REPOSITORY...', progress: 95, time: 800 }
-        ];
+    let pollingInterval;
 
-        for (const stage of stages) {
-            processStatus.textContent = stage.text;
-            uploadProgress.style.width = stage.progress + '%';
-            await new Promise(r => setTimeout(r, stage.time));
-        }
+    function pollJobStatus(jobId) {
+        processStatus.textContent = 'EXTRACTING CONTENT VIA NEURAL OCR...';
+        uploadProgress.style.width = '45%';
         
-        uploadProgress.style.width = '100%';
-        processStatus.textContent = 'REDIRECTING TO REPORT...';
-        await new Promise(r => setTimeout(r, 400));
+        let pollCount = 0;
+        
+        pollingInterval = setInterval(async () => {
+            try {
+                const res = await fetch(`http://127.0.0.1:8000/scan/status/${jobId}`, {
+                    headers: getAuthHeaders()
+                });
+                if (!res.ok) throw new Error("Status check failed");
+                
+                const job = await res.json();
+                pollCount++;
+                
+                if (job.status === "completed") {
+                    clearInterval(pollingInterval);
+                    uploadProgress.style.width = '100%';
+                    processStatus.textContent = 'COMPLETE! REDIRECTING...';
+                    
+                    setTimeout(() => {
+                        sessionStorage.setItem('lastScanResults', JSON.stringify(job));
+                        window.location.href = 'results.html';
+                    }, 500);
+                } else if (job.status === "failed") {
+                    clearInterval(pollingInterval);
+                    alert("OCR FAILED: " + job.error);
+                    overlay.style.display = 'none';
+                } else {
+                    // processing...
+                    if (pollCount > 2) {
+                        processStatus.textContent = 'VALIDATING GSTIN & COMPUTING TAXES...';
+                        uploadProgress.style.width = '75%';
+                    }
+                }
+            } catch (err) {
+                console.error("Polling error:", err);
+                // Don't auto-stop on a single network blip, but log it
+            }
+        }, 2000);
     }
 
     async function loadRecentScans() {
