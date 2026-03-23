@@ -1,215 +1,232 @@
+# Pipeline — GST Invoice Scanner
 
-# 🔄 PIPELINE.md — GST Invoice Scanner
+## Overview
 
-## 1. Pipeline Overview
+This pipeline converts raw invoice files into structured GST data through a series of clearly defined stages.
 
-The GST Invoice Scanner pipeline converts raw invoice files into structured tax data through a staged OCR workflow. A file is first validated, converted into page images if needed, cleaned for OCR, passed through OCR, post-processed, parsed into GST-specific fields, validated for consistency, and finally exported as JSON/CSV/Excel.
+Each stage has a specific responsibility, making the system easier to debug, improve, and scale.
 
-```mermaid
-flowchart LR
-    A[Input] --> B[Validation]
-    B --> C[Preprocessing]
-    C --> D[OCR]
-    D --> E[Text Cleaning]
-    E --> F[Field Extraction]
-    F --> G[Validation]
-    G --> H[Formatting]
-    H --> I[Output]
-```
+The overall flow:
+
+* Ingest file
+* Validate input
+* Preprocess image
+* Extract text (OCR)
+* Clean text
+* Extract GST fields
+* Validate results
+* Export structured output
 
 ---
 
-## 2. Stage 1: Input Ingestion
+## 1. Input Ingestion
 
 ### Purpose
+
 Accept invoice files and ensure they are valid before processing.
 
 ### Supported Formats
-- PDF
-- JPG
-- PNG
-- TIFF
+
+* PDF
+* JPG
+* PNG
+* TIFF
 
 ### Input Modes
-- **Single file mode** — one invoice at a time
-- **Batch mode** — process all supported files in a folder
 
-### Processing
-- Detect MIME type / extension
-- Validate file size and supported format
-- For PDF:
-  - split into pages
-  - render each page as an image
-- For images:
-  - load directly into memory
+* Single file processing
+* Batch processing (folder input)
 
-### Input / Output
-- **Input:** raw file
-- **Output:** validated file object / page images
+### Processing Steps
 
----
+* Detect file type
+* Validate format and file size
+* For PDFs:
 
-## 3. Stage 2: Image Preprocessing
+  * Split into pages
+  * Convert each page to an image
+* For images:
 
-### Purpose
-Improve OCR quality before text extraction.
-
-### Steps
-1. **PDF to image conversion** at **300 DPI**
-2. **Grayscale conversion**
-3. **Noise reduction**
-   - Gaussian blur
-   - Median filter
-4. **Contrast enhancement**
-   - CLAHE / histogram equalization
-5. **Binarization**
-   - Otsu threshold
-   - Adaptive threshold
-6. **Deskew / rotation correction**
-7. **Border removal / cropping**
-
-### Libraries
-- OpenCV
-- Pillow
-- NumPy
-
-### Input / Output
-- **Input:** raw image
-- **Output:** cleaned binary image
-
-### Before / After
-- **Before:** colored, noisy, rotated invoice scan
-- **After:** sharp, high-contrast, aligned black-and-white image
-
----
-
-## 4. Stage 3: OCR (Optical Character Recognition)
-
-### Purpose
-Convert cleaned invoice images into raw text.
-
-### Engine
-- **Primary:** Tesseract OCR
-- **Fallback:** EasyOCR
-- **Last resort:** manual review / error flag
-
-### Configuration
-- Language packs:
-  - `eng`
-  - `hin` (if bilingual invoices are supported)
-- PSM logic:
-  - `--psm 6` for structured blocks
-  - `--psm 11` for sparse text
-- Confidence threshold:
-  - low-confidence pages can be retried with fallback OCR
-
-### Input / Output
-- **Input:** preprocessed image
-- **Output:** raw OCR text + confidence scores
-
-### Benchmark Targets
-- Avg processing time: **1–3 sec/page**
-- OCR accuracy target: **85–95%** depending on scan quality
-
----
-
-## 5. Stage 4: Text Post-Processing
-
-### Purpose
-Clean OCR output so extraction rules work more reliably.
-
-### Steps
-- Remove non-printable characters
-- Fix common OCR mistakes:
-  - `0 ↔ O`
-  - `1 ↔ I ↔ l`
-  - `S ↔ 5`
-- Normalize spaces and line breaks
-- Group related lines into blocks
-- Detect common sections:
-  - Seller details
-  - Buyer details
-  - Tax summary
-  - Item table
-
-### Input / Output
-- **Input:** raw OCR text
-- **Output:** cleaned structured text blocks
-
----
-
-## 6. Stage 5: Field Extraction
-
-### Purpose
-Extract GST-specific invoice fields from cleaned text.
-
-| Field | Method | Regex / Logic |
-|---|---|---|
-| GSTIN (Seller) | Regex | `[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}` |
-| GSTIN (Buyer) | Regex + Context | Search near `Bill To`, `Buyer`, `Ship To` |
-| Invoice Number | Regex + KV pair | Match keys like `Invoice No`, `Inv No` |
-| Invoice Date | Regex | `DD/MM/YYYY`, `DD-MM-YYYY` |
-| Taxable Amount | Regex + Context | Value near `Taxable Amount` |
-| CGST / SGST / IGST | Regex + Table | Parse rate and amount lines |
-| Total Amount | Regex | Near `Grand Total`, `Total Amount` |
-| HSN/SAC Code | Regex | 4–8 digit numeric code |
-| Line Items | Table parsing | Row-wise extraction from item section |
-
-### Confidence Scoring
-Each extracted field can be tagged with:
-- OCR confidence
-- regex / parser confidence
-- validation status
-
-### Input / Output
-- **Input:** cleaned text
-- **Output:** extracted dictionary / key-value pairs
-
----
-
-## 7. Stage 6: Validation & Cross-Verification
-
-### Purpose
-Check whether extracted fields are structurally and logically valid.
-
-### Validation Rules
-- **GSTIN**
-  - pattern match
-  - checksum validation
-- **Date**
-  - valid calendar date
-- **Tax arithmetic**
-  - taxable amount × rate ≈ tax amount
-  - CGST + SGST or IGST consistency
-- **Mandatory fields**
-  - invoice number
-  - date
-  - seller GSTIN
-  - total amount
+  * Load directly into memory
 
 ### Output
-- validated fields
-- validation report with pass/fail per field
 
-### Input / Output
-- **Input:** extracted fields
-- **Output:** validated fields + report
+Validated file or list of page images
 
 ---
 
-## 8. Stage 7: Output Generation
+## 2. Image Preprocessing
 
 ### Purpose
-Format final extracted data for downstream use.
 
-### Output Types
-- **JSON**
-- **CSV**
-- **Excel**
-- **Database record** (if persistence is enabled)
+Improve image quality to increase OCR accuracy.
 
-### Example JSON
-```json
+### Steps
+
+* Convert to grayscale
+* Reduce noise (Gaussian / median filters)
+* Enhance contrast (CLAHE / histogram equalization)
+* Apply binarization (Otsu / adaptive thresholding)
+* Correct skew and rotation
+* Remove borders and crop
+
+### Libraries
+
+* OpenCV
+* Pillow
+* NumPy
+
+### Output
+
+Clean, high-contrast image optimized for OCR
+
+---
+
+## 3. OCR (Optical Character Recognition)
+
+### Purpose
+
+Convert images into raw text.
+
+### Engines
+
+* Primary: Tesseract
+* Fallback: EasyOCR
+* Last resort: manual review / error flag
+
+### Configuration
+
+* Language: English (optional Hindi support)
+* Page segmentation modes:
+
+  * Structured text: `--psm 6`
+  * Sparse text: `--psm 11`
+* Retry logic for low-confidence outputs
+
+### Output
+
+* Raw extracted text
+* Confidence scores
+
+### Expected Performance
+
+* 1–3 seconds per page
+* 85–95% accuracy depending on scan quality
+
+---
+
+## 4. Text Post-Processing
+
+### Purpose
+
+Clean and normalize OCR output before extraction.
+
+### Steps
+
+* Remove non-printable characters
+* Correct common OCR errors:
+
+  * 0 ↔ O
+  * 1 ↔ I / l
+  * 5 ↔ S
+* Normalize spacing and line breaks
+* Group text into logical sections:
+
+  * Seller details
+  * Buyer details
+  * Tax summary
+  * Item table
+
+### Output
+
+Structured text blocks
+
+---
+
+## 5. Field Extraction
+
+### Purpose
+
+Extract GST-specific data from cleaned text.
+
+### Key Fields
+
+* Seller GSTIN
+* Buyer GSTIN
+* Invoice number
+* Invoice date
+* Taxable amount
+* CGST / SGST / IGST
+* Total amount
+* HSN/SAC codes
+* Line items
+
+### Extraction Methods
+
+* Regex patterns
+* Context-based matching
+* Table parsing for item rows
+
+### Confidence Scoring
+
+Each field can include:
+
+* OCR confidence
+* Parsing confidence
+* Validation status
+
+### Output
+
+Structured key-value data
+
+---
+
+## 6. Validation and Cross-Verification
+
+### Purpose
+
+Ensure extracted data is logically and structurally correct.
+
+### Validation Rules
+
+* GSTIN format and checksum
+* Valid date formats
+* Tax calculations:
+
+  * Taxable amount × rate ≈ tax
+* Consistency:
+
+  * CGST + SGST vs IGST
+* Mandatory fields:
+
+  * Invoice number
+  * Date
+  * Seller GSTIN
+  * Total amount
+
+### Output
+
+* Validated data
+* Field-level validation report
+
+---
+
+## 7. Output Generation
+
+### Purpose
+
+Prepare structured data for downstream use.
+
+### Output Formats
+
+* JSON
+* CSV
+* Excel
+* Database records
+
+### Example
+
+```json id="y1k9l2"
 {
   "invoice_number": "INV-1024",
   "invoice_date": "12-06-2025",
@@ -227,41 +244,32 @@ Format final extracted data for downstream use.
 }
 ```
 
-### Input / Output
-- **Input:** validated fields
-- **Output:** JSON / CSV / Excel file
+---
+
+## 8. Error Handling
+
+Each stage includes fallback mechanisms to improve robustness.
+
+| Stage         | Issue                  | Handling Strategy             | Fallback       |
+| ------------- | ---------------------- | ----------------------------- | -------------- |
+| Input         | Unsupported file       | Reject request                | User re-upload |
+| Validation    | Corrupt file           | Mark as failed                | Skip file      |
+| Preprocessing | Image conversion error | Use original image            | Raw OCR        |
+| OCR           | Low confidence         | Retry with different settings | EasyOCR        |
+| Text Cleaning | Broken structure       | Apply normalization           | Partial output |
+| Extraction    | Missing fields         | Retry with context            | Null values    |
+| Validation    | Tax mismatch           | Flag inconsistency            | Export anyway  |
+| Output        | Export failure         | Retry                         | JSON fallback  |
 
 ---
 
-## 9. Error Handling at Each Stage
+## 9. Configuration
 
-| Stage | Possible Errors | Handling Strategy | Fallback |
-|---|---|---|---|
-| Input | Unsupported file type | Reject request | User re-upload |
-| Validation | Corrupt PDF / image | Mark failed | Skip file |
-| Preprocessing | OpenCV conversion error | Log and continue with original image | Raw OCR |
-| OCR | Low confidence / OCR failure | Retry with different PSM | EasyOCR |
-| Text Cleaning | Broken text blocks | Apply generic normalization | Partial extraction |
-| Field Extraction | Missing fields | Context-based search retry | Null + warning |
-| Validation | Tax mismatch | Mark as inconsistent | Export with validation flag |
-| Output | File export issue | Retry save / stream response | JSON only |
+The pipeline is configurable via a YAML file.
 
----
+### Example
 
-## 10. Pipeline Configuration
-
-### Configurable Parameters
-- supported file types
-- max file size
-- PDF render DPI
-- OCR engine
-- OCR language
-- confidence threshold
-- output format
-- batch size
-
-### Example Config (`config.yaml`)
-```yaml
+```yaml id="6l9x2p"
 input:
   formats: [pdf, jpg, png, tiff]
   max_file_size_mb: 20
@@ -287,47 +295,43 @@ output:
 
 ---
 
-## 11. Performance Metrics
+## 10. Performance Metrics
 
-| Metric | Typical Range |
-|---|---|
-| Avg processing time per invoice | 2–8 sec |
-| Avg processing time per page | 1–3 sec |
-| OCR accuracy | 85–95% |
-| Field extraction accuracy | 80–92% |
-| Throughput | 10–30 invoices/min |
+| Metric                        | Typical Range      |
+| ----------------------------- | ------------------ |
+| Processing time (per invoice) | 2–8 seconds        |
+| Processing time (per page)    | 1–3 seconds        |
+| OCR accuracy                  | 85–95%             |
+| Field extraction accuracy     | 80–92%             |
+| Throughput                    | 10–30 invoices/min |
 
-> Actual performance depends on invoice quality, page count, and OCR engine configuration.
+Performance depends on invoice quality and system configuration.
 
 ---
 
-## 12. Pipeline Execution Modes
+## 11. Execution Modes
 
-### Single Invoice
-Used for CLI-based one-off extraction.
+### Single File
 
-```bash
+```bash id="8y2q1z"
 python main.py --input invoice.pdf --output result.json
 ```
 
 ### Batch Processing
-Process all invoices in a directory.
 
-```bash
+```bash id="m3x7c1"
 python main.py --input ./invoices/ --output ./results/ --format csv
 ```
 
-### API-Triggered
-Real-time upload via backend API.
+### API Mode
 
-```bash
+```bash id="r4n8k2"
 curl -X POST http://localhost:8000/extract -F "file=@invoice.pdf"
 ```
 
 ### Scheduled Processing
-Can be triggered periodically using cron / scheduler for inbox folders.
 
-```bash
+```bash id="q2t9p0"
 0 * * * * python batch_runner.py
 ```
 
@@ -335,14 +339,10 @@ Can be triggered periodically using cron / scheduler for inbox folders.
 
 ## Summary
 
-The pipeline is designed as a clear staged workflow:
-1. ingest file
-2. validate format
-3. preprocess image
-4. run OCR
-5. clean text
-6. extract GST fields
-7. validate values
-8. export structured output
+The pipeline is designed as a modular, stage-based workflow that separates concerns clearly.
 
-This staged structure makes the system easy to debug, improve, and extend.
+This makes it:
+
+* Easier to debug
+* Easier to extend
+* Suitable for scaling into production systems
