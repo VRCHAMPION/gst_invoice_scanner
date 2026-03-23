@@ -1,107 +1,205 @@
-# GST Invoice Scanner & Analyzer 🚀
+# GST Invoice Scanner
 
-![Banner](https://via.placeholder.com/1200x400?text=GST+Invoice+Scanner+MVP)
+<p align="center">
+  <img src="https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/github/license/VRCHAMPION/gst_invoice_scanner?style=for-the-badge" />
+  <img src="https://img.shields.io/github/stars/VRCHAMPION/gst_invoice_scanner?style=for-the-badge&color=yellow" />
+  <img src="https://img.shields.io/github/issues/VRCHAMPION/gst_invoice_scanner?style=for-the-badge&color=red" />
+  <img src="https://img.shields.io/badge/build-passing-brightgreen?style=for-the-badge" />
+</p>
 
-## Project Overview
+<p align="center"><i>Extract structured GST data from unstructured, varying invoice formats using Asynchronous OCR and Large Language Models.</i></p>
 
-The **GST Invoice Scanner** is an enterprise-grade web application tailored to automate the painstakingly manual and error-prone process of GST invoice data entry. In modern financial workflows, processing poorly formatted, blurry, and non-standardized invoices (PDFs and Images) creates a massive bottleneck. This application leverages a hybrid approach combining **Neural Optical Character Recognition (OCR)** via Tesseract and **Large Language Models (LLaMa-3)** to intelligently extract, standardize, and store structured financial data.
-
-Evolving from a highly competitive hackathon concept, this project has been meticulously engineered into a **highly scalable, robust Minimum Viable Product (MVP)**. It handles real-world invoices under heavy load without blocking core server threads, offering an exceptionally resilient architecture.
-
-## Key Features & Capabilities
-
-### 1. Real-time Asynchronous Processing
-Traditional synchronous applications freeze the frontend while waiting for lengthy OCR tasks to complete. We solve this by implementing an event-driven, asynchronous background worker system. Uploads are instantly assigned a `job_id` and pushed to a background queue. The server responds immediately, allowing the UI to remain highly responsive and informative while the heavy lifting happens behind the scenes.
-
-### 2. Two-Tier AI Extraction Pipeline
-We use a "Dumb Reader + Smart Organizer" paradigm:
-- **Structural OCR (`pytesseract`):** Parses the physical image to extract raw, unstructured text strings, completely ignoring coordinate-based templates.
-- **Cognitive NLP (Groq `llama-3.1`):** Acts as the brain, processing the chaotic OCR output. Using stringent prompt engineering, the LLM contextualizes the text (such as identifying various GSTIN formats or distinguishing Tax from Total) and returns exclusively formatted JSON data.
-
-### 3. SaaS-Level UI/UX (Framework-Free)
-To ensure lightning-fast load times and infinite customizability, the frontend is built entirely with Vanilla JavaScript and pure CSS. By utilizing modern CSS custom properties (CSS variables), CSS Grid/Flexbox, and subtle micro-animations, we achieve a visual fidelity and user experience that matches enterprise React or Angular applications, but with zero bundle bloat.
-
-### 4. Robust Security & Authentication
-- **Stateless JWT Authentication:** Secure, scalable JSON Web Tokens (JWT) handle session persistence.
-- **Password Cryptography:** User credentials are salted and hashed using `bcrypt` preventing rainbow table attacks.
-- **API Hardening:** Protected against abuse via SlowAPI rate-limiting and strictly defined CORS policies.
+<p align="center">
+  <img src="https://via.placeholder.com/900x450?text=GST+Scanner+Dashboard+UI" alt="GST Scanner Dashboard UI Placeholder" width="100%"/>
+</p>
 
 ---
 
-## Component Deep Dive
+## Table of Contents
 
-### 1. The Async Controller (`backend/main.py`)
-Serving as the heart of the backend, the FastAPI server manages all incoming traffic. It orchestrates routing, enforces JWT-based security middleware, limits API abuse using SlowAPI, and establishes vital Database connections. 
-**The Scalability Secret:** When a `.pdf` or `.png` is POSTed to `/scan`, the file is completely ingested into RAM (`await file.read()`). Instead of halting the event loop to read it, `main.py` dispatches a `fastapi.BackgroundTasks` job and instantly returns a `job_id`. This non-blocking I/O approach ensures the API can handle thousands of concurrent requests.
-
-### 2. The AI Brain (`backend/parser.py`)
-This vital module encapsulates the OCR and LLM pipeline.
-**Reliability & Nuance:** 
-- Instead of relying on OS-level PDF tools, we utilize `PyMuPDF` (`fitz`) to rapidly convert PDFs into PNG images natively in-memory.
-- These in-memory PNG bytes are streamed to `pytesseract` to extract raw alphanumeric characters.
-- To eliminate LLaMa-3 hallucinations, we encapsulate the messy text in a rigid prompt, instructing Groq to output unformatted JSON. A custom parsing regex then scrubs the output of any residual conversational text before hitting the database.
-
-### 3. The Polling Engine (`frontend/js/upload.js`)
-The drag-and-drop interface is powered by an intelligent polling loop.
-**Real-world UX:** Rather than displaying an arbitrary progress bar, the frontend receives the backend `job_id` and utilizes `setInterval` to actively poll `/scan/status/{job_id}` every 2 seconds. The UI updates its state (`processing`, `completed`, or `failed`) in absolute real-time, redirecting to the results dashboard the exact millisecond the backend confirms the job is finished.
+- [About](#about)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Architecture & Processing Flow](#architecture--processing-flow)
+- [Project Structure](#project-structure)
+- [Sample Output](#sample-output)
+- [Getting Started](#getting-started)
+- [Usage](#usage)
+- [Configuration](#configuration)
+- [Acknowledgments](#acknowledgments)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## Setup & Running Locally
+## About
 
-### 1. Prerequisites
-- **Python 3.10+**: Ensure `pip` and `venv` are available.
-- **Tesseract-OCR:** Required for text extraction.
-  - Windows: Download the latest executable from Mannheim University and add it to your System PATH variables.
-  - Linux: `sudo apt-get update && sudo apt-get install tesseract-ocr libtesseract-dev`
-  - macOS: `brew install tesseract`
+**GST Invoice Scanner** is a Python-based tool designed specifically to scan unpredictable, non-standard Indian GST invoices (in PDF, JPG, or PNG formats). It skips fragile, coordinate-based templates and instead leverages a robust two-step approach: grabbing raw text via `Tesseract OCR` and structuring it semantically using the `Groq LLaMa-3` API. 
 
-### 2. Installation & Dependency Management
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/gst_invoice_scanner.git
-cd gst_invoice_scanner
+This hybrid approach provides high extraction accuracy for unstructured fields like GSTIN, invoice numbers, tax breakdowns (CGST, SGST, IGST), and total amounts across varied templates.
 
-# Initialize a Virtual Environment to prevent dependency conflicts
-python -m venv .venv
+---
 
-# On Windows use: 
-.venv\Scripts\activate
-# On Linux/macOS use: 
-# source .venv/bin/activate  
+## Features
 
-# Install the necessary Python packages
-pip install -r requirements.txt
-# Ensure vision dependencies are fully installed
-pip install pytesseract PyMuPDF Pillow
+- **Asynchronous Execution Engine:** Heavy OCR processing is pushed to background workers instantly, ensuring the API handles continuous traffic without freezing.
+- **Two-Tier AI Extraction:** Replaces rigid templates with a hybrid pipeline of Optical Character Recognition and NLP Semantic Parsing.
+- **Stateless Authentication:** Secured routes using JSON Web Tokens (JWT) and bcrypt password hashing.
+- **API Hardening:** App-level rate limiting using SlowAPI middleware.
+- **Zero-Storage Parsing:** Incoming PDFs are mapped directly to RAM bytes via PyMuPDF (`fitz`), avoiding slow and vulnerable hard-drive write operations.
+- **Data Export:** Built-in capability to generate formatted Excel reports of scanned batches using `openpyxl`.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+| --- | --- |
+| Application Language | Python 3.10+ |
+| Backend API | FastAPI |
+| Asynchronous Workers | FastAPI BackgroundTasks |
+| Neural OCR Engine | Tesseract (pytesseract) |
+| NLP Intelligence | Groq API (llama-3.1-8b-instant) |
+| Non-destructive Vision | PyMuPDF (fitz) |
+| Database & ORM | SQLite, SQLAlchemy |
+| Frontend Interface | Vanilla JavaScript, HTML5, CSS3 Grid |
+| Application Security | Passlib (Bcrypt), python-jose (JWT), SlowAPI |
+
+---
+
+## Architecture & Processing Flow
+
+The system runs on an event-driven loop to avoid traditional processing bottlenecks:
+1. **Upload:** Client POSTs document bytes to the FastAPI ingestion route.
+2. **Dispatch:** The server assigns a unique Job ID, placing the file straight into a non-blocking background queue and returning the ID.
+3. **Polling Retrieval:** The Vanilla JS frontend establishes a 2-second polling loop against the server verifying the Job ID's status.
+4. **Cognitive Extraction:** The worker thread uses PyMuPDF and Tesseract to generate a raw text string, then prompts the LLaMa-3 model to parse JSON keys precisely.
+5. **Persistence:** Extracted data is committed safely via Python ORM, and the frontend renders the resulting payload.
+
+---
+
+## Project Structure
+
+```text
+gst_invoice_scanner/
+├── backend/            # FastAPI layer, Database logic, ORM models, and Auth
+│   ├── main.py
+│   ├── parser.py       # Core OCR + LLaMa-3 extraction logic
+│   └── database.py
+├── frontend/           # Vanilla JS, HTML, and CSS application UI
+├── test_invoices/      # Generated syntactically valid test PDFs and tracking images
+├── ARCHITECTURE.md     # Detailed async architectural design breakdown
+├── PIPELINE.md         # Deep dive into the Tesseract to LLM conversion pipeline
+└── README.md
 ```
 
-### 3. Environment Variables (.env)
-Create a `.env` file in the `backend/` directory to manage secrets securely:
+---
+
+## Sample Output
+
+The backend structures chaotic OCR text into a rigidly defined JSON response similar to below:
+
+```json
+{
+  "seller_name": "ABC Tech Solutions",
+  "seller_gstin": "27ABCDE1234F1Z5",
+  "buyer_name": "XYZ Corp Pvt Ltd",
+  "buyer_gstin": "27XYZAB5678C1Z2",
+  "invoice_number": "INV-1045",
+  "invoice_date": "2023-10-15",
+  "subtotal": 5000.00,
+  "cgst": 450.00,
+  "sgst": 450.00,
+  "igst": 0.00,
+  "total": 5900.00,
+  "items": [
+    {
+      "description": "Software Implementation Services",
+      "quantity": 1,
+      "rate": 5000.00,
+      "amount": 5000.00
+    }
+  ]
+}
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+- **Python 3.10+**
+- **Tesseract-OCR:** The OS-level binary must be installed on your machine.
+  - Windows: Download the executable installer and map to your environment variables.
+  - Linux: `sudo apt-get install tesseract-ocr`
+
+### Installation
+1. Clone the repository and initialize a virtual environment:
+   ```bash
+   git clone https://github.com/VRCHAMPION/gst_invoice_scanner.git
+   cd gst_invoice_scanner
+   python -m venv .venv
+   source .venv/bin/activate  # (On Windows: .venv\Scripts\activate)
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   pip install pytesseract PyMuPDF Pillow
+   ```
+
+---
+
+## Configuration
+
+A `.env` file is required in the `backend/` directory for secrets management. Add the following keys:
 ```env
-# Get this free API key from console.groq.com
-GROQ_API_KEY=your_groq_api_key_here
+# Acquire an API Key from console.groq.com
+GROQ_API_KEY=your_production_key_here
 
-# Used for signing JWTs. Generate a strong key via `openssl rand -hex 32`
-SECRET_KEY=your_highly_secure_random_string
-
-# JWT configuration
+# JWT Signing Secret (Create via openssl rand -hex 32)
+SECRET_KEY=your_secure_random_string
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 
-# Database URL (Defaulting to local SQLite, easy migration to PostgreSQL)
+# ORM Target (Change to PostgreSQL for cluster deployments later)
 DATABASE_URL=sqlite:///./gst_scanner.db
 ```
 
-### 4. Running the Application
-```bash
-# Navigate to backend
-cd backend
+---
 
-# Run the Uvicorn server via the custom run script wrapper
-python run.py
-# The API and Interactive Swagger documentation will start on http://127.0.0.1:8000/docs
-```
+## Usage
 
-### 5. Accessing the UI
-Since the frontend uses relative API paths and vanilla JS, simply open `frontend/login.html` directly in your web browser (via double-click or `file:///`), or for a better development experience, serve the `frontend/` directory using VSCode's Live Server extension.
+1. Start the FastAPI backend server:
+   ```bash
+   cd backend
+   python run.py
+   ```
+   > The API Documentation swagger instance is now live at `http://127.0.0.1:8000/docs`.
+
+2. To access the user interface, launch the frontend via Live Server (or a local Python HTTP instance):
+   ```bash
+   cd frontend
+   python -m http.server 5500
+   ```
+   > Now open `http://localhost:5500/login.html` to begin automated scanning.
+
+---
+
+## Acknowledgments
+Powered by [Groq](https://groq.com/) for rapid LLM inference, [Tesseract](https://github.com/tesseract-ocr/tesseract) for local character extraction, and [PyMuPDF](https://pymupdf.readthedocs.io/) for lightweight in-RAM PDF rasterization.
+
+---
+
+## Contributing
+Contributions are what make the open source community an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+---
+
+## License
+Distributed under the MIT License. See `LICENSE` for more information.

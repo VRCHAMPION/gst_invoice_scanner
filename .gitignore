@@ -13,6 +13,7 @@ test_invoices/
 batch_test_results.json
 debug_extraction.py
 test_all_invoices.py
+output.log
 
 # OS
 .DS_Store
