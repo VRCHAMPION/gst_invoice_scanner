@@ -1,80 +1,258 @@
-# System Architecture (The Async MVP) 🏗️
-
-This comprehensive document delineates the high-level system architecture and infrastructural blueprint of the GST Invoice Scanner, specifically detailing the evolution toward a highly concurrent, asynchronous processing model required for production deployments.
+# 🏗️ ARCHITECTURE.md — GST Invoice Scanner
 
 ---
 
-## The Core Bottleneck: Synchronous Blocking
+## 📑 Table of Contents
 
-In its initial hackathon iteration, the application utilized a **Synchronous Blocking Architecture**. 
-When a client (User A) initiated a `POST /scan` request uploading a heavy 5MB PDF, the FastAPI server thread would lock. The single thread would spend ~5 seconds performing PDF rendering, localized OCR, and external API requests. 
-**The Catastrophic Failure:** If User B attempted to merely load the dashboard or log in during those 5 seconds, User B's request would completely hang, waiting in the network queue until User A's invoice was processed. This standard synchronous approach scales horribly, offering zero concurrency and guaranteeing server timeouts under moderate traffic.
+- [Architecture Overview](#1-architecture-overview)
+- [System Components](#2-system-components)
+- [Data Flow Diagram](#3-data-flow-diagram)
+- [Directory ↔ Component Mapping](#4-directory--component-mapping)
+- [Design Decisions & Trade-offs](#5-design-decisions--trade-offs)
+- [Scalability Considerations](#6-scalability-considerations)
+- [Security Considerations](#7-security-considerations)
+- [Dependency Graph](#8-dependency-graph)
 
 ---
 
-## The Solution: Event-Driven Asynchronous Blueprint
+## 1. Architecture Overview
 
-We restructured the platform utilizing non-blocking I/O and background workers, achieving immense concurrent throughput capabilities.
+GST Invoice Scanner follows an **Event-Driven Pipeline Architecture** with asynchronous job dispatch. It is structured as a **Modular Monolith** — logically separated components deployed as a single FastAPI service.
+
+### High-Level Flow
+
+```mermaid
+flowchart LR
+    A[📄 Client Upload] --> B[🔌 FastAPI Ingestion]
+    B --> C[⚙️ Background Worker Dispatch]
+    C --> D[🖼️ PDF-to-Image via PyMuPDF]
+    D --> E[🔍 Tesseract OCR]
+    E --> F[🧠 Groq LLaMa-3 Semantic Parse]
+    F --> G[💾 SQLAlchemy Persistence]
+    G --> H[📊 JSON / XLSX Output to Client]
+```
+
+**Key Principle:** No step in the pipeline blocks the API thread. Upload returns a Job ID instantly; the client polls for completion.
+
+---
+
+## 2. System Components
+
+### a. Input Handler
+
+| Responsibility | Implementation |
+|---|---|
+| Accept PDF / JPG / PNG uploads | FastAPI `UploadFile` |
+| PDF → Image conversion | PyMuPDF (`fitz`) — renders pages to PIL Images directly in RAM |
+| File validation | MIME type check + extension whitelist |
+
+> **Design Choice:** PyMuPDF maps PDF bytes to memory instead of writing temp files to disk. This eliminates disk I/O bottlenecks and temp-file cleanup risks.
+
+---
+
+### b. OCR Engine
+
+| Aspect | Detail |
+|---|---|
+| Primary Engine | **Tesseract OCR** via `pytesseract` |
+| Image Prep | PyMuPDF renders PDF pages at **300 DPI** as PIL `Image` objects |
+| Output | Raw unstructured text blob |
+
+> No separate image preprocessing module (grayscale, deskew, etc.) is currently implemented — the system relies on LLM intelligence to parse noisy OCR output directly. This is a deliberate trade-off favoring speed over traditional CV pipelines.
+
+---
+
+### c. NLP Intelligence Layer (Field Extractor)
+
+This is the **core differentiator**. Instead of fragile regex chains, raw OCR text is sent to **Groq's LLaMa-3.1-8b-instant** model with a strict structural prompt.
+
+```
+Prompt Strategy:
+┌────────────────────────────────────────────┐
+│ "Extract ONLY these fields from the text:  │
+│  seller_gstin, buyer_gstin, invoice_no,    │
+│  date, taxable_amount, cgst, sgst, igst,   │
+│  total_amount. Return valid JSON only."     │
+└────────────────────────────────────────────┘
+```
+
+| Aspect | Detail |
+|---|---|
+| Provider | Groq Cloud API |
+| Model | `llama-3.1-8b-instant` |
+| Why Groq | ~10x faster inference than OpenAI for structured extraction tasks |
+| Fallback | Returns raw OCR text + error flag if LLM call fails |
+
+---
+
+### d. Validation & Persistence
+
+| Responsibility | Implementation |
+|---|---|
+| Data modeling | SQLAlchemy ORM models |
+| Database | SQLite (dev) — swappable to PostgreSQL |
+| Job tracking | `status` field: `processing` → `completed` / `failed` |
+
+---
+
+### e. API Layer
+
+```mermaid
+flowchart TD
+    subgraph FastAPI Routes
+        R1[POST /auth/register]
+        R2[POST /auth/login → JWT]
+        R3[POST /upload → Job ID]
+        R4[GET /status/job_id → Poll]
+        R5[GET /results → Dashboard Data]
+        R6[GET /export/xlsx → Download]
+    end
+
+    R2 -->|Bearer Token| R3
+    R3 -->|BackgroundTask| Worker
+    Worker -->|SQLAlchemy| DB[(SQLite)]
+    R4 -->|Query| DB
+```
+
+| Aspect | Detail |
+|---|---|
+| Auth | JWT (python-jose) + Bcrypt (passlib) |
+| Rate Limiting | SlowAPI middleware |
+| Async Workers | FastAPI `BackgroundTasks` |
+
+---
+
+### f. UI Layer
+
+| Aspect | Detail |
+|---|---|
+| Technology | Vanilla JS + HTML5 + CSS3 Grid |
+| Pages | `login.html`, `register.html`, `dashboard.html` |
+| Polling | `setInterval()` at 2-second intervals checking `/status/{job_id}` |
+| Export | Client-triggered download of XLSX from `/export` endpoint |
+
+---
+
+## 3. Data Flow Diagram
 
 ```mermaid
 sequenceDiagram
-    participant Client JS (Browser)
-    participant FastAPI Router (main.py)
-    participant Background CPU Worker
-    participant Local Tesseract Engine
-    participant External Groq LLM API
-    participant Relational Database Layer
+    participant U as User (Browser)
+    participant A as FastAPI Server
+    participant W as Background Worker
+    participant O as Tesseract OCR
+    participant L as Groq LLaMa-3
+    participant D as SQLite DB
 
-    Client JS (Browser)->>FastAPI Router (main.py): POST /api/scan (Multipart Form Data)
-    Note over FastAPI Router (main.py): File ingested to RAM.<br/>UUID generated.
-    FastAPI Router (main.py)->>Background CPU Worker: Dispatch Job (bytes, UUID)
-    FastAPI Router (main.py)-->>Client JS (Browser): HTTP 202 Accepted {"job_id": "uuid-123", "status": "processing"}
-    
-    loop Polling Engine (Every 2000ms)
-        Client JS (Browser)->>FastAPI Router (main.py): GET /api/scan/status/uuid-123
-        FastAPI Router (main.py)-->>Client JS (Browser): {"status": "processing"}
-    end
+    U->>A: POST /upload (PDF bytes)
+    A->>A: Validate file + Generate Job ID
+    A->>W: Dispatch to BackgroundTask
+    A-->>U: 202 Accepted {job_id}
 
-    Note over Background CPU Worker: Heavy processing begins off the main event loop
-    
-    Background CPU Worker->>Local Tesseract Engine: Send Image Pixels
-    Local Tesseract Engine-->>Background CPU Worker: Return Chaotic UTF-8 Strings
-    
-    Background CPU Worker->>External Groq LLM API: System Prompt + Chaotic Strings
-    External Groq LLM API-->>Background CPU Worker: Formatted Valid JSON String
-    
-    Background CPU Worker->>Relational Database Layer: SQLAlchemy Session Commit
-    Relational Database Layer-->>Background CPU Worker: Row ID returned
-    
-    Note over Background CPU Worker: Internal state dictionary updated to 'completed'
+    U->>A: GET /status/{job_id} (poll every 2s)
+    A-->>U: {status: "processing"}
 
-    Client JS (Browser)->>FastAPI Router (main.py): GET /api/scan/status/uuid-123
-    FastAPI Router (main.py)-->>Client JS (Browser): HTTP 200 OK {"status": "completed", "data": {...}}
-    Note over Client JS (Browser): Polling halts. UI Router redirects to Analytics View.
+    W->>O: PDF bytes → PyMuPDF → PIL Image → pytesseract
+    O-->>W: Raw text blob
+    W->>L: Send text + structural prompt
+    L-->>W: Parsed JSON {gstin, amounts, etc.}
+    W->>D: INSERT extracted data
+    W->>D: UPDATE job status → "completed"
+
+    U->>A: GET /status/{job_id} (next poll)
+    A-->>U: {status: "completed", data: {...}}
 ```
 
 ---
 
-## Technical Deep Dive: Architectural Design Choices
+## 4. Directory ↔ Component Mapping
 
-### 1. In-Memory Job State Orchestration
-To track the real-time status of asynchronously dispatched background tasks, the system currently utilizes a localized Python dictionary variable (`scan_jobs = {}`) instantiated globally within the FastAPI runtime memory space. When a task completes, the worker updates this dictionary key.
-- **The Advantages:** Infinite developer velocity. It requires entirely zero external infrastructural dependencies (like bootstrapping Redis containers), making it exceptionally lean, blazing fast, and optimal for immediate MVP deployment.
-- **The Production Tradeoff:** This is volatile memory constraint. If the Uvicorn/FastAPI server crashes or restarts, all currently queued and explicitly processing jobs are permanently obliterated, resulting in stranded frontend clients endless polling.
-- **The Scalability Roadmap:** For enterprise-grade scaling (Series A expansion), the `scan_jobs` dictionary is designed to be seamlessly swapped with a **Celery Distributed Task Queue** backed by a **Redis In-Memory Data Store**, allowing absolute persistence across multiple horizontal server nodes.
+| Directory / File | Architectural Component |
+|---|---|
+| `backend/` | API Layer, Workers, Business Logic |
+| `backend/run.py` | Application entry point |
+| `backend/routes/` | FastAPI route definitions (auth, upload, results) |
+| `backend/models/` | SQLAlchemy ORM models |
+| `backend/services/` | OCR + LLM extraction logic |
+| `backend/auth/` | JWT generation, password hashing |
+| `backend/.env` | Secrets (Groq key, JWT secret) |
+| `frontend/` | UI Layer |
+| `frontend/login.html` | Authentication page |
+| `frontend/dashboard.html` | Upload + results + export page |
+| `frontend/js/` | Polling logic, API calls, DOM rendering |
+| `requirements.txt` | Dependency manifest |
 
-### 2. File Handling and Zero-Disk Virtualization
-Traditionally, web applications persist uploaded files to a temporary `.tmp/` or `/var/uploads/` directory on the physical disk before passing the filesystem path to the processing engine. 
-- **The Upgrade:** We eliminated Disk I/O bottlenecks. Uploaded files are streamed immediately via `await file.read()` into contiguous RAM bytes. These byte streams are passed directly through the PyMuPDF rendering engine and Tesseract pipeline. 
-- **The Result:** We completely sidestep the latency of HDD/SSD write operations. Furthermore, this ensures optimal security and hygiene; servers never become bloated with orphaned temporary files requiring complex Cron jobs to purge.
+---
 
-### 3. Database Layer Independence & Abstraction
-The application persistence layer is architected entirely upon the **SQLAlchemy Object-Relational Mapper (ORM)**. Data schemas are defined as Python classes rather than raw SQL dialects.
-- **The Current State:** Operating on SQLite (`sqlite:///...`), allowing effortless local development without firing up Docker databases.
-- **The Scalability Roadmap:** Because we utilize the ORM, the application logic is completely dialect-agnostic. Migrating this application to a high-availability, clustered **PostgreSQL** instance on AWS RDS or Supabase requires zero code rewrites. The system scales from a 1MB local file to a billion-row data center simply by altering the `DATABASE_URL` string inside the `.env` file environment variables.
+## 5. Design Decisions & Trade-offs
 
-### 4. API Hardening & Security Middleware
-To defend the backend endpoints from malicious actors, the architecture implements dual-layer perimeter security:
-- **CORS (Cross-Origin Resource Sharing) Policies:** Rigidly defined origins in FastAPI middleware deny unauthorized domains from executing AJAX requests against the API infrastructure, effectively neutralizing CSRF vulnerabilities.
-- **SlowAPI Rate Limiting:** We mitigate localized DDoS attacks and protect our external API budget (Groq LPU costs) by enforcing strict throttling utilizing IP-address-based limiters (e.g., locking routes if exceeding 10 scans per 60 seconds).
-- **Stateless Verification:** All secured routes sit behind FastAPI Dependency Injectors that intercept requests, decrypt the provided Bearer JSON Web Token (JWT) locally (without pinging the database), and cryptographically verify user authenticity in sub-milliseconds.
+| Decision | Chosen | Alternative | Rationale |
+|---|---|---|---|
+| **Field Extraction** | LLM (Groq LLaMa-3) | Regex + NLP pipeline | Invoices have wildly varying formats — regex breaks on edge cases; LLM generalizes across layouts |
+| **OCR Engine** | Tesseract | EasyOCR / PaddleOCR | Lightest installation footprint; sufficient since LLM handles noisy text |
+| **Image Preprocessing** | Skipped | OpenCV pipeline | LLM compensates for OCR noise — adding CV preprocessing would increase latency without proportional accuracy gain |
+| **Async Strategy** | FastAPI BackgroundTasks | Celery + Redis | Avoids infrastructure overhead for a single-server deployment; Celery is overkill at current scale |
+| **PDF Handling** | PyMuPDF (in-memory) | pdf2image + Poppler | Zero disk writes — PDF bytes → RAM → PIL Image directly |
+| **Frontend** | Vanilla JS | React / Streamlit | Zero build step, no node_modules, instant load — appropriate for a utility dashboard |
+| **Error Handling** | Job status set to `failed` + error message stored in DB | Raise HTTP exceptions | Non-blocking — user sees failure on next poll without crashing the worker queue |
+
+---
+
+## 6. Scalability Considerations
+
+| Concern | Current | Future Path |
+|---|---|---|
+| **Concurrent uploads** | Single-threaded BackgroundTasks | Migrate to **Celery + Redis** worker pool |
+| **Database** | SQLite (single-writer lock) | Swap to **PostgreSQL** via `DATABASE_URL` env change |
+| **OCR throughput** | Sequential per job | Parallelize multi-page PDFs across threads |
+| **LLM rate limits** | Single Groq API key | Key rotation pool + retry with exponential backoff |
+| **Horizontal scaling** | Single instance | Containerize (Docker) → deploy behind load balancer |
+
+---
+
+## 7. Security Considerations
+
+| Layer | Measure |
+|---|---|
+| **Authentication** | Bcrypt-hashed passwords + JWT access tokens with expiry |
+| **Rate Limiting** | SlowAPI middleware prevents brute-force and upload abuse |
+| **File Validation** | MIME type + extension whitelist (PDF/JPG/PNG only) |
+| **Data Privacy** | Invoice bytes are processed in-memory and **never written to disk** |
+| **Secret Management** | API keys and JWT secrets isolated in `.env` (gitignored) |
+| **Input Sanitization** | LLM prompt is hardcoded — user-uploaded text is treated as data, not instruction |
+
+---
+
+## 8. Dependency Graph
+
+```mermaid
+graph TD
+    A[FastAPI] --> B[Uvicorn]
+    A --> C[python-jose - JWT]
+    A --> D[passlib - Bcrypt]
+    A --> E[SlowAPI]
+    A --> F[SQLAlchemy]
+    F --> G[SQLite]
+    H[pytesseract] --> I[Tesseract Binary - OS Level]
+    J[PyMuPDF - fitz] --> K[PDF Rendering]
+    L[Groq SDK] --> M[LLaMa-3.1-8b-instant]
+    N[openpyxl] --> O[XLSX Export]
+    P[Pillow] --> Q[Image Handling]
+```
+
+| Dependency | Role |
+|---|---|
+| `fastapi` + `uvicorn` | HTTP server and ASGI runtime |
+| `pytesseract` | Python wrapper for Tesseract OCR binary |
+| `PyMuPDF (fitz)` | In-memory PDF → Image conversion |
+| `Pillow` | Image object handling between PyMuPDF and Tesseract |
+| `groq` | SDK for Groq cloud LLM inference |
+| `sqlalchemy` | ORM for database operations |
+| `python-jose` | JWT token creation and verification |
+| `passlib[bcrypt]` | Secure password hashing |
+| `slowapi` | Rate limiting middleware |
+| `openpyxl` | Excel file generation for data export |
+
+---
+
+<p align="center"><i>Architecture authored for <a href="https://github.com/VRCHAMPION/gst_invoice_scanner">gst_invoice_scanner</a></i></p>
