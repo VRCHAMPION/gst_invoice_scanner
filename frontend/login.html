@@ -17,7 +17,7 @@
         }
         .login-left {
             flex: 1.2;
-            background-color: var(--primary-accent);
+            background-color: var(--ink);
             color: white;
             padding: 4rem;
             display: flex;
@@ -103,6 +103,10 @@
     </style>
 </head>
 <body>
+    <!-- CURSOR -->
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
     <div class="login-left animate-fade-up">
         <h1 class="app-title brand-font">GST<br>INVOICE<br>SCANNER</h1>
         <p class="tagline">Precision data extraction with industrial-grade GST validation.</p>
@@ -149,6 +153,7 @@
         </div>
     </div>
 
+    <script src="js/cursor.js"></script>
     <script src="js/auth.js"></script>
     <script>
         function togglePassword() {
@@ -181,7 +186,7 @@
 
             const result = await login(user, pass);
             if (result.success) {
-                window.location.href = 'index.html';
+                window.location.href = 'upload.html';
             } else {
                 const error = document.getElementById('errorMessage');
                 error.textContent = result.message.toUpperCase();

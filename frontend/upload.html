@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Invoice | GST Invoice Scanner</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/auth.js"></script>
+    <style>
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 4rem;
+            align-items: flex-start;
+            min-height: calc(100vh - 150px);
+            padding-top: 2rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border);
+            padding: 3rem;
+            text-align: center;
+            background: var(--white);
+            transition: var(--transition-slow);
+            cursor: pointer;
+            position: relative;
+            min-height: 350px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        }
+
+        .drop-zone.drag-over {
+            border-color: var(--blue);
+            background: var(--blue-lt);
+            transform: scale(1.01);
+        }
+
+        .drop-zone-icon {
+            font-size: 3rem;
+            color: var(--blue);
+            margin-bottom: 1rem;
+        }
+
+        .drop-zone-text {
+            font-family: var(--display);
+            font-weight: 800;
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            color: var(--ink);
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .processing-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(247, 245, 240, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .pulse {
+            animation: pulse-animation 1.5s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .scan-btn {
+            width: 100%;
+            margin-top: 2rem;
+            padding: 1.2rem;
+            font-size: 1.2rem;
+            position: relative;
+            overflow: hidden;
+            border-radius: 8px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-mini-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2.5rem;
+            margin-bottom: 2.5rem;
+        }
+        
+        .stat-card {
+            background: var(--white);
+            padding: 1.2rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--blue);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+        }
+
+        /* ── RECENT SCANS WIDGET ── */
+        .recent-scans-widget {
+            background: var(--white);
+            border-radius: 8px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+        .recent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 0;
+            border-bottom: 1px solid var(--bg2);
+        }
+        .recent-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .recent-title {
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            color: var(--ink);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 180px;
+        }
+
+        /* ── STATUS PILLS ── */
+        .status-pill {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 100px;
+            letter-spacing: 0.5px;
+        }
+        .st-success { background: var(--green-lt); color: var(--green); }
+        .st-processing { background: var(--amber-lt); color: var(--amber); }
+        .st-failed { background: var(--red-lt); color: var(--red); }
+
+        /* ── GUIDELINES BOX ── */
+        .guidelines-box {
+            background: var(--bg2);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+        }
+        .guidelines-box ul {
+            padding-left: 1.2rem;
+            margin-top: 0.5rem;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+        .guidelines-box li::marker {
+            color: var(--blue);
+        }
+
+        /* ── FILE PREVIEW ── */
+        .file-preview-card {
+            display: flex;
+            align-items: center;
+            gap: 1.2rem;
+            background: var(--white);
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-top: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .thumbnail-wrapper {
+            width: 50px;
+            height: 60px;
+            background: var(--bg2);
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+        .thumbnail-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        /* ── PROGRESS BAR ── */
+        .progress-bar-container {
+            width: 400px;
+            height: 6px;
+            background: var(--border);
+            border-radius: 100px;
+            margin-top: 2rem;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-bar-fill {
+            position: absolute;
+            left: 0; top: 0; bottom: 0;
+            background: var(--blue);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <!-- CURSOR -->
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
+    <nav>
+        <a href="upload.html" class="logo" style="text-decoration:none; color:inherit;">
+            GST Scanner
+            <span class="logo-pill">AI POWERED</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="upload.html" class="active">Upload</a></li>
+            <li><a href="history.html">History</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+        </ul>
+        <div class="user-info">
+            <span class="display-user-name">Operator</span>
+            <button class="nav-btn logout-trigger" style="border:none; cursor:pointer;">Logout →</button>
+        </div>
+    </nav>
+
+    <div style="padding: 120px 5% 60px; max-width: 1320px; margin: 0 auto;">
+        <div class="upload-section">
+            
+            <!-- LEFT COLUMN: SYSTEM HUB -->
+            <div class="animate-fade-up">
+                <h1 class="brand-font" style="font-size: 3.5rem; line-height: 0.9; margin-bottom: 2rem;">
+                    FINANCIAL DATA<br>TERMINAL
+                </h1>
+                <p style="font-size: 1.1rem; color: var(--muted); margin-bottom: 2rem; max-width: 400px; line-height: 1.5;">
+                    Upload purchase invoices for real-time GST validation, ITC calculation, and spend analysis.
+                </p>
+                
+                <div class="stat-mini-grid">
+                    <div class="stat-card stagger-1">
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-transform:uppercase;">System Status</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+                            <div style="width:10px; height:10px; border-radius:50%; background:var(--green); box-shadow: 0 0 10px var(--green);"></div>
+                            OPERATIONAL
+                        </div>
+                    </div>
+                    <div class="stat-card stagger-2" style="border-left-color: var(--amber);">
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-transform:uppercase;">Network Nodes</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; font-family:var(--mono);">LLAMA-4-VISION</div>
+                    </div>
+                </div>
+
+                <!-- RECENT SCANS WIDGET -->
+                <div class="recent-scans-widget stagger-3">
+                    <div style="font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 1rem; color: var(--ink);">RECENT ACTIVITY</div>
+                    
+                    <div id="recentScansContainer">
+                        <div style="color: var(--muted); font-size: 0.85rem; text-align: center; padding: 1rem;">LOADING ARCHIVE...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: UPLOAD ZONE -->
+            <div class="animate-fade-up stagger-1">
+                <div class="drop-zone" id="dropZone">
+                    <div class="drop-zone-icon">⎗</div>
+                    <p class="drop-zone-text">DRAG & DROP INVOICE</p>
+                    <p style="color: var(--muted); margin-top: 1rem;">Click or drag file to start upload</p>
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf">
+                </div>
+
+                <!-- GUIDELINES -->
+                <div class="guidelines-box">
+                    <div style="font-weight: 800; color: var(--ink); text-transform: uppercase; font-size:0.8rem; letter-spacing: 0.5px;">Upload Guidelines</div>
+                    <ul>
+                        <li><strong>Accepted formats:</strong> PDF, JPG, PNG</li>
+                        <li><strong>Max size:</strong> 10MB per file</li>
+                        <li>Ensure <strong>GSTIN</strong> and <strong>Tax Breakdown</strong> are clearly visible.</li>
+                        <li>Avoid blurry or angled scans for the best OCR results.</li>
+                    </ul>
+                </div>
+
+                <!-- FILE PREVIEW -->
+                <div id="previewContainer" style="display: none;">
+                    <div class="file-preview-card">
+                        <div class="thumbnail-wrapper">
+                            <img id="fileThumbnail" src="" style="display: none;">
+                            <div id="fileTypeIcon" style="font-size: 20px;">📄</div>
+                        </div>
+                        <div style="flex: 1; overflow: hidden;">
+                            <strong id="fileName" class="data-font" style="display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem;">invoice.jpg</strong>
+                            <div id="fileSize" style="font-size: 0.8rem; color: var(--muted);">0 KB</div>
+                        </div>
+                        <button id="removeFileBtn" style="background: none; border: none; color: var(--red); cursor: pointer; font-size: 1.5rem; width: 30px; height: 30px; display:flex; align-items:center; justify-content:center; border-radius: 4px;">×</button>
+                    </div>
+                </div>
+
+                <a href="#" id="scanBtn" class="btn-prime scan-btn" style="display:block; text-align:center; opacity:0.5; pointer-events:none;">
+                    START OCR SCAN
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Processing Overlay with Animated Progress -->
+    <div class="processing-overlay" id="overlay">
+        <h2 class="brand-font" style="font-size: 3rem; margin-bottom: 1rem;">EXTRACTING DATA...</h2>
+        <p id="processStatus" class="pulse" style="font-family: var(--mono); color: var(--blue); font-weight: 600; letter-spacing: 1px;">INITIALIZING VISION MODELS</p>
+        
+        <div class="progress-bar-container">
+            <div class="progress-bar-fill" id="uploadProgress"></div>
+        </div>
+    </div>
+
+    <script src="js/cursor.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/upload.js"></script>
+</body>
+</html>

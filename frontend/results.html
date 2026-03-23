@@ -17,8 +17,10 @@
         .score-hero {
             text-align: center;
             padding: 3rem;
-            background: #0c0c0f;
+            background: var(--white);
             border: 1px solid var(--border-color);
+            border-radius: var(--rl);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.04);
             margin-bottom: 2rem;
             position: relative;
         }
@@ -79,8 +81,10 @@
         }
 
         .tax-summary-box {
-            background: #0c0c0f;
+            background: var(--white);
             border: 1px solid var(--border-color);
+            border-radius: var(--rl);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.03);
             padding: 1.5rem;
             margin-top: 2rem;
         }
@@ -109,16 +113,23 @@
     </style>
 </head>
 <body>
+    <!-- CURSOR -->
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
     <nav>
-        <a href="index.html" class="nav-logo brand-font">GST SCANNER</a>
+        <a href="upload.html" class="nav-logo">
+            GST Scanner
+            <span class="nav-logo-pill">AI POWERED</span>
+        </a>
         <ul class="nav-links">
-            <li><a href="index.html">Upload</a></li>
+            <li><a href="upload.html">Upload</a></li>
             <li><a href="history.html">History</a></li>
             <li><a href="analytics.html">Analytics</a></li>
         </ul>
         <div class="user-info">
-            <span class="display-user-name" style="font-weight: 600; text-transform: uppercase;">Operator</span>
-            <button class="logout-btn logout-trigger">LOGOUT</button>
+            <span class="display-user-name">Operator</span>
+            <button class="logout-btn logout-trigger">Logout</button>
         </div>
     </nav>
 
@@ -136,7 +147,7 @@
             <div class="action-bar">
                 <button id="exportBtn" class="btn btn-outline" style="font-size: 0.7rem;">EXPORT EXCEL</button>
                 <button id="whatsappBtn" class="btn btn-outline" style="font-size: 0.7rem;">SHARE WHATSAPP</button>
-                <a href="index.html" class="btn btn-primary" style="font-size: 0.7rem;">SCAN ANOTHER</a>
+                <a href="upload.html" class="btn btn-primary" style="font-size: 0.7rem;">SCAN ANOTHER</a>
             </div>
         </header>
 
@@ -231,6 +242,7 @@
         </div>
     </div>
 
+    <script src="js/cursor.js"></script>
     <script src="js/results.js"></script>
 </body>
 </html>

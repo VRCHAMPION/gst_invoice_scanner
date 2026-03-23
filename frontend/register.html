@@ -5,66 +5,140 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register | GST Invoice Scanner</title>
     <link rel="stylesheet" href="css/style.css">
-    <script src="js/auth.js"></script>
     <style>
         body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-color: var(--bg);
+        }
+        .auth-left {
+            flex: 1.2;
+            background-color: var(--ink);
+            color: white;
+            padding: 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            position: relative;
+            z-index: 1;
+        }
+        .auth-left::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(#ffffff11 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -1;
+        }
+        .auth-right {
+            flex: 1;
+            padding: 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            background-color: var(--bg);
+            overflow-y: auto;
+        }
+        .app-title {
+            font-size: 4rem;
+            line-height: 0.9;
+            margin-bottom: 2rem;
+        }
+        .feature-list {
+            list-style: none;
+            margin-top: 3rem;
+        }
+        .feature-item {
             display: flex;
             align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 500;
         }
-        .register-card {
-            max-width: 500px;
+        .feature-dot {
+            width: 12px;
+            height: 12px;
+            background: var(--blue);
+            border-radius: 50%;
+        }
+        .auth-form-card {
+            max-width: 400px;
             width: 100%;
-            border-left: 8px solid var(--secondary-accent);
+            margin: auto;
         }
-        .register-header {
-            margin-bottom: 2rem;
-            text-align: center;
+        .auth-header {
+            margin-bottom: 3rem;
         }
-        .register-header h2 {
+        .auth-header h2 {
             font-size: 2.5rem;
-            color: var(--primary-accent);
+            color: var(--ink);
+        }
+        .tagline {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            max-width: 400px;
         }
     </style>
 </head>
 <body>
-    <div class="register-card card animate-fade-up">
-        <div class="register-header">
-            <h2 class="brand-font">NEW REGISTRATION</h2>
-            <p>Create your operator account to begin scanning.</p>
-        </div>
+    <!-- CURSOR -->
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
 
-        <form id="registerForm">
-            <div class="form-group">
-                <label>Full Name</label>
-                <input type="text" id="name" required placeholder="e.g. Rajesh Kumar">
-            </div>
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="username" required placeholder="Choose operator ID">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="password" required>
-            </div>
-            <div class="form-group">
-                <label>Confirm Password</label>
-                <input type="password" id="confirmPassword" required>
-            </div>
-
-            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-                AUTHENTICATE & REGISTER
-            </button>
-        </form>
-
-        <p class="mt-2" style="font-size: 0.9rem; text-align: center; color: var(--text-muted);">
-            Already have an account? <a href="login.html" style="color: var(--primary-accent); text-decoration: none; font-weight: 600;">BACK TO LOGIN</a>
-        </p>
-
-        <div id="errorMessage" class="mt-1" style="color: var(--danger); font-weight: 600; text-align: center; display: none;"></div>
+    <div class="auth-left animate-fade-up">
+        <h1 class="app-title brand-font">JOIN<br>10,000+<br>BUSINESSES</h1>
+        <p class="tagline">Stop leaving your ITC on the table. Automate compliance effortlessly.</p>
+        
+        <ul class="feature-list">
+            <li class="feature-item stagger-1"><div class="feature-dot"></div> Sub-second Llama-4 OCR</li>
+            <li class="feature-item stagger-2"><div class="feature-dot"></div> Instant Fraud Detection</li>
+            <li class="feature-item stagger-3"><div class="feature-dot"></div> Beautiful Spend Analytics</li>
+        </ul>
     </div>
 
+    <div class="auth-right animate-fade-up stagger-1">
+        <div class="auth-form-card">
+            <div class="auth-header">
+                <h2 class="brand-font">NEW REGISTRATION</h2>
+                <p class="data-font">Create your operator account to begin scanning.</p>
+            </div>
+
+            <form id="registerForm">
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="name" required placeholder="e.g. Rajesh Kumar">
+                </div>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="username" required placeholder="Choose operator ID">
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="password" required>
+                </div>
+                <div class="form-group">
+                    <label>Confirm Password</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+                    AUTHENTICATE & REGISTER
+                </button>
+            </form>
+
+            <p class="mt-2" style="font-size: 0.9rem; color: var(--text-muted);">
+                Already have an account? <a href="login.html" style="color: var(--blue); text-decoration: none; font-weight: 600;">BACK TO LOGIN</a>
+            </p>
+
+            <div id="errorMessage" class="mt-1 data-font" style="color: var(--red); font-weight: 600; display: none;"></div>
+        </div>
+    </div>
+
+    <script src="js/cursor.js"></script>
     <script src="js/auth.js"></script>
     <script>
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
@@ -87,7 +161,7 @@
 
             const result = await register(name, user, pass);
             if (result.success) {
-                window.location.href = 'index.html';
+                window.location.href = 'upload.html';
             } else {
                 error.textContent = result.message.toUpperCase();
                 error.style.display = 'block';

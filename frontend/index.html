@@ -1,218 +1,2332 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Invoice | GST Invoice Scanner</title>
-    <link rel="stylesheet" href="css/style.css">
-    <script src="js/auth.js"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GST Invoice Scanner — AI Invoice Intelligence</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Cabinet+Grotesk:wght@400;500;700;800;900&family=JetBrains+Mono:wght@300;400;500;600&family=Instrument+Serif:ital@0;1&display=swap"
+        rel="stylesheet" />
     <style>
-        .upload-section {
-            display: grid;
-            grid-template-columns: 1fr 1.2fr;
-            gap: 4rem;
-            align-items: center;
-            min-height: calc(100vh - 150px);
+        :root {
+            --bg: #F7F5F0;
+            --bg2: #EFECEA;
+            --ink: #0A0A0A;
+            --ink2: #2D2D2D;
+            --muted: #8A8680;
+            --blue: #0047FF;
+            --blue-lt: #E0E9FF;
+            --green: #00B87A;
+            --green-lt: #DFFAF1;
+            --amber: #F59E0B;
+            --amber-lt: #FEF3C7;
+            --red: #EF4444;
+            --red-lt: #FEE2E2;
+            --border: #E0DDD8;
+            --white: #FFFFFF;
+            --display: 'Cabinet Grotesk', sans-serif;
+            --mono: 'JetBrains Mono', monospace;
+            --serif: 'Instrument Serif', serif;
+            --r: 14px;
+            --rl: 22px;
         }
 
-        .drop-zone {
-            border: 3px dashed var(--border-color);
-            padding: 4rem;
-            text-align: center;
-            background: white;
-            transition: var(--transition-slow);
-            cursor: pointer;
-            position: relative;
-            min-height: 400px;
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html {
+            scroll-behavior: smooth
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--ink);
+            font-family: var(--display);
+            overflow-x: hidden;
+            cursor: none;
+        }
+
+        /* ── CUSTOM CURSOR ── */
+        #cursor {
+            position: fixed;
+            width: 12px;
+            height: 12px;
+            background: var(--blue);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            transition: transform 0.1s, width 0.3s, height 0.3s, background 0.3s;
+            mix-blend-mode: multiply;
+        }
+
+        #cursor-ring {
+            position: fixed;
+            width: 36px;
+            height: 36px;
+            border: 1.5px solid var(--blue);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9998;
+            transform: translate(-50%, -50%);
+            transition: transform 0.12s ease, width 0.3s, height 0.3s, opacity 0.3s;
+            opacity: 0.5;
+        }
+
+        body:hover #cursor {
+            opacity: 1;
+        }
+
+        /* ── NOISE OVERLAY ── */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            pointer-events: none;
+            z-index: 9997;
+            opacity: .4;
+        }
+
+        /* ── GRID ── */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 0, 0, 0.04) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* ── NAV ── */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 500;
+            padding: 0 5%;
+            height: 68px;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
+            justify-content: space-between;
+            background: rgba(247, 245, 240, 0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            animation: slideDown 0.6s ease both;
         }
 
-        .drop-zone.drag-over {
-            border-color: var(--secondary-accent);
-            background: var(--hover-bg);
-            transform: scale(1.02);
+        @keyframes slideDown {
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
-        .drop-zone-icon {
-            font-size: 4rem;
-            color: var(--primary-accent);
-            margin-bottom: 2rem;
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 900;
+            font-size: 17px;
+            letter-spacing: -0.5px;
         }
 
-        .drop-zone-text {
-            font-family: 'Syne', sans-serif;
-            font-weight: 800;
-            font-size: 1.5rem;
-            text-transform: uppercase;
+        .logo-pill {
+            background: var(--ink);
+            color: #fff;
+            font-family: var(--mono);
+            font-size: 9px;
+            padding: 3px 8px;
+            border-radius: 100px;
+            letter-spacing: 1.5px;
+            animation: pulse-pill 3s ease infinite;
         }
 
-        #fileInput {
-            display: none;
+        @keyframes pulse-pill {
+
+            0%,
+            100% {
+                background: var(--ink);
+            }
+
+            50% {
+                background: var(--blue);
+            }
         }
 
-        .preview-container {
-            margin-top: 2rem;
-            display: none;
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 28px;
+        }
+
+        .nav-link {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--muted);
+            text-decoration: none;
+            transition: color 0.2s;
+            position: relative;
+        }
+
+        .nav-link::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 0;
+            height: 1.5px;
+            background: var(--blue);
+            transition: width 0.25s ease;
+        }
+
+        .nav-link:hover {
+            color: var(--ink);
+        }
+
+        .nav-link:hover::after {
             width: 100%;
         }
 
-        .file-info {
-            background: #fafaf8;
-            padding: 1rem;
-            border: 1px solid var(--border-color);
-            border-left: 4px solid var(--data-accent);
+        .nav-btn {
+            background: var(--ink);
+            color: #fff;
+            padding: 9px 20px;
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: background 0.25s, transform 0.2s, box-shadow 0.2s;
+            letter-spacing: -0.2px;
+        }
+
+        .nav-btn:hover {
+            background: var(--blue);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 71, 255, 0.3);
+        }
+
+        /* ── HERO ── */
+        .hero {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 48px;
+            align-items: center;
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 120px 5% 80px;
+        }
+
+        /* Morphing blob bg */
+        .hero-blob {
+            position: absolute;
+            top: -100px;
+            right: -100px;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(ellipse at center, rgba(0, 71, 255, 0.08) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: blobMove 8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        .hero-blob2 {
+            position: absolute;
+            bottom: -80px;
+            left: 10%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(ellipse at center, rgba(0, 184, 122, 0.07) 0%, transparent 70%);
+            border-radius: 50%;
+            animation: blobMove2 10s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes blobMove {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            33% {
+                transform: translate(-40px, 30px) scale(1.08);
+            }
+
+            66% {
+                transform: translate(20px, -20px) scale(0.95);
+            }
+        }
+
+        @keyframes blobMove2 {
+
+            0%,
+            100% {
+                transform: translate(0, 0) scale(1);
+            }
+
+            50% {
+                transform: translate(30px, -40px) scale(1.1);
+            }
+        }
+
+        .hero-left {
+            position: relative;
+            z-index: 2;
+        }
+
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            padding: 6px 14px 6px 8px;
+            margin-bottom: 28px;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--blue);
+            letter-spacing: 1px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            animation: fadeUp 0.7s 0.1s both;
+        }
+
+        .eyebrow-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--blue);
+            border-radius: 50%;
+            animation: breathe 2s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(0, 71, 255, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 0 5px rgba(0, 71, 255, 0);
+            }
+        }
+
+        .hero-h1 {
+            font-size: clamp(48px, 5.5vw, 76px);
+            font-weight: 900;
+            line-height: 1.0;
+            letter-spacing: -3px;
+            color: var(--ink);
+            animation: fadeUp 0.7s 0.2s both;
+        }
+
+        .hero-h1 em {
+            font-family: var(--serif);
+            font-style: italic;
+            font-weight: 400;
+            color: var(--blue);
+            letter-spacing: -2px;
+        }
+
+        .hero-h1 .lined {
+            position: relative;
+            display: inline-block;
+        }
+
+        .hero-h1 .lined::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 4px;
+            height: 4px;
+            background: linear-gradient(90deg, var(--blue), var(--green));
+            border-radius: 2px;
+            animation: lineGrow 0.8s 0.9s both;
+            transform-origin: left;
+        }
+
+        @keyframes lineGrow {
+            from {
+                transform: scaleX(0);
+            }
+
+            to {
+                transform: scaleX(1);
+            }
+        }
+
+        .hero-sub {
+            margin-top: 24px;
+            font-size: 17px;
+            font-weight: 400;
+            color: var(--muted);
+            max-width: 420px;
+            line-height: 1.7;
+            animation: fadeUp 0.7s 0.3s both;
+        }
+
+        .hero-actions {
+            margin-top: 40px;
+            display: flex;
+            gap: 14px;
+            align-items: center;
+            animation: fadeUp 0.7s 0.4s both;
+        }
+
+        .btn-prime {
+            position: relative;
+            background: var(--blue);
+            color: #fff;
+            padding: 15px 30px;
+            border-radius: 100px;
+            font-weight: 800;
+            font-size: 15px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 6px 24px rgba(0, 71, 255, 0.3);
+            letter-spacing: -0.3px;
+        }
+
+        .btn-prime::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, transparent 60%);
+            pointer-events: none;
+        }
+
+        .btn-prime:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 36px rgba(0, 71, 255, 0.4);
+        }
+
+        .btn-prime .arrow {
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .btn-prime:hover .arrow {
+            transform: translateX(4px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--ink);
+            padding: 15px 24px;
+            border-radius: 100px;
+            font-weight: 600;
+            font-size: 14px;
+            text-decoration: none;
+            border: 1.5px solid var(--border);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: border-color 0.2s, background 0.2s, transform 0.2s;
+        }
+
+        .btn-outline:hover {
+            border-color: var(--ink);
+            background: var(--white);
+            transform: translateY(-2px);
+        }
+
+        .hero-stats {
+            margin-top: 52px;
+            display: flex;
+            gap: 0;
+            animation: fadeUp 0.7s 0.5s both;
+        }
+
+        .hstat {
+            padding: 0 28px 0 0;
+            border-right: 1px solid var(--border);
+            margin-right: 28px;
+        }
+
+        .hstat:last-child {
+            border-right: none;
+        }
+
+        .hstat-n {
+            font-size: 30px;
+            font-weight: 900;
+            letter-spacing: -1.5px;
+            color: var(--ink);
+            line-height: 1;
+        }
+
+        .hstat-l {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 1px;
+            margin-top: 4px;
+        }
+
+        /* ── HERO RIGHT — INVOICE CARD ── */
+        .hero-right {
+            position: relative;
+            z-index: 2;
+            animation: fadeUp 0.7s 0.3s both;
+        }
+
+        .card-orbit {
+            position: relative;
+        }
+
+        /* Orbiting ring */
+        .orbit-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 110%;
+            height: 110%;
+            transform: translate(-50%, -50%);
+            border: 1px dashed rgba(0, 71, 255, 0.15);
+            border-radius: 50%;
+            animation: spinSlow 20s linear infinite;
+            pointer-events: none;
+        }
+
+        .orbit-ring::before {
+            content: '';
+            position: absolute;
+            top: -5px;
+            left: 50%;
+            width: 10px;
+            height: 10px;
+            background: var(--blue);
+            border-radius: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 0 10px var(--blue);
+        }
+
+        @keyframes spinSlow {
+            from {
+                transform: translate(-50%, -50%) rotate(0deg);
+            }
+
+            to {
+                transform: translate(-50%, -50%) rotate(360deg);
+            }
+        }
+
+        .main-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--rl);
+            padding: 28px;
+            box-shadow:
+                0 32px 80px rgba(0, 0, 0, 0.1),
+                0 8px 24px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+        }
+
+        .main-card:hover {
+            transform: translateY(-6px) rotateX(2deg);
+            box-shadow: 0 48px 96px rgba(0, 0, 0, 0.14), 0 12px 32px rgba(0, 0, 0, 0.06);
+        }
+
+        /* Top gradient stripe */
+        .main-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--blue), #7C3AED, var(--green));
+            background-size: 200%;
+            animation: gradShift 4s ease infinite;
+        }
+
+        @keyframes gradShift {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        /* Scan beam */
+        .scan-beam {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, var(--blue) 30%, rgba(0, 71, 255, 0.8) 50%, var(--blue) 70%, transparent 100%);
+            top: 0;
+            animation: scanBeam 3s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        @keyframes scanBeam {
+            0% {
+                top: 0%;
+                opacity: 0;
+            }
+
+            5% {
+                opacity: 1;
+            }
+
+            95% {
+                opacity: 1;
+            }
+
+            100% {
+                top: 100%;
+                opacity: 0;
+            }
+        }
+
+        .card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 22px;
+        }
+
+        .inv-meta {}
+
+        .inv-tag {
+            font-family: var(--mono);
+            font-size: 9px;
+            color: var(--muted);
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .inv-id {
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
+        }
+
+        /* Score donut */
+        .score-donut {
+            position: relative;
+            width: 72px;
+            height: 72px;
+        }
+
+        .score-donut svg {
+            transform: rotate(-90deg);
+        }
+
+        .donut-bg {
+            fill: none;
+            stroke: #F0EDE8;
+            stroke-width: 6;
+        }
+
+        .donut-fill {
+            fill: none;
+            stroke: var(--green);
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-dasharray: 175.9;
+            stroke-dashoffset: 17.6;
+            animation: fillDonut 2s 0.8s ease both;
+        }
+
+        @keyframes fillDonut {
+            from {
+                stroke-dashoffset: 175.9;
+            }
+
+            to {
+                stroke-dashoffset: 17.6;
+            }
+        }
+
+        .donut-center {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .donut-n {
+            font-size: 18px;
+            font-weight: 900;
+            color: var(--green);
+            line-height: 1;
+            letter-spacing: -1px;
+        }
+
+        .donut-g {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--green);
+            font-weight: 600;
+        }
+
+        .divider {
+            height: 1px;
+            background: var(--border);
+            margin: 16px 0;
+        }
+
+        .field {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+        }
+
+        .fk {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: var(--muted);
+            letter-spacing: 0.3px;
+        }
+
+        .fv {
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 100px;
+            font-family: var(--mono);
+            font-size: 9px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .bg {
+            background: var(--green-lt);
+            color: #008A5C;
+        }
+
+        .ba {
+            background: var(--amber-lt);
+            color: #B45309;
+        }
+
+        .br {
+            background: var(--red-lt);
+            color: #DC2626;
+        }
+
+        .bb {
+            background: var(--blue-lt);
+            color: var(--blue);
+        }
+
+        .badge::before {
+            content: '';
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .itc-bar {
+            margin-top: 16px;
+            background: linear-gradient(135deg, #DFFAF1, #C0F5E4);
+            border: 1px solid #A3E6CC;
+            border-radius: var(--r);
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .itc-bar::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            right: -20px;
+            width: 80px;
+            height: 80px;
+            background: rgba(0, 184, 122, 0.15);
+            border-radius: 50%;
+        }
+
+        .itc-label-wrap {}
+
+        .itc-tag {
+            font-family: var(--mono);
+            font-size: 9px;
+            color: #008A5C;
+            letter-spacing: 1.5px;
+            margin-bottom: 3px;
+        }
+
+        .itc-sub {
+            font-family: var(--mono);
+            font-size: 9px;
+            color: rgba(0, 138, 92, 0.7);
+        }
+
+        .itc-amt {
+            font-size: 24px;
+            font-weight: 900;
+            color: #008A5C;
+            letter-spacing: -1px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Floating chips */
+        .chip {
+            position: absolute;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            padding: 10px 14px;
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.09);
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-family: var(--mono);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--ink2);
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .chip-icon {
+            font-size: 16px;
+        }
+
+        .chip1 {
+            top: -22px;
+            right: -16px;
+            animation: floatA 4s ease-in-out infinite;
+        }
+
+        .chip2 {
+            bottom: 60px;
+            left: -24px;
+            animation: floatB 5s ease-in-out infinite;
+        }
+
+        .chip3 {
+            bottom: -18px;
+            right: 20px;
+            animation: floatC 4.5s ease-in-out infinite;
+        }
+
+        @keyframes floatA {
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(-1deg);
+            }
+
+            50% {
+                transform: translateY(-10px) rotate(1deg);
+            }
+        }
+
+        @keyframes floatB {
+
+            0%,
+            100% {
+                transform: translateY(0) rotate(1deg);
+            }
+
+            50% {
+                transform: translateY(-8px) rotate(-1deg);
+            }
+        }
+
+        @keyframes floatC {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-12px);
+            }
+        }
+
+        /* ── TICKER ── */
+        .ticker-wrap {
+            position: relative;
+            z-index: 1;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+            background: var(--ink);
+            overflow: hidden;
+            padding: 14px 0;
+        }
+
+        .ticker-track {
+            display: flex;
+            gap: 48px;
+            animation: tickerScroll 25s linear infinite;
+            width: max-content;
+        }
+
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.7);
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+
+        .ticker-item span {
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        .ticker-dot {
+            width: 4px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+        }
+
+        @keyframes tickerScroll {
+            from {
+                transform: translateX(0);
+            }
+
+            to {
+                transform: translateX(-50%);
+            }
+        }
+
+        /* ── SECTIONS ── */
+        .section {
+            position: relative;
+            z-index: 1;
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 100px 5%;
+        }
+
+        .sec-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 2.5px;
+            color: var(--blue);
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sec-label::before {
+            content: '';
+            width: 20px;
+            height: 1.5px;
+            background: var(--blue);
+            display: inline-block;
+        }
+
+        .sec-title {
+            font-size: clamp(32px, 4vw, 52px);
+            font-weight: 900;
+            letter-spacing: -2px;
+            line-height: 1.05;
+            color: var(--ink);
+            max-width: 560px;
+        }
+
+        .sec-title em {
+            font-family: var(--serif);
+            font-style: italic;
+            font-weight: 400;
+            color: var(--blue);
+        }
+
+        /* ── FEATURES ── */
+        .feat-grid {
+            margin-top: 56px;
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-template-rows: auto auto;
+            gap: 16px;
+        }
+
+        .feat-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--rl);
+            padding: 32px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+        }
+
+        .feat-card:hover {
+            transform: translateY(-6px) scale(1.01);
+            box-shadow: 0 24px 56px rgba(0, 0, 0, 0.09);
+        }
+
+        .feat-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(0, 71, 255, 0.03) 0%, transparent 60%);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .feat-card:hover::after {
+            opacity: 1;
+        }
+
+        .fc1 {
+            grid-column: span 5;
+        }
+
+        .fc2 {
+            grid-column: span 4;
+        }
+
+        .fc3 {
+            grid-column: span 3;
+        }
+
+        .fc4 {
+            grid-column: span 3;
+        }
+
+        .fc5 {
+            grid-column: span 5;
+        }
+
+        .fc6 {
+            grid-column: span 4;
+        }
+
+        .feat-icon-wrap {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .fi-b {
+            background: var(--blue-lt);
+        }
+
+        .fi-g {
+            background: var(--green-lt);
+        }
+
+        .fi-a {
+            background: var(--amber-lt);
+        }
+
+        .fi-r {
+            background: var(--red-lt);
+        }
+
+        .feat-name {
+            font-size: 18px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 10px;
+        }
+
+        .feat-desc {
+            font-size: 14px;
+            font-weight: 400;
+            color: var(--muted);
+            line-height: 1.65;
+        }
+
+        /* Mini chart inside feature card */
+        .mini-chart {
+            margin-top: 20px;
+            display: flex;
+            align-items: flex-end;
+            gap: 5px;
+            height: 40px;
+        }
+
+        .bar {
+            flex: 1;
+            border-radius: 3px 3px 0 0;
+            background: var(--blue-lt);
+            transition: height 0.5s ease;
+            animation: growBar 1s ease both;
+        }
+
+        .bar:nth-child(1) {
+            --h: 40%;
+            animation-delay: 0.1s;
+        }
+
+        .bar:nth-child(2) {
+            --h: 65%;
+            animation-delay: 0.15s;
+        }
+
+        .bar:nth-child(3) {
+            --h: 45%;
+            animation-delay: 0.2s;
+        }
+
+        .bar:nth-child(4) {
+            --h: 80%;
+            animation-delay: 0.25s;
+        }
+
+        .bar:nth-child(5) {
+            --h: 55%;
+            animation-delay: 0.3s;
+        }
+
+        .bar:nth-child(6) {
+            --h: 90%;
+            animation-delay: 0.35s;
+        }
+
+        .bar:nth-child(7) {
+            --h: 70%;
+            animation-delay: 0.4s;
+        }
+
+        .bar:nth-child(8) {
+            --h: 100%;
+            animation-delay: 0.45s;
+            background: var(--blue);
+        }
+
+        @keyframes growBar {
+            from {
+                height: 0 !important;
+            }
+        }
+
+        .bar {
+            height: var(--h);
+        }
+
+        /* ── HEALTH SCORE SECTION ── */
+        .hs-section {
+            background: var(--ink);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+        }
+
+        .hs-section::before {
+            content: '';
+            position: absolute;
+            top: -200px;
+            right: -100px;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(0, 71, 255, 0.2) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hs-section::after {
+            content: '';
+            position: absolute;
+            bottom: -150px;
+            left: 15%;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(0, 184, 122, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hs-inner {
+            max-width: 1320px;
+            margin: 0 auto;
+            padding: 100px 5%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 80px;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hs-label {
+            font-family: var(--mono);
+            font-size: 10px;
+            letter-spacing: 2.5px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .hs-label::before {
+            content: '';
+            width: 20px;
+            height: 1.5px;
+            background: var(--blue);
+        }
+
+        .hs-title {
+            font-size: clamp(32px, 4vw, 52px);
+            font-weight: 900;
+            letter-spacing: -2px;
+            color: #fff;
+            line-height: 1.05;
+            margin-bottom: 20px;
+        }
+
+        .hs-title em {
+            font-family: var(--serif);
+            font-style: italic;
+            font-weight: 400;
+            color: var(--green);
+        }
+
+        .hs-sub {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.55);
+            line-height: 1.7;
+            font-weight: 400;
+        }
+
+        .hs-grades {
+            display: flex;
+            gap: 10px;
+            margin-top: 28px;
+            flex-wrap: wrap;
+        }
+
+        .grade-pill {
+            padding: 8px 16px;
+            border-radius: 100px;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            transition: transform 0.2s;
+            cursor: default;
+        }
+
+        .grade-pill:hover {
+            transform: scale(1.05);
+        }
+
+        .gA {
+            background: rgba(0, 184, 122, 0.15);
+            color: var(--green);
+            border: 1px solid rgba(0, 184, 122, 0.3);
+        }
+
+        .gB {
+            background: rgba(0, 71, 255, 0.15);
+            color: #7EB4FF;
+            border: 1px solid rgba(0, 71, 255, 0.3);
+        }
+
+        .gC {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--amber);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .gF {
+            background: rgba(239, 68, 68, 0.15);
+            color: #FF8A8A;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* Score card */
+        .hs-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--rl);
+            padding: 28px;
+            backdrop-filter: blur(20px);
+        }
+
+        .hs-card-title {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 1.5px;
+            margin-bottom: 20px;
+        }
+
+        .check-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            transition: background 0.2s;
+        }
+
+        .check-row:last-child {
+            border-bottom: none;
+        }
+
+        .check-row:hover {
+            background: rgba(255, 255, 255, 0.03);
+            margin: 0 -10px;
+            padding: 12px 10px;
+            border-radius: 8px;
+        }
+
+        .check-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            flex-shrink: 0;
+        }
+
+        .ci-green {
+            background: rgba(0, 184, 122, 0.15);
+        }
+
+        .ci-amber {
+            background: rgba(245, 158, 11, 0.15);
+        }
+
+        .check-info {
+            flex: 1;
+        }
+
+        .check-name {
+            font-size: 14px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .check-desc {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.35);
+            margin-top: 2px;
+        }
+
+        .check-score {
+            font-family: var(--mono);
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .cs-g {
+            color: var(--green);
+        }
+
+        .cs-a {
+            color: var(--amber);
+        }
+
+        /* Progress track */
+        .prog-track {
+            width: 80px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .prog-fill {
+            height: 100%;
+            border-radius: 2px;
+            animation: progGrow 1.5s ease both;
+        }
+
+        @keyframes progGrow {
+            from {
+                width: 0 !important;
+            }
+        }
+
+        /* ── COMPARE ── */
+        .compare-wrap {
+            margin-top: 56px;
+            border: 1px solid var(--border);
+            border-radius: var(--rl);
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
+        }
+
+        .cmp-head {
+            display: grid;
+            grid-template-columns: 2.5fr 1fr 1fr 1fr;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .cmp-hcell {
+            padding: 18px 24px;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--muted);
+            letter-spacing: 0.5px;
+        }
+
+        .cmp-hcell.ours {
+            background: var(--blue-lt);
+            color: var(--blue);
+            position: relative;
+        }
+
+        .cmp-hcell.ours::after {
+            content: 'YOU ARE HERE';
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            font-size: 7px;
+            background: var(--blue);
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 100px;
+            letter-spacing: 1px;
+        }
+
+        .cmp-row {
+            display: grid;
+            grid-template-columns: 2.5fr 1fr 1fr 1fr;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.15s;
+        }
+
+        .cmp-row:last-child {
+            border-bottom: none;
+        }
+
+        .cmp-row:hover {
+            background: #FAFAF8;
+        }
+
+        .cmp-cell {
+            padding: 16px 24px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--ink2);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cmp-cell.ours {
+            background: rgba(224, 233, 255, 0.3);
+            font-weight: 700;
+            color: var(--ink);
+            border-left: 2px solid rgba(0, 71, 255, 0.3);
+        }
+
+        .cmp-cell.feature-name {
+            font-weight: 600;
+            color: var(--ink);
+        }
+
+        .tick {
+            color: var(--green);
+            font-size: 16px;
+        }
+
+        .cross {
+            color: #D5D2CC;
+            font-size: 16px;
+        }
+
+        .free-badge {
+            background: var(--green);
+            color: #fff;
+            font-family: var(--mono);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 12px;
+            border-radius: 100px;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── CTA ── */
+        .cta-section {
+            position: relative;
+            z-index: 1;
+            padding: 0 5% 100px;
+            max-width: 1320px;
+            margin: 0 auto;
+        }
+
+        .cta-card {
+            background: var(--ink);
+            border-radius: 28px;
+            padding: 72px 80px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta-card::before {
+            content: '';
+            position: absolute;
+            top: -120px;
+            right: -80px;
+            width: 400px;
+            height: 400px;
+            background: radial-gradient(circle, rgba(0, 71, 255, 0.25) 0%, transparent 70%);
+            pointer-events: none;
+            animation: blobMove 8s ease-in-out infinite;
+        }
+
+        .cta-card::after {
+            content: '';
+            position: absolute;
+            bottom: -80px;
+            left: 30%;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0, 184, 122, 0.15) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* Animated grid lines inside CTA */
+        .cta-grid {
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .cta-left {
+            position: relative;
+            z-index: 2;
+        }
+
+        .cta-tag {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 2px;
+            margin-bottom: 14px;
+        }
+
+        .cta-title {
+            font-size: clamp(28px, 3.5vw, 44px);
+            font-weight: 900;
+            color: #fff;
+            letter-spacing: -1.5px;
+            line-height: 1.1;
+            max-width: 440px;
+        }
+
+        .cta-title em {
+            font-family: var(--serif);
+            font-style: italic;
+            font-weight: 400;
+            color: var(--green);
+        }
+
+        .cta-right {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+
+        .btn-cta {
+            background: #fff;
+            color: var(--ink);
+            padding: 16px 36px;
+            border-radius: 100px;
+            font-weight: 800;
+            font-size: 15px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+            white-space: nowrap;
+        }
+
+        .btn-cta:hover {
+            transform: translateY(-4px) scale(1.03);
+            box-shadow: 0 12px 36px rgba(0, 0, 0, 0.25);
+        }
+
+        .cta-note {
+            font-family: var(--mono);
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.3);
+            letter-spacing: 0.5px;
+        }
+
+        /* ── FOOTER ── */
+        footer {
+            position: relative;
+            z-index: 1;
+            border-top: 1px solid var(--border);
+            padding: 32px 5%;
+            max-width: 1320px;
+            margin: 0 auto;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .processing-overlay {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(245, 245, 240, 0.95);
-            z-index: 1000;
-            display: none;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
+        .footer-logo {
+            font-size: 16px;
+            font-weight: 900;
+            letter-spacing: -0.5px;
         }
 
-        .pulse {
-            animation: pulse-animation 2s infinite;
+        .footer-mono {
+            font-family: var(--mono);
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.5px;
         }
 
-        @keyframes pulse-animation {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
+        /* ── SCROLL REVEAL ── */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        .scan-btn {
-            width: 100%;
-            margin-top: 2rem;
-            padding: 1.2rem;
-            font-size: 1.2rem;
-            position: relative;
-            overflow: hidden;
+        .reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
         }
 
-        .scan-btn::after {
-            content: '';
-            position: absolute;
-            top: 0; left: -100%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transform: skewX(-25deg);
-            transition: 0.5s;
+        /* ── ANIMATIONS ── */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(24px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
-        .scan-btn:hover::after {
-            left: 150%;
+        /* ── RESPONSIVE ── */
+        @media(max-width:1024px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-right {
+                display: none;
+            }
+
+            .feat-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .fc1,
+            .fc2,
+            .fc3,
+            .fc4,
+            .fc5,
+            .fc6 {
+                grid-column: span 1;
+            }
+
+            .hs-inner {
+                grid-template-columns: 1fr;
+            }
+
+            .z-row {
+                grid-template-columns: 1fr !important;
+                gap: 40px !important;
+            }
+
+            .z-text {
+                padding: 0 !important;
+            }
+
+            .cta-card {
+                flex-direction: column;
+                padding: 48px 40px;
+            }
+
+            .cta-right {
+                align-items: flex-start;
+            }
+
+            .cmp-head,
+            .cmp-row {
+                grid-template-columns: 2fr 1fr 1fr 1fr;
+            }
         }
 
-        .stat-mini-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 2rem;
+        @media(max-width:640px) {
+            nav .nav-right a:not(.nav-btn) {
+                display: none;
+            }
+
+            .feat-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-stats {
+                flex-wrap: wrap;
+                gap: 20px;
+            }
+
+            .hstat {
+                border-right: none;
+                margin: 0;
+            }
         }
     </style>
 </head>
+
 <body>
+
+    <!-- CURSOR -->
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
+    <!-- NAV -->
     <nav>
-        <a href="index.html" class="nav-logo brand-font">GST SCANNER</a>
-        <ul class="nav-links">
-            <li><a href="index.html" class="active">Upload</a></li>
-            <li><a href="history.html">History</a></li>
-            <li><a href="analytics.html">Analytics</a></li>
-        </ul>
-        <div class="user-info">
-            <span class="display-user-name" style="font-weight: 600; text-transform: uppercase;">Operator</span>
-            <button class="logout-btn logout-trigger">LOGOUT</button>
+        <div class="logo">
+            GST Scanner
+            <span class="logo-pill">AI POWERED</span>
+        </div>
+        <div class="nav-right">
+            <a href="#features" class="nav-link">Features</a>
+            <a href="#health" class="nav-link">Health Score</a>
+            <a href="#compare" class="nav-link">Compare</a>
+            <a href="login.html" class="nav-link" style="margin-right: 12px;">Login</a>
+            <a href="register.html" class="nav-btn">Try Free →</a>
         </div>
     </nav>
 
-    <div class="container">
-        <div class="upload-section">
-            <div class="animate-fade-up">
-                <h1 class="brand-font" style="font-size: 4rem; line-height: 0.9; margin-bottom: 2rem;">
-                    FINANCIAL DATA<br>TERMINAL
-                </h1>
-                <p style="font-size: 1.2rem; color: var(--text-muted); margin-bottom: 2rem;">
-                    Upload purchase invoices for real-time GST validation, ITC calculation, and spend analysis.
-                </p>
-                
-                <ul class="feature-list" style="color: var(--primary-accent); font-weight: 700;">
-                    <li class="feature-item stagger-1"><div class="feature-dot" style="background: var(--data-accent);"></div> 99.8% OCR ACCURACY</li>
-                    <li class="feature-item stagger-2"><div class="feature-dot" style="background: var(--secondary-accent);"></div> INSTANT GSTIN VERIFICATION</li>
-                    <li class="feature-item stagger-3"><div class="feature-dot" style="background: var(--success);"></div> AUTOMATED ITC BREAKDOWN</li>
-                </ul>
+    <!-- HERO -->
+    <section class="hero">
+        <div class="hero-blob"></div>
+        <div class="hero-blob2"></div>
 
-                <div class="stat-mini-grid">
-                    <div class="stat-card stagger-3" style="border-left-color: var(--data-accent);">
-                        <div class="stat-label">System Status</div>
-                        <div class="stat-value" style="font-size: 1.2rem; display: flex; align-items: center;">
-                            <span class="status-dot status-success"></span> OPERATIONAL
-                        </div>
-                    </div>
-                    <div class="stat-card stagger-4">
-                        <div class="stat-label">Data Nodes</div>
-                        <div class="stat-value" style="font-size: 1.2rem;">LOCAL-STORAGE</div>
-                    </div>
-                </div>
+        <div class="hero-left">
+            <div class="eyebrow">
+                <span class="eyebrow-dot"></span>
+                LLAMA-4 VISION · REAL-TIME PROCESSING
             </div>
 
-            <div class="animate-fade-up stagger-1">
-                <div class="drop-zone" id="dropZone">
-                    <div class="drop-zone-icon">⎗</div>
-                    <p class="drop-zone-text">DRAG & DROP INVOICE</p>
-                    <p style="color: var(--text-muted); margin-top: 1rem;">JPEG, PNG, PDF, Word accepted (Batch Upload Enabled)</p>
-                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf,.doc,.docx" multiple>
-                    
-                    <div class="preview-container" id="previewContainer">
-                        <div class="file-info">
-                            <div>
-                                <strong id="fileName" class="data-font">invoice.jpg</strong>
-                                <div id="fileSize" style="font-size: 0.8rem; color: var(--text-muted);">0 KB</div>
+            <h1 class="hero-h1">
+                Invoice<br />
+                intelligence<br />
+                <em>reimagined</em><br />
+                for <span class="lined">India.</span>
+            </h1>
+
+            <p class="hero-sub">
+                Scan any GST invoice in under 10 seconds. Auto-calculate ITC, detect fraud, get a Health Score.
+                Everything ClearTax charges ₹20,000/year for — completely free.
+            </p>
+
+            <div class="hero-actions">
+                <a href="register.html" class="btn-prime">
+                    Scan Your First Invoice
+                    <span class="arrow">→</span>
+                </a>
+                <a href="#features" class="btn-outline">
+                    ▶ See how it works
+                </a>
+            </div>
+
+            <div class="hero-stats">
+                <div class="hstat">
+                    <div class="hstat-n">&lt;10s</div>
+                    <div class="hstat-l">SCAN TIME</div>
+                </div>
+                <div class="hstat">
+                    <div class="hstat-n">100%</div>
+                    <div class="hstat-l">FREE FOREVER</div>
+                </div>
+                <div class="hstat">
+                    <div class="hstat-n">6</div>
+                    <div class="hstat-l">HEALTH CHECKS</div>
+                </div>
+                <div class="hstat">
+                    <div class="hstat-n">A–F</div>
+                    <div class="hstat-l">GRADE SYSTEM</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- INVOICE CARD -->
+        <div class="hero-right">
+            <div class="card-orbit">
+                <div class="orbit-ring"></div>
+
+                <div class="chip chip1">
+                    <span class="chip-icon">⚡</span>
+                    ITC auto-calculated
+                </div>
+                <div class="chip chip2">
+                    <span class="chip-icon">🛡️</span>
+                    No fraud signals found
+                </div>
+                <div class="chip chip3">
+                    <span class="chip-icon">✅</span>
+                    GSTIN verified
+                </div>
+
+                <div class="main-card">
+                    <div class="scan-beam"></div>
+
+                    <div class="card-top">
+                        <div class="inv-meta">
+                            <div class="inv-tag">TAX INVOICE · PURCHASE</div>
+                            <div class="inv-id">INV-2024-00847</div>
+                        </div>
+                        <div class="score-donut">
+                            <svg viewBox="0 0 74 74" width="72" height="72">
+                                <circle class="donut-bg" cx="37" cy="37" r="28" />
+                                <circle class="donut-fill" cx="37" cy="37" r="28" />
+                            </svg>
+                            <div class="donut-center">
+                                <span class="donut-n">92</span>
+                                <span class="donut-g">A</span>
                             </div>
-                            <span style="color: var(--success); font-weight: 800;">READY</span>
                         </div>
                     </div>
+
+                    <div class="divider"></div>
+
+                    <div class="field">
+                        <span class="fk">SELLER GSTIN</span>
+                        <span class="fv">27AABCU9603R1ZX</span>
+                    </div>
+                    <div class="field">
+                        <span class="fk">BUYER GSTIN</span>
+                        <span class="fv">29GGGGG1314R9Z6</span>
+                    </div>
+                    <div class="field">
+                        <span class="fk">GSTIN STATUS</span>
+                        <span class="badge bg">VALID</span>
+                    </div>
+                    <div class="field">
+                        <span class="fk">HSN CODE</span>
+                        <span class="badge bg">VERIFIED</span>
+                    </div>
+                    <div class="field">
+                        <span class="fk">TAX MATH</span>
+                        <span class="badge bg">ACCURATE</span>
+                    </div>
+                    <div class="field">
+                        <span class="fk">FRAUD SIGNALS</span>
+                        <span class="badge bg">NONE FOUND</span>
+                    </div>
+
+                    <div class="divider"></div>
+
+                    <div class="field">
+                        <span class="fk">TAXABLE VALUE</span>
+                        <span class="fv">₹1,24,500.00</span>
+                    </div>
+                    <div class="field">
+                        <span class="fk">CGST 9%</span>
+                        <span class="fv">₹11,205.00</span>
+                    </div>
+                    <div class="field">
+                        <span class="fk">SGST 9%</span>
+                        <span class="fv">₹11,205.00</span>
+                    </div>
+
+                    <div class="itc-bar">
+                        <div class="itc-label-wrap">
+                            <div class="itc-tag">ELIGIBLE ITC</div>
+                            <div class="itc-sub">Auto-calculated from scan</div>
+                        </div>
+                        <div class="itc-amt">₹22,410</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- TICKER -->
+    <div class="ticker-wrap">
+        <div class="ticker-track" id="ticker">
+            <div class="ticker-item"><span>⚡ SCAN IN &lt;10s</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">ITC AUTO-CALCULATED</div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item"><span>100% FREE</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">GSTIN VALIDITY CHECK</div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item"><span>FRAUD DETECTION</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">HSN CODE VERIFICATION</div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item"><span>A–F HEALTH GRADE</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">WHATSAPP CA SHARING</div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item"><span>EXCEL EXPORT</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">GSTR DEADLINE TRACKER</div>
+            <div class="ticker-dot"></div>
+            <!-- duplicate for seamless loop -->
+            <div class="ticker-item"><span>⚡ SCAN IN &lt;10s</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">ITC AUTO-CALCULATED</div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item"><span>100% FREE</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">GSTIN VALIDITY CHECK</div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item"><span>FRAUD DETECTION</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">HSN CODE VERIFICATION</div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item"><span>A–F HEALTH GRADE</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">WHATSAPP CA SHARING</div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item"><span>EXCEL EXPORT</span></div>
+            <div class="ticker-dot"></div>
+            <div class="ticker-item">GSTR DEADLINE TRACKER</div>
+            <div class="ticker-dot"></div>
+        </div>
+    </div>
+
+    <!-- FEATURES -->
+    <section class="section" id="features">
+        <div class="reveal">
+            <div class="sec-label">WHAT IT DOES</div>
+            <h2 class="sec-title">Every feature your CA bills you for. <em>Free.</em></h2>
+        </div>
+
+        <div class="z-pattern-features" style="display: flex; flex-direction: column; gap: 120px;">
+            <!-- Row 1: AI Scanning (Text Left, Visual Right) -->
+            <div class="z-row reveal" style="display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;">
+                <div class="z-text" style="padding-right: 40px;">
+                    <div class="feat-icon-wrap fi-b" style="margin-bottom: 24px;">⚡</div>
+                    <h3 style="font-size: 32px; margin-bottom: 16px;">AI Invoice Scanning</h3>
+                    <p style="font-size: 18px; line-height: 1.6; color: var(--muted);">Upload any GST invoice image. Our OCR AI extracts every field — GSTINs, line items, HSN codes, tax breakdowns — in under 10 seconds.</p>
+                </div>
+                <div class="z-visual card" style="background: var(--bg2); padding: 40px;">
+                    <div class="mini-chart" style="display: flex; gap: 12px; align-items: flex-end; height: 160px; justify-content: center;">
+                        <div class="bar" style="width: 24px; height: 40%; background: var(--blue-lt); border-radius: 4px;"></div>
+                        <div class="bar" style="width: 24px; height: 65%; background: var(--blue-lt); border-radius: 4px;"></div>
+                        <div class="bar" style="width: 24px; height: 45%; background: var(--blue-lt); border-radius: 4px;"></div>
+                        <div class="bar" style="width: 24px; height: 100%; background: var(--blue); border-radius: 4px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row 2: ITC Calculator (Visual Left, Text Right) -->
+            <div class="z-row reveal" style="display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;">
+                <div class="z-visual card" style="background: var(--green-lt); padding: 60px 40px; text-align: center;">
+                    <div style="font-family: var(--display); font-weight: 800; font-size: 48px; color: var(--green);">₹1.4M+</div>
+                    <div style="font-size: 16px; font-weight: 600; color: var(--ink2); margin-top: 8px;">ITC Automatically Found</div>
+                </div>
+                <div class="z-text" style="padding-left: 40px;">
+                    <div class="feat-icon-wrap fi-g" style="margin-bottom: 24px;">💰</div>
+                    <h3 style="font-size: 32px; margin-bottom: 16px;">ITC Calculator</h3>
+                    <p style="font-size: 18px; line-height: 1.6; color: var(--muted);">Automatically calculates your eligible Input Tax Credit from every purchase invoice. Know exactly what you can claim before your accountant does the math.</p>
+                </div>
+            </div>
+
+            <!-- Row 3: Deadline Tracker & Fraud (Text Left, Visual Right) -->
+            <div class="z-row reveal" style="display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;">
+                <div class="z-text" style="padding-right: 40px;">
+                    <div class="feat-icon-wrap fi-r" style="margin-bottom: 24px;">🛡️</div>
+                    <h3 style="font-size: 32px; margin-bottom: 16px;">Fraud Detection & Compliance</h3>
+                    <p style="font-size: 18px; line-height: 1.6; color: var(--muted);">Catches suspicious invoices before you claim ITC on them. Protects you from fake GSTINs and manipulated figures with our industrial-grade validation, while keeping track of all your filing deadlines.</p>
+                </div>
+                <div class="z-visual card" style="background: var(--red-lt); padding: 40px;">
+                     <div style="font-family: var(--mono); font-size: 14px; line-height: 2; color: var(--ink);">
+                        <div>> GSTIN_CHECK: <span style="color: var(--red); font-weight: bold;">FAILED</span></div>
+                        <div>> REASON: CANCELLED_BY_AUTHORITY</div>
+                        <div style="margin-top: 16px; border-top: 1px dashed var(--red); padding-top: 16px;">
+                            > ACTION: <span style="background: var(--red); color: white; padding: 2px 8px; border-radius: 4px;">BLOCK_ITC_CLAIM</span>
+                        </div>
+                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- HEALTH SCORE -->
+    <div class="hs-section" id="health">
+        <div class="hs-inner">
+            <div class="hs-card reveal" style="transition-delay:0.15s">
+                <div class="hs-card-title">HEALTH CHECK RESULTS · INV-2024-00847</div>
+
+                <div class="check-row">
+                    <div class="check-icon ci-green">✅</div>
+                    <div class="check-info">
+                        <div class="check-name">GSTIN Validity</div>
+                        <div class="check-desc">Both seller & buyer GSTINs verified active</div>
+                    </div>
+                    <div>
+                        <div class="prog-track">
+                            <div class="prog-fill" style="width:100%;background:var(--green)"></div>
+                        </div>
+                    </div>
+                    <div class="check-score cs-g">20/20</div>
                 </div>
 
-                <button id="scanBtn" class="btn btn-primary scan-btn" disabled>
-                    START BATCH SCAN
-                </button>
+                <div class="check-row">
+                    <div class="check-icon ci-green">✅</div>
+                    <div class="check-info">
+                        <div class="check-name">Tax Math Accuracy</div>
+                        <div class="check-desc">CGST + SGST totals match line items</div>
+                    </div>
+                    <div>
+                        <div class="prog-track">
+                            <div class="prog-fill" style="width:100%;background:var(--green)"></div>
+                        </div>
+                    </div>
+                    <div class="check-score cs-g">20/20</div>
+                </div>
+
+                <div class="check-row">
+                    <div class="check-icon ci-green">✅</div>
+                    <div class="check-info">
+                        <div class="check-name">HSN Code Check</div>
+                        <div class="check-desc">All HSN codes valid for tax rate applied</div>
+                    </div>
+                    <div>
+                        <div class="prog-track">
+                            <div class="prog-fill" style="width:100%;background:var(--green)"></div>
+                        </div>
+                    </div>
+                    <div class="check-score cs-g">20/20</div>
+                </div>
+
+                <div class="check-row">
+                    <div class="check-icon ci-green">✅</div>
+                    <div class="check-info">
+                        <div class="check-name">Date Validity</div>
+                        <div class="check-desc">Invoice date within filing period</div>
+                    </div>
+                    <div>
+                        <div class="prog-track">
+                            <div class="prog-fill" style="width:85%;background:var(--green)"></div>
+                        </div>
+                    </div>
+                    <div class="check-score cs-g">17/20</div>
+                </div>
+
+                <div class="check-row">
+                    <div class="check-icon ci-green">✅</div>
+                    <div class="check-info">
+                        <div class="check-name">Fraud Signals</div>
+                        <div class="check-desc">No round-trip transactions or duplicate patterns</div>
+                    </div>
+                    <div>
+                        <div class="prog-track">
+                            <div class="prog-fill" style="width:100%;background:var(--green)"></div>
+                        </div>
+                    </div>
+                    <div class="check-score cs-g">10/10</div>
+                </div>
+
+                <div class="check-row">
+                    <div class="check-icon ci-amber">⚠️</div>
+                    <div class="check-info">
+                        <div class="check-name">ITC Eligibility</div>
+                        <div class="check-desc">One line item may be blocked under Sec 17(5)</div>
+                    </div>
+                    <div>
+                        <div class="prog-track">
+                            <div class="prog-fill" style="width:50%;background:var(--amber)"></div>
+                        </div>
+                    </div>
+                    <div class="check-score cs-a">5/10</div>
+                </div>
+            </div>
+
+            <div class="reveal">
+                <div class="hs-label">EXCLUSIVE FEATURE</div>
+                <h2 class="hs-title">The Invoice<br /><em>Health Score.</em><br />Nobody has this.</h2>
+                <p class="hs-sub">Every invoice gets scored from 0–100 across six dimensions. Know if an invoice is safe
+                    to claim ITC on before you file. ClearTax doesn't have it. Vyapar doesn't have it. Only you do.</p>
+                <div class="hs-grades">
+                    <span class="grade-pill gA">A · 90–100 · Safe to claim</span>
+                    <span class="grade-pill gB">B · 75–89 · Minor issues</span>
+                    <span class="grade-pill gC">C · 50–74 · Review needed</span>
+                    <span class="grade-pill gF">F · &lt;50 · Do not claim</span>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Processing Overlay -->
-    <div class="processing-overlay" id="overlay">
-        <h2 class="brand-font" style="font-size: 3rem; margin-bottom: 3rem;">SYSTEM SCANNING...</h2>
-        
-        <div class="steps-container" style="width: 600px;">
-            <div class="step" id="step1">01</div>
-            <div class="step" id="step2">02</div>
-            <div class="step" id="step3">03</div>
-            <div class="step" id="step4">04</div>
-        </div>
-        
-        <div style="margin-top: 2rem; width: 600px; display: flex; justify-content: space-between; color: var(--text-muted); font-weight: 600; text-transform: uppercase; font-size: 0.8rem;">
-            <span>Uploading</span>
-            <span>AI Reading</span>
-            <span>Validating</span>
-            <span>Saving</span>
+    <!-- COMPARE -->
+    <section class="section" id="compare">
+        <div class="reveal">
+            <div class="sec-label">VS COMPETITORS</div>
+            <h2 class="sec-title">ClearTax charges ₹20,000/year.<br /><em>We charge nothing.</em></h2>
         </div>
 
-        <p id="processStatus" class="mt-2 pulse data-font" style="color: var(--secondary-accent); font-weight: 600;">INITIALIZING OCR ENGINE...</p>
+        <div class="compare-wrap reveal" style="transition-delay:0.1s">
+            <div class="cmp-head">
+                <div class="cmp-hcell">FEATURE</div>
+                <div class="cmp-hcell ours">GST SCANNER</div>
+                <div class="cmp-hcell">CLEARTAX</div>
+                <div class="cmp-hcell">VYAPAR</div>
+            </div>
+            <div class="cmp-row">
+                <div class="cmp-cell feature-name">AI Invoice Scanning</div>
+                <div class="cmp-cell ours"><span class="tick">✓</span></div>
+                <div class="cmp-cell"><span class="tick">✓</span></div>
+                <div class="cmp-cell"><span class="cross">✗</span></div>
+            </div>
+            <div class="cmp-row">
+                <div class="cmp-cell feature-name">ITC Auto-Calculation</div>
+                <div class="cmp-cell ours"><span class="tick">✓</span></div>
+                <div class="cmp-cell"><span class="tick">✓</span></div>
+                <div class="cmp-cell"><span class="tick">✓</span></div>
+            </div>
+            <div class="cmp-row">
+                <div class="cmp-cell feature-name">Invoice Health Score</div>
+                <div class="cmp-cell ours"><span class="tick">✓</span></div>
+                <div class="cmp-cell"><span class="cross">✗</span></div>
+                <div class="cmp-cell"><span class="cross">✗</span></div>
+            </div>
+            <div class="cmp-row">
+                <div class="cmp-cell feature-name">Fraud Signal Detection</div>
+                <div class="cmp-cell ours"><span class="tick">✓</span></div>
+                <div class="cmp-cell"><span class="cross">✗</span></div>
+                <div class="cmp-cell"><span class="cross">✗</span></div>
+            </div>
+            <div class="cmp-row">
+                <div class="cmp-cell feature-name">WhatsApp CA Sharing</div>
+                <div class="cmp-cell ours"><span class="tick">✓</span></div>
+                <div class="cmp-cell"><span class="cross">✗</span></div>
+                <div class="cmp-cell"><span class="cross">✗</span></div>
+            </div>
+            <div class="cmp-row">
+                <div class="cmp-cell feature-name">GST Deadline Tracker</div>
+                <div class="cmp-cell ours"><span class="tick">✓</span></div>
+                <div class="cmp-cell"><span class="tick">✓</span></div>
+                <div class="cmp-cell"><span class="tick">✓</span></div>
+            </div>
+            <div class="cmp-row">
+                <div class="cmp-cell feature-name" style="font-weight:800;">Annual Price</div>
+                <div class="cmp-cell ours"><span class="free-badge">FREE</span></div>
+                <div class="cmp-cell" style="color:var(--muted);">₹5,000–20,000</div>
+                <div class="cmp-cell" style="color:var(--muted);">₹3,499–6,999</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <div class="cta-section">
+        <div class="cta-card reveal">
+            <div class="cta-grid"></div>
+            <div class="cta-left">
+                <div class="cta-tag">GET STARTED WITH FREE REGISTRATION</div>
+                <div class="cta-title">Scan your first invoice in the next <em>60 seconds.</em></div>
+            </div>
+            <div class="cta-right">
+                <a href="register.html" class="btn-cta">
+                    Start Scanning Free
+                    <span>→</span>
+                </a>
+                <span class="cta-note">No credit card. No subscription. No catch.</span>
+            </div>
+        </div>
     </div>
 
-    <script src="js/auth.js"></script>
-    <script src="js/upload.js"></script>
+    <!-- FOOTER -->
+    <footer>
+        <div class="footer-logo">GST Scanner</div>
+        <div class="footer-mono">Built for Indian businesses · Powered by Llama-4 Vision</div>
+        <div class="footer-mono">© 2025 GST Scanner</div>
+    </footer>
+
+    <script>
+        // Custom cursor
+        const cursor = document.getElementById('cursor');
+        const ring = document.getElementById('cursor-ring');
+        let mx = 0, my = 0, rx = 0, ry = 0;
+
+        document.addEventListener('mousemove', e => {
+            mx = e.clientX; my = e.clientY;
+            cursor.style.left = mx + 'px';
+            cursor.style.top = my + 'px';
+        });
+
+        // Ring follows with lag
+        function animRing() {
+            rx += (mx - rx) * 0.12;
+            ry += (my - ry) * 0.12;
+            ring.style.left = rx + 'px';
+            ring.style.top = ry + 'px';
+            requestAnimationFrame(animRing);
+        }
+        animRing();
+
+        // Cursor expand on hover
+        document.querySelectorAll('a, button, .feat-card, .grade-pill, .check-row').forEach(el => {
+            el.addEventListener('mouseenter', () => {
+                cursor.style.width = '20px';
+                cursor.style.height = '20px';
+                ring.style.width = '52px';
+                ring.style.height = '52px';
+                ring.style.opacity = '0.8';
+            });
+            el.addEventListener('mouseleave', () => {
+                cursor.style.width = '12px';
+                cursor.style.height = '12px';
+                ring.style.width = '36px';
+                ring.style.height = '36px';
+                ring.style.opacity = '0.5';
+            });
+        });
+
+        // Scroll reveal
+        const reveals = document.querySelectorAll('.reveal');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach((entry, i) => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.12 });
+        reveals.forEach(el => observer.observe(el));
+
+        // Animated number counters
+        function animateCounter(el, end, suffix = '') {
+            let start = 0;
+            const duration = 1800;
+            const step = (timestamp) => {
+                if (!start) start = timestamp;
+                const progress = Math.min((timestamp - start) / duration, 1);
+                const eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.floor(eased * end) + suffix;
+                if (progress < 1) requestAnimationFrame(step);
+            };
+            requestAnimationFrame(step);
+        }
+
+        // Parallax on hero blobs
+        document.addEventListener('mousemove', e => {
+            const x = (e.clientX / window.innerWidth - 0.5) * 30;
+            const y = (e.clientY / window.innerHeight - 0.5) * 30;
+            const blobs = document.querySelectorAll('.hero-blob, .hero-blob2');
+            blobs[0] && (blobs[0].style.transform = `translate(${x * 0.5}px, ${y * 0.5}px)`);
+            blobs[1] && (blobs[1].style.transform = `translate(${-x * 0.3}px, ${-y * 0.3}px)`);
+        });
+
+        // Card tilt on mousemove
+        document.querySelectorAll('.main-card').forEach(card => {
+            card.addEventListener('mousemove', e => {
+                const rect = card.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / rect.width - 0.5;
+                const y = (e.clientY - rect.top) / rect.height - 0.5;
+                card.style.transform = `perspective(800px) rotateY(${x * 8}deg) rotateX(${-y * 8}deg) translateY(-6px)`;
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = '';
+                card.style.transition = 'transform 0.5s ease';
+            });
+        });
+
+        // Feature card hover ripple
+        document.querySelectorAll('.feat-card').forEach(card => {
+            card.addEventListener('click', e => {
+                const ripple = document.createElement('span');
+                const rect = card.getBoundingClientRect();
+                ripple.style.cssText = `
+      position:absolute;
+      left:${e.clientX - rect.left}px;
+      top:${e.clientY - rect.top}px;
+      width:0; height:0;
+      background: rgba(0,71,255,0.1);
+      border-radius:50%;
+      transform:translate(-50%,-50%);
+      animation: rippleOut 0.6s ease-out forwards;
+      pointer-events:none;
+    `;
+                card.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 700);
+            });
+        });
+
+        // Inject ripple keyframe
+        const style = document.createElement('style');
+        style.textContent = `
+@keyframes rippleOut {
+  to { width: 300px; height: 300px; opacity: 0; }
+}`;
+        document.head.appendChild(style);
+    </script>
 </body>
+
 </html>

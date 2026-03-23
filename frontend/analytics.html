@@ -16,8 +16,10 @@
         }
 
         .chart-card {
-            background: #0c0c0f;
+            background: var(--white);
             border: 1px solid var(--border-color);
+            border-radius: var(--rl);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.04);
             padding: 1.5rem;
             min-height: 400px;
             display: flex;
@@ -38,8 +40,10 @@
         }
 
         .deadline-card {
-            background: #0c0c0f;
+            background: var(--white);
             border: 1px solid var(--border-color);
+            border-radius: var(--rl);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.03);
             padding: 2rem;
             text-align: center;
         }
@@ -66,16 +70,23 @@
     </style>
 </head>
 <body>
+    <!-- CURSOR -->
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
     <nav>
-        <a href="index.html" class="nav-logo brand-font">GST SCANNER</a>
+        <a href="upload.html" class="logo" style="text-decoration:none; color:inherit;">
+            GST Scanner
+            <span class="logo-pill">AI POWERED</span>
+        </a>
         <ul class="nav-links">
-            <li><a href="index.html">Upload</a></li>
+            <li><a href="upload.html">Upload</a></li>
             <li><a href="history.html">History</a></li>
             <li><a href="analytics.html" class="active">Analytics</a></li>
         </ul>
         <div class="user-info">
-            <span class="display-user-name" style="font-weight: 600; text-transform: uppercase;">Operator</span>
-            <button class="logout-btn logout-trigger">LOGOUT</button>
+            <span class="display-user-name">Operator</span>
+            <button class="nav-btn logout-trigger" style="border:none; cursor:pointer;">Logout →</button>
         </div>
     </nav>
 
@@ -208,6 +219,7 @@
         </section>
     </div>
 
+    <script src="js/cursor.js"></script>
     <script src="js/analytics.js"></script>
 </body>
 </html>

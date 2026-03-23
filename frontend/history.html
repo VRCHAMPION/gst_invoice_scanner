@@ -9,33 +9,51 @@
     <style>
         .history-controls {
             display: flex;
-            justify-content: space-between;
+            gap: 1.5rem;
             align-items: center;
             margin-bottom: 2rem;
-            background: #0c0c0f;
-            padding: 1rem;
-            border: 1px solid var(--border-color);
+            background: var(--white);
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+            flex-wrap: wrap;
         }
 
         .search-container {
-            flex: 1;
-            max-width: 500px;
+            flex: 2;
+            min-width: 300px;
             position: relative;
         }
 
         .search-input {
             width: 100%;
             padding: 0.8rem 1rem 0.8rem 2.5rem !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 0 !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 4px !important;
+            font-family: var(--mono);
+            font-size: 0.9rem;
         }
 
         .search-icon {
             position: absolute;
-            left: 10px;
+            left: 12px;
             top: 50%;
             transform: translateY(-50%);
-            color: var(--text-muted);
+            color: var(--muted);
+        }
+
+        .filter-select {
+            width: 100%; 
+            padding: 0.8rem 1rem; 
+            border: 1px solid var(--border); 
+            border-radius: 4px; 
+            font-family: var(--mono); 
+            font-weight: 600; 
+            color: var(--ink); 
+            outline: none;
+            background: var(--bg2);
+            cursor: pointer;
         }
 
         .sort-icon {
@@ -43,71 +61,189 @@
             margin-left: 0.5rem;
             display: inline-block;
             transition: 0.3s;
+            color: var(--muted);
         }
 
         .sortable {
             cursor: pointer;
+            user-select: none;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.85rem;
         }
 
-        .sortable:hover {
-            color: var(--primary-accent);
+        .sortable:hover .sort-icon {
+            color: var(--blue);
+        }
+
+        table {
+            border-collapse: separate;
+            border-spacing: 0 8px;
+            width: 100%;
+        }
+
+        th {
+            padding: 1rem 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
         }
 
         tr[data-id] {
             cursor: pointer;
+            background: var(--white);
+            transition: transform 0.2s cubic-bezier(0.1, 0.9, 0.2, 1), box-shadow 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.01);
+        }
+
+        tr[data-id] td {
+            padding: 1.2rem 1.5rem;
+            border-top: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr[data-id] td:first-child {
+            border-left: 1px solid var(--border);
+            border-top-left-radius: 6px;
+            border-bottom-left-radius: 6px;
+        }
+
+        tr[data-id] td:last-child {
+            border-right: 1px solid var(--border);
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+        }
+
+        tr[data-id]:hover {
+            transform: scale(1.005) translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+            z-index: 10;
+            position: relative;
         }
 
         .empty-state {
             padding: 4rem;
             text-align: center;
-            color: var(--text-muted);
-            font-family: 'Syne', sans-serif;
+            color: var(--muted);
+            font-family: var(--display);
             text-transform: uppercase;
             font-weight: 800;
+            background: var(--white);
+            border-radius: 8px;
+            border: 2px dashed var(--border);
+        }
+
+        /* Status Pills */
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            font-family: var(--mono);
+            letter-spacing: 0.5px;
+        }
+        .pill-success { background: var(--green-lt); color: var(--green); }
+        .pill-failed { background: var(--red-lt); color: var(--red); }
+        .pill-processing { background: var(--amber-lt); color: var(--amber); }
+
+        .stat-mini-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+        
+        .stat-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid var(--blue);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
     </style>
 </head>
 <body>
+    <!-- CURSOR -->
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
     <nav>
-        <a href="index.html" class="nav-logo brand-font">GST SCANNER</a>
+        <a href="upload.html" class="logo" style="text-decoration:none; color:inherit;">
+            GST Scanner
+            <span class="logo-pill">AI POWERED</span>
+        </a>
         <ul class="nav-links">
-            <li><a href="index.html">Upload</a></li>
+            <li><a href="upload.html">Upload</a></li>
             <li><a href="history.html" class="active">History</a></li>
             <li><a href="analytics.html">Analytics</a></li>
         </ul>
         <div class="user-info">
-            <span class="display-user-name" style="font-weight: 600; text-transform: uppercase;">Operator</span>
-            <button class="logout-btn logout-trigger">LOGOUT</button>
+            <span class="display-user-name">Operator</span>
+            <button class="nav-btn logout-trigger" style="border:none; cursor:pointer;">Logout →</button>
         </div>
     </nav>
 
-    <div class="container animate-fade-up">
-        <header class="mb-2">
-            <h1 class="brand-font" style="font-size: 2.5rem;">TRANSACTION ARCHIVE</h1>
-            <p class="text-muted data-font">Accessing local data nodes for past GST scan records.</p>
+    <div style="padding: 120px 5% 60px; max-width: 1320px; margin: 0 auto; min-height: 100vh;">
+        <header class="mb-2 animate-fade-up">
+            <h1 class="brand-font" style="font-size: 3.5rem; line-height: 1;">TRANSACTION ARCHIVE</h1>
+            <p style="color: var(--muted); margin-bottom: 2rem;">Audit trail of all processed GST invoices across local data nodes.</p>
         </header>
 
-        <div class="history-controls">
-            <div class="search-container">
-                <span class="search-icon">🔍</span>
-                <input type="text" id="searchInput" class="search-input" placeholder="SEARCH BY SELLER, BUYER, OR INVOICE NUMBER...">
+        <!-- STAT ROW -->
+        <div class="stat-mini-grid animate-fade-up stagger-1">
+            <div class="stat-card" style="border-left-color: var(--blue);">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform:uppercase; margin-bottom: 8px;">Total Uploads</div>
+                <div id="statTotal" style="font-size: 2.5rem; font-weight: 800; font-family:var(--display); line-height: 1;">0</div>
             </div>
-            <div class="data-font" style="font-size: 0.8rem; color: var(--primary-accent);">
-                TOTAL RECORDS: <span id="recordCount">0</span>
+            <div class="stat-card" style="border-left-color: var(--green);">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform:uppercase; margin-bottom: 8px;">Success Rate</div>
+                <div id="statSuccess" style="font-size: 2.5rem; font-weight: 800; font-family:var(--display); color: var(--green); line-height: 1;">0%</div>
+            </div>
+            <div class="stat-card" style="border-left-color: var(--red);">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform:uppercase; margin-bottom: 8px;">Failed Scans</div>
+                <div id="statFailed" style="font-size: 2.5rem; font-weight: 800; font-family:var(--display); color: var(--red); line-height: 1;">0</div>
             </div>
         </div>
 
-        <div class="table-container">
+        <!-- HISTORY CONTROLS -->
+        <div class="history-controls animate-fade-up stagger-2">
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search GSTIN, Seller, or Invoice No...">
+            </div>
+            
+            <div style="flex: 1; min-width: 160px;">
+                <select id="statusFilter" class="filter-select">
+                    <option value="ALL">ALL STATUSES</option>
+                    <option value="SUCCESS">SUCCESS</option>
+                    <option value="FAILED">FAILED</option>
+                    <option value="PROCESSING">PROCESSING</option>
+                </select>
+            </div>
+            
+            <div style="flex: 1; min-width: 160px;">
+                <input type="date" id="dateFilter" class="filter-select">
+            </div>
+
+            <div style="font-size: 0.85rem; color: var(--blue); font-weight: 800; white-space: nowrap; font-family:var(--mono);">
+                MATCHING: <span id="recordCount">0</span>
+            </div>
+        </div>
+
+        <div class="table-container animate-fade-up stagger-3">
             <table id="historyTable">
                 <thead>
                     <tr>
-                        <th class="sortable" data-sort="id">ID <span class="sort-icon">▼</span></th>
-                        <th class="sortable" data-sort="seller_name">SELLER <span class="sort-icon">▼</span></th>
-                        <th class="sortable" data-sort="buyer_name">BUYER <span class="sort-icon">▼</span></th>
-                        <th class="sortable" data-sort="invoice_number">INVOICE NO <span class="sort-icon">▼</span></th>
-                        <th class="sortable" data-sort="invoice_date">DATE <span class="sort-icon">▼</span></th>
-                        <th class="sortable" data-sort="total">TOTAL <span class="sort-icon">▼</span></th>
-                        <th class="sortable" data-sort="created_at">SCANNED AT <span class="sort-icon">▼</span></th>
+                        <th class="brand-font sortable" data-sort="id">ID <span class="sort-icon">▼</span></th>
+                        <th class="brand-font sortable" data-sort="seller_name">SELLER <span class="sort-icon">▼</span></th>
+                        <th class="brand-font sortable" data-sort="total">TOTAL <span class="sort-icon">▼</span></th>
+                        <th class="brand-font sortable" data-sort="status">STATUS <span class="sort-icon">▼</span></th>
+                        <th class="brand-font sortable" data-sort="invoice_date">DATE <span class="sort-icon">▼</span></th>
+                        <th class="brand-font sortable" data-sort="created_at">SCANNED AT <span class="sort-icon">▼</span></th>
                     </tr>
                 </thead>
                 <tbody id="historyTableBody">
@@ -116,11 +252,12 @@
             </table>
         </div>
         
-        <div id="emptyState" class="empty-state" style="display: none;">
-            NO INVOICES SCANNED YET — UPLOAD YOUR FIRST INVOICE
+        <div id="emptyState" class="empty-state animate-fade-up stagger-3" style="display: none;">
+            NO INVOICES FOUND IN ARCHIVE
         </div>
     </div>
 
+    <script src="js/cursor.js"></script>
     <script src="js/history.js"></script>
 </body>
 </html>
