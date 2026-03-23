@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const nextBtn = document.getElementById('nextBtn');
 
         batchNav.style.display = 'flex';
-        
+
         const updateBatchUI = () => {
             batchIndicator.textContent = `${currentIndex + 1} / ${results.length}`;
             prevBtn.disabled = currentIndex === 0;
@@ -82,10 +82,10 @@ function populateData(data) {
 
     // Health Score
     const health = data.health_score || { score: 0, grade: 'F', status: 'Incomplete', issues: [], warnings: [], summary: 'No health data available' };
-    
+
     // Animate score
     animateCounter(document.getElementById('scoreValue'), health.score);
-    
+
     document.getElementById('gradeBadge').textContent = health.grade;
     document.getElementById('healthStatus').textContent = `HEALTH: ${health.status.toUpperCase()}`;
     document.getElementById('scoreSummary').textContent = health.summary;
@@ -93,7 +93,7 @@ function populateData(data) {
     // Issues & Warnings
     const issuesContainer = document.getElementById('issuesContainer');
     issuesContainer.innerHTML = '';
-    
+
     health.issues.forEach(issue => {
         const div = document.createElement('div');
         div.className = 'issue-card';
@@ -139,9 +139,9 @@ function setupActions(data) {
                 headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify(data)
             });
-            
+
             if (!response.ok) throw new Error('EXPORT FAILED');
-            
+
             const blob = await response.blob();
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
