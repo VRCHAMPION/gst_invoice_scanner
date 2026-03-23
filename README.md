@@ -1,51 +1,54 @@
-# 🚀 GST Invoice Scanner
+# GST Invoice Scanner
 
-### AI-Powered GST Data Extraction from Any Invoice Format
-
-> Turn messy, unstructured invoices into clean, structured GST data — instantly.
+A system for extracting structured GST data from unstructured invoices using OCR and large language models.
 
 ---
 
-## 🔥 Overview
+## Overview
 
-GST Invoice Scanner is an **AI-powered document intelligence platform** that extracts structured GST data from **non-standard, real-world invoices** (PDF, JPG, PNG).
+GST Invoice Scanner is designed to process real-world invoices that do not follow fixed templates. Instead of relying on coordinate-based extraction, it uses a two-step pipeline:
 
-Instead of relying on fragile templates, it uses a **hybrid AI pipeline (OCR + LLM)** to understand invoices the way humans do — making it robust across different formats and layouts.
+1. Optical Character Recognition (OCR) to extract raw text
+2. A language model to interpret and structure that text
 
----
-
-## ⚡ Why This Matters
-
-Businesses deal with hundreds of invoice formats. Traditional systems fail because they depend on fixed layouts.
-
-This system solves that by:
-
-* ✅ Understanding *any* invoice structure
-* ✅ Extracting GST data automatically
-* ✅ Eliminating manual data entry
+This approach allows the system to handle varying invoice formats and still produce consistent, structured output.
 
 ---
 
-## 🧠 How It Works
+## Problem
 
-1. **Upload Invoice**
-   User uploads PDF/image via UI
+Businesses often receive invoices in multiple formats, making automated data extraction difficult. Traditional systems depend on fixed layouts, which break when formats change.
 
-2. **Async Processing**
-   File is sent to a background worker (non-blocking)
-
-3. **OCR Extraction**
-   Tesseract converts image → raw text
-
-4. **AI Structuring**
-   LLaMA-3 parses raw text → structured JSON
-
-5. **Result Delivery**
-   Clean GST data is returned and displayed
+This project addresses that by focusing on semantic understanding rather than positional rules.
 
 ---
 
-## 🧩 Example Output
+## Approach
+
+The system follows an asynchronous processing model:
+
+* The user uploads an invoice (PDF, JPG, PNG)
+* The backend assigns a job ID and processes the file in the background
+* OCR extracts raw text from the document
+* A language model converts the text into structured JSON
+* The frontend polls for results and displays the extracted data
+
+---
+
+## Features
+
+* Works with non-standard invoice formats
+* Asynchronous processing to avoid blocking requests
+* OCR-based text extraction using Tesseract
+* Semantic parsing using LLaMA-3 via Groq API
+* JWT-based authentication
+* Rate limiting for API protection
+* In-memory file handling (no disk writes)
+* Excel export for processed data
+
+---
+
+## Example Output
 
 ```json
 {
@@ -65,47 +68,30 @@ This system solves that by:
 
 ---
 
-## 🚀 Key Features
+## Tech Stack
 
-### ⚡ Intelligent AI Extraction
-
-* Works on **unstructured invoices**
-* No templates required
-* Handles real-world variability
-
-### 🔄 Asynchronous Processing
-
-* Non-blocking architecture
-* Handles multiple uploads efficiently
-
-### 🔐 Secure & Scalable Backend
-
-* JWT-based authentication
-* Rate limiting (SlowAPI)
-* ORM-backed database
-
-### 💾 Zero-Disk Processing
-
-* Files processed directly in memory
-* Faster + more secure
-
-### 📊 Data Export
-
-* Export structured GST data to Excel
+* Backend: FastAPI
+* OCR: Tesseract (pytesseract)
+* AI Processing: LLaMA-3 (Groq API)
+* PDF Handling: PyMuPDF
+* Database: SQLite with SQLAlchemy
+* Authentication: JWT (python-jose), bcrypt
+* Frontend: HTML, CSS, JavaScript
 
 ---
 
-## 🏗️ Architecture
+## Architecture Summary
 
-* **Frontend** → Vanilla JS (Upload + Dashboard)
-* **Backend** → FastAPI (API + Workers)
-* **OCR Layer** → Tesseract
-* **AI Layer** → LLaMA-3 (via Groq API)
-* **Database** → SQLite + SQLAlchemy
+* Client uploads invoice
+* Backend returns a job ID immediately
+* Background worker processes the file
+* OCR extracts text
+* LLM structures the data
+* Result is stored and returned to the client
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 gst_invoice_scanner/
@@ -122,36 +108,33 @@ gst_invoice_scanner/
 
 ---
 
-## ⚙️ Getting Started
+## Setup
 
-### 1. Clone Repository
+### Prerequisites
+
+* Python 3.10+
+* Tesseract OCR installed on your system
+
+### Installation
 
 ```
 git clone https://github.com/VRCHAMPION/gst_invoice_scanner.git
 cd gst_invoice_scanner
-```
-
-### 2. Setup Environment
-
-```
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```
 pip install -r requirements.txt
 pip install pytesseract PyMuPDF Pillow
 ```
 
-### 4. Configure Environment Variables
+---
 
-Create `.env` inside `/backend`:
+## Configuration
+
+Create a `.env` file inside the `backend/` directory:
 
 ```
 GROQ_API_KEY=your_api_key
-SECRET_KEY=your_secret
+SECRET_KEY=your_secret_key
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 DATABASE_URL=sqlite:///./gst_scanner.db
@@ -159,81 +142,47 @@ DATABASE_URL=sqlite:///./gst_scanner.db
 
 ---
 
-## ▶️ Run the Project
+## Running the Application
 
-### Start Backend
+Start the backend:
 
 ```
 cd backend
 python run.py
 ```
 
-API Docs:
-👉 http://127.0.0.1:8000/docs
+API documentation will be available at:
+http://127.0.0.1:8000/docs
 
-### Start Frontend
+Start the frontend:
 
 ```
 cd frontend
 python -m http.server 5500
 ```
 
-👉 http://localhost:5500/login.html
+Open in browser:
+http://localhost:5500/login.html
 
 ---
 
-## 📊 Performance (Expected)
+## Limitations
 
-* ⚡ ~2–3 seconds per invoice
-* 🎯 High accuracy on unstructured formats
-* 📄 Supports PDF, JPG, PNG
-
----
-
-## 💡 Use Cases
-
-* GST filing automation
-* Accounting workflows
-* Invoice digitization
-* SME financial operations
+* Accuracy depends on OCR quality
+* Performance varies with invoice complexity
+* Requires proper Tesseract installation
 
 ---
 
-## 🚀 Future Improvements
+## Future Work
 
-* 🔍 Fraud / duplicate invoice detection
-* 📊 Monthly GST analytics dashboard
-* 📱 WhatsApp export integration
-* ☁️ Cloud deployment
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome!
-
-1. Fork the repo
-2. Create a branch
-3. Submit a PR
+* Improve extraction accuracy with fine-tuned models
+* Add batch processing support
+* Introduce analytics and reporting features
+* Explore fraud or anomaly detection
 
 ---
 
-## 📜 License
+## License
 
 MIT License
-
----
-
-## 🙌 Acknowledgments
-
-* Groq (LLaMA-3 inference)
-* Tesseract OCR
-* PyMuPDF
-
----
-
-## ⭐ Final Note
-
-This project demonstrates how **AI + async systems** can transform messy real-world documents into structured, actionable data.
-
-If you found this useful, consider ⭐ starring the repo!
