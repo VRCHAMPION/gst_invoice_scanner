@@ -108,13 +108,21 @@
             </div>
 
             <form id="registerForm">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 800; color: var(--blue);">I WANT TO:</label>
+                    <div style="display: flex; gap: 0.5rem; background: var(--surface-light); padding: 0.3rem; border-radius: var(--radius-sm);">
+                        <button type="button" class="role-btn active" data-role="owner" style="flex: 1; padding: 0.8rem; border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 800; font-family: var(--data); background: var(--blue); color: white;">START A WORKSPACE</button>
+                        <button type="button" class="role-btn" data-role="employee" style="flex: 1; padding: 0.8rem; border: none; border-radius: var(--radius-sm); cursor: pointer; font-weight: 800; font-family: var(--data); background: transparent; color: var(--muted);">JOIN A WORKSPACE</button>
+                    </div>
+                    <input type="hidden" id="role" value="owner">
+                </div>
                 <div class="form-group">
                     <label>Full Name</label>
                     <input type="text" id="name" required placeholder="e.g. Rajesh Kumar">
                 </div>
                 <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="username" required placeholder="Choose operator ID">
+                    <label>Email Address</label>
+                    <input type="email" id="email" required placeholder="name@company.com">
                 </div>
                 <div class="form-group">
                     <label>Password</label>
@@ -141,11 +149,29 @@
     <script src="js/cursor.js"></script>
     <script src="js/auth.js"></script>
     <script>
+        // Role Selection Logic
+        const roleBtns = document.querySelectorAll('.role-btn');
+        const roleInput = document.getElementById('role');
+        roleBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                roleBtns.forEach(b => {
+                    b.classList.remove('active');
+                    b.style.background = 'transparent';
+                    b.style.color = 'var(--muted)';
+                });
+                btn.classList.add('active');
+                btn.style.background = 'var(--blue)';
+                btn.style.color = 'white';
+                roleInput.value = btn.dataset.role;
+            });
+        });
+
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const name = document.getElementById('name').value;
-            const user = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
+            const role = roleInput.value;
             const confirmPass = document.getElementById('confirmPassword').value;
             const error = document.getElementById('errorMessage');
             const submitBtn = e.target.querySelector('button[type="submit"]');
@@ -159,7 +185,7 @@
             submitBtn.textContent = 'REGISTERING...';
             submitBtn.disabled = true;
 
-            const result = await register(name, user, pass);
+            const result = await register(name, email, pass, role);
             if (result.success) {
                 window.location.href = 'upload.html';
             } else {

@@ -127,8 +127,8 @@
 
             <form id="loginForm">
                 <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" id="username" required autocomplete="username">
+                    <label>Email Address</label>
+                    <input type="email" id="email" required autocomplete="email">
                 </div>
                 <div class="form-group">
                     <label>Password</label>
@@ -170,13 +170,13 @@
 
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const user = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
             const remember = document.getElementById('rememberMe').checked;
             const submitBtn = e.target.querySelector('button[type="submit"]');
             
             if (remember) {
-                localStorage.setItem('rememberedUser', user);
+                localStorage.setItem('rememberedUser', email);
             } else {
                 localStorage.removeItem('rememberedUser');
             }
@@ -184,7 +184,7 @@
             submitBtn.textContent = 'AUTHENTICATING...';
             submitBtn.disabled = true;
 
-            const result = await login(user, pass);
+            const result = await login(email, pass);
             if (result.success) {
                 window.location.href = 'upload.html';
             } else {
@@ -200,7 +200,7 @@
         window.onload = () => {
             const saved = localStorage.getItem('rememberedUser');
             if (saved) {
-                document.getElementById('username').value = saved;
+                document.getElementById('email').value = saved;
                 document.getElementById('rememberMe').checked = true;
             }
         };

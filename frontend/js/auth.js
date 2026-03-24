@@ -12,13 +12,17 @@ function getAuthHeaders() {
 
 function checkAuth() {
     const token = getToken();
+    const user = getCurrentUser();
     const path = window.location.pathname;
     const isAuthPage = path.includes('login.html') || path.includes('register.html');
+    const isOnboarding = path.includes('onboarding.html');
 
     if (!token && !isAuthPage) {
         window.location.href = 'login.html';
     } else if (token && isAuthPage) {
         window.location.href = 'index.html';
+    } else if (token && !isOnboarding && user && !user.company_id) {
+        window.location.href = 'onboarding.html';
     }
 }
 
@@ -26,12 +30,12 @@ function checkAuth() {
 checkAuth();
 
 // ── Login (API-based) ────────────────────────────────────────────────
-async function login(username, password) {
+async function login(email, password) {
     try {
         const response = await fetch(`${API_BASE}/api/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ email, password })
         });
 
         if (!response.ok) {
@@ -49,12 +53,12 @@ async function login(username, password) {
 }
 
 // ── Register (API-based) ─────────────────────────────────────────────
-async function register(name, username, password) {
+async function register(name, email, password, role) {
     try {
         const response = await fetch(`${API_BASE}/api/register`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, username, password })
+            body: JSON.stringify({ name, email, password, role })
         });
 
         if (!response.ok) {
@@ -84,9 +88,18 @@ function getCurrentUser() {
 // ── Global UI Updates ────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
     const user = getCurrentUser();
+    const company = JSON.parse(sessionStorage.getItem('currentCompany'));
+    
     if (user) {
         const userNameDisplays = document.querySelectorAll('.display-user-name');
-        userNameDisplays.forEach(el => el.textContent = user.name);
+        userNameDisplays.forEach(el => {
+            el.textContent = `${user.name} (${user.role.toUpperCase()})`;
+        });
+
+        if (company) {
+             const companyDisplays = document.querySelectorAll('.display-company-name');
+             companyDisplays.forEach(el => el.textContent = company.name.toUpperCase());
+        }
     }
 
     const logoutBtns = document.querySelectorAll('.logout-trigger');

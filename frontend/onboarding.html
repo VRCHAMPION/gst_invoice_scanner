@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Onboarding | GST Invoice Scanner</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/auth.js"></script>
+    <style>
+        .onboarding-card {
+            max-width: 600px;
+            margin: 5rem auto;
+            padding: 3rem;
+            background: white;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-xl);
+        }
+        .step-indicator {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .step-dot {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--surface-light);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            color: var(--muted);
+        }
+        .step-dot.active {
+            background: var(--blue);
+            color: white;
+        }
+        .onboarding-view {
+            display: none;
+        }
+        .onboarding-view.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
+    <div class="onboarding-card animate-fade-up">
+        <div class="step-indicator">
+            <div class="step-dot active">1</div>
+            <div style="flex: 1; border-bottom: 2px dashed var(--border-color); align-self: center;"></div>
+            <div class="step-dot">2</div>
+        </div>
+
+        <!-- OWNER VIEW -->
+        <div id="ownerView" class="onboarding-view">
+            <h2 class="brand-font">CREATE YOUR WORKSPACE</h2>
+            <p class="mb-3">Setup your business entity to begin scanning and inviting your team.</p>
+            
+            <form id="createCompanyForm">
+                <div class="form-group">
+                    <label>Company Display Name</label>
+                    <input type="text" id="compName" required placeholder="e.g. Acme Corp India">
+                </div>
+                <div class="form-group">
+                    <label>GSTIN Number</label>
+                    <input type="text" id="compGstin" required placeholder="15-digit GSTIN">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">
+                    INITIALIZE ENTERPRISE
+                </button>
+            </form>
+        </div>
+
+        <!-- EMPLOYEE VIEW -->
+        <div id="employeeView" class="onboarding-view">
+            <h2 class="brand-font">JOIN A WORKSPACE</h2>
+            <p class="mb-3">Enter the **exact name** of the company you belong to.</p>
+            
+            <form id="joinCompanyForm">
+                <div class="form-group">
+                    <label>Company Name</label>
+                    <input type="text" id="joinCompName" required placeholder="e.g. Acme Corp India">
+                    <p style="font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem;">ℹ️ Case-sensitive. Ask your owner for the exact name.</p>
+                </div>
+                <button type="submit" class="btn btn-secondary" style="width: 100%; margin-top: 1.5rem;">
+                    LINK MY ACCOUNT
+                </button>
+            </form>
+        </div>
+
+        <div id="errorBox" class="mt-2 data-font" style="color: var(--red); display: none;"></div>
+    </div>
+
+    <script src="js/cursor.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = getCurrentUser();
+            if (!user) return;
+
+            if (user.role === 'owner') {
+                document.getElementById('ownerView').classList.add('active');
+            } else {
+                document.getElementById('employeeView').classList.add('active');
+            }
+        });
+
+        // CREATE
+        document.getElementById('createCompanyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('compName').value;
+            const gstin = document.getElementById('compGstin').value;
+            const btn = e.target.querySelector('button');
+            
+            btn.textContent = 'PROVISIONING...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/companies`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        ...getAuthHeaders()
+                    },
+                    body: JSON.stringify({ name, gstin })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Creation failed');
+                }
+                
+                const company = await res.json();
+                sessionStorage.setItem('currentCompany', JSON.stringify(company));
+                
+                // Refresh user in session since company_id changed
+                const user = getCurrentUser();
+                user.company_id = company.id;
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+
+                window.location.href = 'upload.html';
+            } catch (err) {
+                const box = document.getElementById('errorBox');
+                box.textContent = err.message.toUpperCase();
+                box.style.display = 'block';
+                btn.textContent = 'INITIALIZE ENTERPRISE';
+                btn.disabled = false;
+            }
+        });
+
+        // JOIN
+        document.getElementById('joinCompanyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const companyName = document.getElementById('joinCompName').value;
+            const btn = e.target.querySelector('button');
+            
+            btn.textContent = 'LINKING...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_BASE}/api/companies/join`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        ...getAuthHeaders()
+                    },
+                    body: JSON.stringify({ company_name: companyName })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || 'Company not found');
+                }
+                
+                const data = await res.json();
+                
+                // Re-fetch company details to cache properly
+                const compRes = await fetch(`${API_BASE}/api/companies`, {
+                    headers: getAuthHeaders()
+                });
+                const comps = await compRes.json();
+                if (comps.length > 0) {
+                    sessionStorage.setItem('currentCompany', JSON.stringify(comps[0]));
+                    // Update user in session
+                    const user = getCurrentUser();
+                    user.company_id = comps[0].id;
+                    sessionStorage.setItem('currentUser', JSON.stringify(user));
+                }
+
+                window.location.href = 'upload.html';
+            } catch (err) {
+                const box = document.getElementById('errorBox');
+                box.textContent = err.message.toUpperCase();
+                box.style.display = 'block';
+                btn.textContent = 'LINK MY ACCOUNT';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

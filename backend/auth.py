@@ -6,6 +6,10 @@ from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from database import get_db
+from models import User
+from typing import List, Optional
 
 load_dotenv()
 
@@ -28,6 +32,9 @@ def create_access_token(data: dict) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
     to_encode.update({"exp": expire})
+    # Ensure IDs are strings for JSON serialization
+    if "sub" in to_encode:
+        to_encode["sub"] = str(to_encode["sub"])
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 def decode_access_token(token: str) -> dict:
@@ -43,23 +50,47 @@ def decode_access_token(token: str) -> dict:
 # ── Route Protection Dependency ───────────────────────────────────────
 security = HTTPBearer()
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db)
+):
     token = credentials.credentials
     payload = decode_access_token(token)
-    username = payload.get("sub")
-    if username is None:
+    user_email = payload.get("email") # Use email as sub or separate claim
+    if user_email is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload"
         )
-    return username
+    
+    user = db.query(User).filter(User.email == user_email).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found"
+        )
+    return user
+
+# ── RBAC Dependency ───────────────────────────────────────────────────
+class RoleChecker:
+    def __init__(self, allowed_roles: List[str]):
+        self.allowed_roles = allowed_roles
+
+    def __call__(self, user: User = Depends(get_current_user)):
+        if user.role not in self.allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Operation restricted to roles: {', '.join(self.allowed_roles)}"
+            )
+        return user
 
 # ── Request Models ────────────────────────────────────────────────────
 class LoginRequest(BaseModel):
-    username: str
+    email: str
     password: str
 
 class RegisterRequest(BaseModel):
     name: str
-    username: str
+    email: str
     password: str
+    role: Optional[str] = "owner"

@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function fetchInvoices() {
     try {
-        const response = await fetch('http://127.0.0.1:8000/invoices', {
+        const response = await fetch('http://127.0.0.1:8000/api/invoices', {
             headers: getAuthHeaders()
         });
         if (!response.ok) throw new Error('FAILED TO FETCH INVOICES');

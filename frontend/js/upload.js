@@ -116,8 +116,18 @@ document.addEventListener('DOMContentLoaded', () => {
         processStatus.textContent = 'INITIATING SECURE UPLOAD...';
 
         try {
+            const user = JSON.parse(sessionStorage.getItem('currentUser'));
+            const companyId = user ? user.company_id : null;
+            
+            if (!companyId) {
+                alert("YOU MUST BE ASSOCIATED WITH A COMPANY TO UPLOAD.");
+                overlay.style.display = 'none';
+                return;
+            }
+
             const formData = new FormData();
             formData.append('file', selectedFile);
+            formData.append('company_id', companyId);
 
             const response = await fetch('http://127.0.0.1:8000/scan', {
                 method: 'POST',
@@ -190,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!container) return;
         
         try {
-            const response = await fetch('http://127.0.0.1:8000/invoices', {
+            const response = await fetch('http://127.0.0.1:8000/api/invoices', {
                 headers: getAuthHeaders()
             });
             if (!response.ok) throw new Error('Fetch failed');

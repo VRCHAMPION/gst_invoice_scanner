@@ -5,12 +5,57 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     await loadAnalytics();
     await loadItcSummary();
+    await loadTeamSize();
     calculateDeadlines();
 });
 
+async function loadTeamSize() {
+    const user = getCurrentUser();
+    if (user && user.role === 'owner') {
+        const company = JSON.parse(sessionStorage.getItem('currentCompany'));
+        if (company && company.employee_count !== undefined) {
+             animateCounter(document.getElementById('teamSize'), company.employee_count);
+        }
+        
+        // Show management area
+        document.getElementById('ownerOnlyTeam').style.display = 'block';
+        loadEmployeeList();
+    } else {
+        const teamCard = document.getElementById('teamSize').closest('.stat-card');
+        if (teamCard) teamCard.style.display = 'none';
+        
+        const mgtArea = document.getElementById('ownerOnlyTeam');
+        if (mgtArea) mgtArea.style.display = 'none';
+    }
+}
+
+async function loadEmployeeList() {
+    try {
+        const res = await fetch('http://127.0.0.1:8000/api/users', { headers: getAuthHeaders() });
+        const users = await res.json();
+        const container = document.getElementById('employeeList');
+        container.innerHTML = '';
+        
+        users.forEach(u => {
+            const card = document.createElement('div');
+            card.style.cssText = 'padding: 1rem; background: var(--surface-light); border-radius: var(--radius-sm); border: 1px solid var(--border-color);';
+            card.innerHTML = `
+                <div style="font-weight: 800; font-size: 0.9rem;">${u.name.toUpperCase()}</div>
+                <div style="font-size: 0.8rem; color: var(--muted);">${u.email}</div>
+                <div style="margin-top: 0.5rem;"><span class="status-pill ${u.role==='owner'?'pill-success':'pill-processing'}">${u.role.toUpperCase()}</span></div>
+            `;
+            container.appendChild(card);
+        });
+    } catch (e) { console.error(e); }
+}
+
+window.openInvitePrompt = () => {
+    alert("TO INVITE A TEAM MEMBER:\nAsk them to Register as 'EMPLOYEE' and enter your company name: " + JSON.parse(sessionStorage.getItem('currentCompany')).name);
+};
+
 async function loadAnalytics() {
     try {
-        const response = await fetch('http://127.0.0.1:8000/analytics', {
+        const response = await fetch('http://127.0.0.1:8000/api/analytics', {
             headers: getAuthHeaders()
         });
         if (!response.ok) throw new Error('FAILED TO FETCH ANALYTICS');
@@ -32,7 +77,7 @@ async function loadAnalytics() {
 
 async function loadItcSummary() {
     try {
-        const response = await fetch('http://127.0.0.1:8000/itc-summary', {
+        const response = await fetch('http://127.0.0.1:8000/api/itc-summary', {
             headers: getAuthHeaders()
         });
         if (!response.ok) throw new Error('FAILED TO FETCH ITC');
