@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Onboarding | GST Invoice Scanner</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <style>
         .onboarding-card {
@@ -118,7 +119,7 @@
             btn.disabled = true;
 
             try {
-                const res = await fetch(`${API_BASE}/api/companies`, {
+                const res = await fetch(getApiUrl('/api/companies'), {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -160,7 +161,7 @@
             btn.disabled = true;
 
             try {
-                const res = await fetch(`${API_BASE}/api/companies/join`, {
+                const res = await fetch(getApiUrl('/api/companies/join'), {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -177,7 +178,7 @@
                 const data = await res.json();
                 
                 // Re-fetch company details to cache properly
-                const compRes = await fetch(`${API_BASE}/api/companies`, {
+                const compRes = await fetch(getApiUrl('/api/companies'), {
                     headers: getAuthHeaders()
                 });
                 const comps = await compRes.json();

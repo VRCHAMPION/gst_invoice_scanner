@@ -1,0 +1,19 @@
+# Netlify configuration for GST Invoice Scanner Frontend
+[build]
+  # The directory to change to before starting a build.
+  # This is where we will look for package.json/.nvmrc/etc.
+  base = "frontend"
+
+  # Directory that contains the deploy-ready objects (out folder, public, etc.)
+  # Relative to the base directory.
+  publish = "."
+
+  # The command that Netlify will run to "build" your site.
+  # Since this is a static HTML/JS site, no build command is needed.
+  command = ""
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  condition = {role = ["admin"]} # Example, can be removed if not using Netlify Identity

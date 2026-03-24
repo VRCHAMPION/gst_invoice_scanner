@@ -1,4 +1,4 @@
-const API_BASE = 'http://127.0.0.1:8000';
+// API_BASE is now handled by getApiUrl() helper in config.js
 
 // ── Auth Token Management ────────────────────────────────────────────
 function getToken() {
@@ -32,7 +32,7 @@ checkAuth();
 // ── Login (API-based) ────────────────────────────────────────────────
 async function login(email, password) {
     try {
-        const response = await fetch(`${API_BASE}/api/login`, {
+        const response = await fetch(getApiUrl('/api/login'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -55,7 +55,7 @@ async function login(email, password) {
 // ── Register (API-based) ─────────────────────────────────────────────
 async function register(name, email, password, role) {
     try {
-        const response = await fetch(`${API_BASE}/api/register`, {
+        const response = await fetch(getApiUrl('/api/register'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, email, password, role })
