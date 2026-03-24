@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+gunicorn
+sqlalchemy
+psycopg2-binary
+pydantic
+pydantic-settings
+python-dotenv
+python-multipart
+slowapi
+openpyxl
+python-jose[cryptography]
+passlib[bcrypt]
+groq
+pytesseract
+pymupdf
+pillow

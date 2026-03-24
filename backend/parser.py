@@ -16,7 +16,7 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 # NOTE TO WINDOWS USERS:
 # You must install Tesseract-OCR and uncomment the line below if it's not in your PATH.
-# pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
 
 def extract_raw_text(file_bytes: bytes, content_type: str) -> str:
     """Uses real OCR to extract raw messy text from PDFs or Images."""
