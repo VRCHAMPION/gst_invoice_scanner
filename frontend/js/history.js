@@ -18,13 +18,9 @@ async function fetchInvoices() {
         
         let data = await response.json();
         
-        // Simulate statuses for UI demonstration
+        // Trust backend payload entirely. Database determines FAILED/SUCCESS natively now.
         allInvoices = data.map(inv => {
-            // Deterministic fake status based on ID
-            let st = 'SUCCESS';
-            if (inv.id % 7 === 0) st = 'FAILED';
-            else if (inv.id % 5 === 0) st = 'PROCESSING';
-            return { ...inv, status: st };
+            return { ...inv, status: inv.status || 'PROCESSING' };
         });
         
         filteredInvoices = [...allInvoices];

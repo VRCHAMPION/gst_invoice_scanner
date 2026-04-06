@@ -7,6 +7,7 @@ function getAuthHeaders() {
     return {};
 }
 
+function checkAuth() {
     const user = getCurrentUser();
     const path = window.location.pathname;
     const isAuthPage = path.includes('login.html') || path.includes('register.html') || path === '/' || path.endsWith('/gst_invoice_scanner/frontend/');
@@ -19,6 +20,7 @@ function getAuthHeaders() {
     } else if (user && !isOnboarding && !user.company_id) {
         window.location.href = 'onboarding.html';
     }
+}
 
 // RUN IMMEDIATELY TO PREVENT BLINK
 checkAuth();
