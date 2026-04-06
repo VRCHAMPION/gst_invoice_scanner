@@ -78,7 +78,7 @@
     <nav>
         <a href="upload.html" class="logo" style="text-decoration:none; color:inherit;">
             GST Scanner
-            <span class="logo-pill">AI POWERED</span>
+            <span class="logo-pill">Beta</span>
         </a>
         <ul class="nav-links">
             <li><a href="upload.html">Upload</a></li>
@@ -86,42 +86,42 @@
             <li><a href="analytics.html" class="active">Analytics</a></li>
         </ul>
         <div class="user-info">
-            <span class="display-company-name" style="color: var(--blue); font-weight: 800; margin-right: 1rem; border-right: 1px solid var(--border-color); padding-right: 1rem;">ORG</span>
-            <span class="display-user-name">Operator</span>
-            <button class="nav-btn logout-trigger" style="border:none; cursor:pointer;">Logout →</button>
+            <span class="display-company-name" style="color: var(--blue); font-weight: 800; margin-right: 1rem; border-right: 1px solid var(--border-color); padding-right: 1rem;">Workspace</span>
+            <span class="display-user-name">User</span>
+            <button class="nav-btn logout-trigger" style="border:none; cursor:pointer;">Sign out</button>
         </div>
     </nav>
 
     <div class="container animate-fade-up">
         <header class="mb-2">
-            <h1 class="brand-font" style="font-size: 2.5rem;">BUSINESS ANALYTICS</h1>
-            <p class="text-muted data-font">Real-time spending intelligence and ITC entitlement tracking.</p>
+            <h1 class="brand-font" style="font-size: 2.5rem;">Business analytics</h1>
+            <p class="text-muted data-font">Monitor your spending and track your ITC eligibility.</p>
         </header>
 
         <!-- Summary Cards -->
         <div class="stat-grid mb-2">
             <div class="stat-card animate-fade-up stagger-1">
-                <div class="stat-label">Total Volume</div>
+                <div class="stat-label">Total invoices</div>
                 <div class="stat-value" id="totalInvoices">0</div>
             </div>
             <div class="stat-card animate-fade-up stagger-2" style="border-left-color: var(--data-accent);">
-                <div class="stat-label">Gross Expenditure</div>
+                <div class="stat-label">Total spent</div>
                 <div class="stat-value" id="totalSpend">₹0</div>
             </div>
             <div class="stat-card animate-fade-up stagger-3" style="border-left-color: var(--danger);">
-                <div class="stat-label">Tax Paid</div>
+                <div class="stat-label">Tax paid</div>
                 <div class="stat-value" id="totalTax">₹0</div>
             </div>
             <div class="stat-card animate-fade-up stagger-4" style="border-left-color: var(--primary-accent);">
-                <div class="stat-label">ITC Entitled</div>
+                <div class="stat-label">ITC eligible</div>
                 <div class="stat-value" id="totalItc">₹0</div>
             </div>
         </div>
 
         <section class="team-management" id="ownerOnlyTeam" style="display: none; margin-top: 3rem; background: white; padding: 2.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                <h3 class="brand-font">ORGANIZATION MANAGEMENT</h3>
-                <button class="btn btn-secondary" onclick="openInvitePrompt()">+ INVITE OPERATOR</button>
+                <h3 class="brand-font">Team management</h3>
+                <button class="btn btn-secondary" onclick="openInvitePrompt()">+ Invite team member</button>
             </div>
             <div id="employeeList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
                 <!-- Populated via JS -->
@@ -133,7 +133,7 @@
             <div class="chart-card animate-fade-up stagger-2">
                 <div class="chart-header">
                     <h3 class="brand-font" style="font-size: 0.9rem;">Monthly Spend Trend</h3>
-                    <span class="text-muted data-font" style="font-size: 0.7rem;">UNIT: INR</span>
+                    <span class="text-muted data-font" style="font-size: 0.7rem;">in INR</span>
                 </div>
                 <div style="flex: 1; position: relative;">
                     <canvas id="spendChart"></canvas>
@@ -144,7 +144,7 @@
             <div class="chart-card animate-fade-up stagger-3">
                 <div class="chart-header">
                     <h3 class="brand-font" style="font-size: 0.9rem;">Top Suppliers Concentration</h3>
-                    <span class="text-muted data-font" style="font-size: 0.7rem;">BY AMOUNT</span>
+                    <span class="text-muted data-font" style="font-size: 0.7rem;">by amount</span>
                 </div>
                 <div style="flex: 1; position: relative; padding: 1rem;">
                     <canvas id="suppliersChart"></canvas>
@@ -155,7 +155,7 @@
             <div class="chart-card animate-fade-up stagger-4" style="grid-column: span 2;">
                 <div class="chart-header">
                     <h3 class="brand-font" style="font-size: 0.9rem;">Invoice Volume Activity</h3>
-                    <span class="text-muted data-font" style="font-size: 0.7rem;">COUNT PER PERIOD</span>
+                    <span class="text-muted data-font" style="font-size: 0.7rem;">count per period</span>
                 </div>
                 <div style="flex: 1; position: relative; min-height: 250px;">
                     <canvas id="volumeChart"></canvas>
@@ -167,19 +167,19 @@
 
         <!-- ITC Calculator Section -->
         <section class="animate-fade-up">
-            <h2 class="brand-font mb-2">ITC Entitlement Tracker</h2>
+            <h2 class="brand-font mb-2">ITC eligibility tracker</h2>
             <div class="stat-grid mb-2">
                 <div class="stat-card" style="background: #00ff8808; border-left-color: var(--success);">
-                    <div class="stat-label">Current Month ITC</div>
+                    <div class="stat-label">Current month ITC</div>
                     <div class="stat-value" id="currentMonthItc">₹0</div>
                 </div>
                 <div class="stat-card stagger-1">
-                    <div class="stat-label">TEAM MEMBERS</div>
+                    <div class="stat-label">Team members</div>
                     <div class="stat-value" id="teamSize">0</div>
-                    <div class="stat-trend" style="color: var(--blue);">ACTIVE SEATS</div>
+                    <div class="stat-trend" style="color: var(--blue);">Active seats</div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-label">Prev Month Comparison</div>
+                    <div class="stat-label">Previous month comparison</div>
                     <div class="stat-value" id="itcTrend">0.0%</div>
                 </div>
                 <div class="stat-card" style="grid-column: span 2;">
@@ -188,17 +188,17 @@
                 </div>
             </div>
 
-            <h3 class="brand-font mt-2 mb-1" style="font-size: 0.9rem;">Supplier-wise ITC Breakdown</h3>
+            <h3 class="brand-font mt-2 mb-1" style="font-size: 0.9rem;">Supplier ITC breakdown</h3>
             <div class="table-container">
                 <table>
                     <thead>
                         <tr>
-                            <th>SELLER</th>
+                            <th>Seller</th>
                             <th>GSTIN</th>
                             <th>CGST</th>
                             <th>SGST</th>
                             <th>IGST</th>
-                            <th>TOTAL ITC</th>
+                            <th>Total ITC</th>
                         </tr>
                     </thead>
                     <tbody id="itcTableBody">
@@ -212,25 +212,25 @@
 
         <!-- GST Deadlines -->
         <section class="animate-fade-up mb-2">
-            <h2 class="brand-font mb-2">GST Compliance Calendar</h2>
+            <h2 class="brand-font mb-2">GST compliance calendar</h2>
             <div class="deadline-grid">
                 <div class="deadline-card">
                     <h3 class="brand-font" style="font-size: 1rem;">GSTR-1</h3>
-                    <p class="text-muted" style="font-size: 0.75rem; font-weight: 700;">OUTWARD SUPPLIES</p>
+                    <p class="text-muted" style="font-size: 0.75rem; font-weight: 700;">Outward supplies</p>
                     <div class="days-circle" id="gstr1Days">--</div>
-                    <p class="data-font" style="font-size: 0.8rem;">DUE: 11th OF MONTH</p>
+                    <p class="data-font" style="font-size: 0.8rem;">Due: 11th of month</p>
                 </div>
                 <div class="deadline-card" style="border-top: 4px solid var(--secondary-accent);">
                     <h3 class="brand-font" style="font-size: 1rem;">GSTR-3B</h3>
-                    <p class="text-muted" style="font-size: 0.75rem; font-weight: 700;">MONTHLY SUMMARY</p>
+                    <p class="text-muted" style="font-size: 0.75rem; font-weight: 700;">Monthly summary</p>
                     <div class="days-circle" id="gstr3bDays" style="color: var(--danger);">--</div>
-                    <p class="data-font" style="font-size: 0.8rem;">DUE: 20th OF MONTH</p>
+                    <p class="data-font" style="font-size: 0.8rem;">Due: 20th of month</p>
                 </div>
                 <div class="deadline-card">
                     <h3 class="brand-font" style="font-size: 1rem;">GSTR-2B</h3>
-                    <p class="text-muted" style="font-size: 0.75rem; font-weight: 700;">ITC AUTO-DRAFTED</p>
+                    <p class="text-muted" style="font-size: 0.75rem; font-weight: 700;">ITC auto-drafted</p>
                     <div class="days-circle" id="gstr2bDays" style="color: var(--data-accent);">--</div>
-                    <p class="data-font" style="font-size: 0.8rem;">DUE: 14th OF MONTH</p>
+                    <p class="data-font" style="font-size: 0.8rem;">Due: 14th of month</p>
                 </div>
             </div>
         </section>

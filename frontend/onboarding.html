@@ -57,7 +57,7 @@
 
         <!-- OWNER VIEW -->
         <div id="ownerView" class="onboarding-view">
-            <h2 class="brand-font">CREATE YOUR WORKSPACE</h2>
+            <h2 class="brand-font">Create your workspace</h2>
             <p class="mb-3">Setup your business entity to begin scanning and inviting your team.</p>
             
             <form id="createCompanyForm">
@@ -70,14 +70,14 @@
                     <input type="text" id="compGstin" required placeholder="15-digit GSTIN">
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">
-                    INITIALIZE ENTERPRISE
+                    Create workspace
                 </button>
             </form>
         </div>
 
         <!-- EMPLOYEE VIEW -->
         <div id="employeeView" class="onboarding-view">
-            <h2 class="brand-font">JOIN A WORKSPACE</h2>
+            <h2 class="brand-font">Join a workspace</h2>
             <p class="mb-3">Enter the **exact name** of the company you belong to.</p>
             
             <form id="joinCompanyForm">
@@ -87,7 +87,7 @@
                     <p style="font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem;">ℹ️ Case-sensitive. Ask your owner for the exact name.</p>
                 </div>
                 <button type="submit" class="btn btn-secondary" style="width: 100%; margin-top: 1.5rem;">
-                    LINK MY ACCOUNT
+                    Join workspace
                 </button>
             </form>
         </div>
@@ -115,7 +115,7 @@
             const gstin = document.getElementById('compGstin').value;
             const btn = e.target.querySelector('button');
             
-            btn.textContent = 'PROVISIONING...';
+            btn.textContent = 'Creating...';
             btn.disabled = true;
 
             try {
@@ -144,9 +144,9 @@
                 window.location.href = 'upload.html';
             } catch (err) {
                 const box = document.getElementById('errorBox');
-                box.textContent = err.message.toUpperCase();
+                box.textContent = err.message;
                 box.style.display = 'block';
-                btn.textContent = 'INITIALIZE ENTERPRISE';
+                btn.textContent = 'Create workspace';
                 btn.disabled = false;
             }
         });
@@ -157,7 +157,7 @@
             const companyName = document.getElementById('joinCompName').value;
             const btn = e.target.querySelector('button');
             
-            btn.textContent = 'LINKING...';
+            btn.textContent = 'Joining...';
             btn.disabled = true;
 
             try {
@@ -193,9 +193,9 @@
                 window.location.href = 'upload.html';
             } catch (err) {
                 const box = document.getElementById('errorBox');
-                box.textContent = err.message.toUpperCase();
+                box.textContent = err.message;
                 box.style.display = 'block';
-                btn.textContent = 'LINK MY ACCOUNT';
+                btn.textContent = 'Join workspace';
                 btn.disabled = false;
             }
         });

@@ -108,21 +108,21 @@
     <div id="cursor-ring"></div>
 
     <div class="login-left animate-fade-up">
-        <h1 class="app-title brand-font">GST<br>INVOICE<br>SCANNER</h1>
-        <p class="tagline">Precision data extraction with industrial-grade GST validation.</p>
+        <h1 class="app-title brand-font">GST<br>Invoice<br>Scanner</h1>
+        <p class="tagline">Smart data extraction to help you manage your business.</p>
         
         <ul class="feature-list">
-            <li class="feature-item stagger-1"><div class="feature-dot"></div> AI-Powered OCR Extraction</li>
-            <li class="feature-item stagger-2"><div class="feature-dot"></div> Intelligent Health Scoring</li>
-            <li class="feature-item stagger-3"><div class="feature-dot"></div> Seamless ITC Calculator</li>
+            <li class="feature-item stagger-1"><div class="feature-dot"></div> Smart OCR Extraction</li>
+            <li class="feature-item stagger-2"><div class="feature-dot"></div> Invoice Health Scoring</li>
+            <li class="feature-item stagger-3"><div class="feature-dot"></div> Easy ITC Calculator</li>
         </ul>
     </div>
 
     <div class="login-right animate-fade-up stagger-1">
         <div class="login-form-card">
             <div class="login-header">
-                <h2>SECURE LOGIN</h2>
-                <p>Welcome back. Access your financial data terminal.</p>
+                <h2>Sign in to your account</h2>
+                <p>Welcome back. Manage your invoices below.</p>
             </div>
 
             <form id="loginForm">
@@ -137,16 +137,16 @@
                 </div>
                 
                 <label class="remember-me">
-                    <input type="checkbox" id="rememberMe"> Remember this terminal
+                    <input type="checkbox" id="rememberMe"> Remember me
                 </label>
 
                 <button type="submit" class="btn btn-primary" style="width: 100%;">
-                    INITIALIZE ACCESS
+                    Sign in
                 </button>
             </form>
 
             <p class="mt-2" style="font-size: 0.9rem; color: var(--text-muted);">
-                New operator? <a href="register.html" style="color: var(--secondary-accent); text-decoration: none; font-weight: 600;">REGISTER ACCOUNT</a>
+                Don't have an account? <a href="register.html" style="color: var(--secondary-accent); text-decoration: none; font-weight: 600;">Create account</a>
             </p>
             
             <div id="errorMessage" class="mt-1" style="color: var(--danger); font-weight: 600; display: none;"></div>
@@ -181,7 +181,7 @@
                 localStorage.removeItem('rememberedUser');
             }
 
-            submitBtn.textContent = 'AUTHENTICATING...';
+            submitBtn.textContent = 'Signing in...';
             submitBtn.disabled = true;
 
             const result = await login(email, pass);
@@ -189,9 +189,9 @@
                 window.location.href = 'upload.html';
             } else {
                 const error = document.getElementById('errorMessage');
-                error.textContent = result.message.toUpperCase();
+                error.textContent = result.message;
                 error.style.display = 'block';
-                submitBtn.textContent = 'INITIALIZE ACCESS';
+                submitBtn.textContent = 'Sign in';
                 submitBtn.disabled = false;
             }
         });

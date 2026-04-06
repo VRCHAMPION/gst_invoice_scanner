@@ -49,7 +49,6 @@
             font-family: var(--display);
             font-weight: 800;
             font-size: 1.5rem;
-            text-transform: uppercase;
             color: var(--ink);
         }
 
@@ -88,7 +87,6 @@
             overflow: hidden;
             border-radius: 8px;
             font-weight: 800;
-            text-transform: uppercase;
             letter-spacing: 1px;
         }
 
@@ -265,7 +263,7 @@
             box-shadow: 0 20px 50px rgba(0,0,0,0.2);
         }
         .form-group { margin-bottom: 1.5rem; }
-        .form-label { display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; color: var(--muted); }
+        .form-label { display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.8rem; color: var(--muted); }
         .form-input { width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 6px; font-family: var(--mono); }
     </style>
 </head>
@@ -277,7 +275,7 @@
     <nav>
         <a href="upload.html" class="logo" style="text-decoration:none; color:inherit;">
             GST Scanner
-            <span class="logo-pill">AI POWERED</span>
+            <span class="logo-pill">Beta</span>
         </a>
         <ul class="nav-links">
             <li><a href="upload.html" class="active">Upload</a></li>
@@ -285,9 +283,9 @@
             <li><a href="analytics.html">Analytics</a></li>
         </ul>
         <div class="user-info">
-            <span class="display-company-name" style="color: var(--blue); font-weight: 800; margin-right: 1rem; border-right: 1px solid var(--border-color); padding-right: 1rem;">ORG</span>
-            <span class="display-user-name">Operator</span>
-            <button class="nav-btn logout-trigger" style="border:none; cursor:pointer;">Logout →</button>
+            <span class="display-company-name" style="color: var(--blue); font-weight: 800; margin-right: 1rem; border-right: 1px solid var(--border-color); padding-right: 1rem;">Workspace</span>
+            <span class="display-user-name">User</span>
+            <button class="nav-btn logout-trigger" style="border:none; cursor:pointer;">Sign out</button>
         </div>
     </nav>
 
@@ -297,32 +295,32 @@
             <!-- LEFT COLUMN: SYSTEM HUB -->
             <div class="animate-fade-up">
                 <h1 class="brand-font" style="font-size: 3.5rem; line-height: 0.9; margin-bottom: 2rem;">
-                    FINANCIAL DATA<br>TERMINAL
+                    Upload invoices
                 </h1>
                 <p style="font-size: 1.1rem; color: var(--muted); margin-bottom: 2rem; max-width: 400px; line-height: 1.5;">
-                    Upload purchase invoices for real-time GST validation, ITC calculation, and spend analysis.
+                    Upload purchase invoices to validate GST, calculate your ITC, and track your spending.
                 </p>
                 
                 <div class="stat-mini-grid">
                     <div class="stat-card stagger-1">
-                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-transform:uppercase;">System Status</div>
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px;">System status</div>
                         <div style="font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 8px;">
                             <div style="width:10px; height:10px; border-radius:50%; background:var(--green); box-shadow: 0 0 10px var(--green);"></div>
-                            OPERATIONAL
+                            Online
                         </div>
                     </div>
                     <div class="stat-card stagger-2" style="border-left-color: var(--amber);">
-                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px; text-transform:uppercase;">Network Nodes</div>
-                        <div style="font-size: 1.1rem; font-weight: 800; font-family:var(--mono);">LLAMA-4-VISION</div>
+                        <div style="font-size: 0.8rem; font-weight: 700; color: var(--muted); margin-bottom: 4px;">Processing engine</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; font-family:var(--mono);">Active</div>
                     </div>
                 </div>
 
                 <!-- RECENT SCANS WIDGET -->
                 <div class="recent-scans-widget stagger-3">
-                    <div style="font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 1rem; color: var(--ink);">RECENT ACTIVITY</div>
+                    <div style="font-weight: 800; font-size: 0.85rem; letter-spacing: 1px; margin-bottom: 1rem; color: var(--ink);">Recent uploads</div>
                     
                     <div id="recentScansContainer">
-                        <div style="color: var(--muted); font-size: 0.85rem; text-align: center; padding: 1rem;">LOADING ARCHIVE...</div>
+                        <div style="color: var(--muted); font-size: 0.85rem; text-align: center; padding: 1rem;">Loading uploads...</div>
                     </div>
                 </div>
             </div>
@@ -331,14 +329,14 @@
             <div class="animate-fade-up stagger-1">
                 <div class="drop-zone" id="dropZone">
                     <div class="drop-zone-icon">⎗</div>
-                    <p class="drop-zone-text">DRAG & DROP INVOICE</p>
+                    <p class="drop-zone-text">Drag & drop invoice</p>
                     <p style="color: var(--muted); margin-top: 1rem;">Click or drag file to start upload</p>
                     <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf">
                 </div>
 
                 <!-- GUIDELINES -->
                 <div class="guidelines-box">
-                    <div style="font-weight: 800; color: var(--ink); text-transform: uppercase; font-size:0.8rem; letter-spacing: 0.5px;">Upload Guidelines</div>
+                    <div style="font-weight: 800; color: var(--ink); font-size:0.8rem; letter-spacing: 0.5px;">Upload guidelines</div>
                     <ul>
                         <li><strong>Accepted formats:</strong> PDF, JPG, PNG</li>
                         <li><strong>Max size:</strong> 10MB per file</li>
@@ -363,7 +361,7 @@
                 </div>
 
                 <a href="#" id="scanBtn" class="btn-prime scan-btn" style="display:block; text-align:center; opacity:0.5; pointer-events:none;">
-                    START OCR SCAN
+                    Scan invoice
                 </a>
             </div>
         </div>
@@ -371,8 +369,8 @@
 
     <!-- Processing Overlay with Animated Progress -->
     <div class="processing-overlay" id="overlay">
-        <h2 class="brand-font" style="font-size: 3rem; margin-bottom: 1rem;">EXTRACTING DATA...</h2>
-        <p id="processStatus" class="pulse" style="font-family: var(--mono); color: var(--blue); font-weight: 600; letter-spacing: 1px;">INITIALIZING VISION MODELS</p>
+        <h2 class="brand-font" style="font-size: 3rem; margin-bottom: 1rem;">Reading invoice...</h2>
+        <p id="processStatus" class="pulse" style="font-family: var(--mono); color: var(--blue); font-weight: 600; letter-spacing: 1px;">Please wait a moment...</p>
         
         <div class="progress-bar-container">
             <div class="progress-bar-fill" id="uploadProgress"></div>
@@ -381,7 +379,7 @@
 
     <div class="modal" id="companyModal">
         <div class="modal-content">
-            <h2 class="brand-font" style="font-size: 2rem; margin-bottom: 1.5rem;">REGISTER COMPANY</h2>
+            <h2 class="brand-font" style="font-size: 2rem; margin-bottom: 1.5rem;">Add your company</h2>
             <form id="companyForm">
                 <div class="form-group">
                     <label class="form-label">Company Name</label>
@@ -396,8 +394,8 @@
                     <textarea id="compAddress" class="form-input" style="height: 100px;" placeholder="Full office address..." required></textarea>
                 </div>
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-                    <button type="button" class="btn-alt" id="closeModalBtn" style="flex: 1;">CANCEL</button>
-                    <button type="submit" class="btn-prime" style="flex: 2;">SAVE COMPANY</button>
+                    <button type="button" class="btn-alt" id="closeModalBtn" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn-prime" style="flex: 2;">Save company</button>
                 </div>
             </form>
         </div>

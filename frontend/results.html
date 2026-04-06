@@ -121,7 +121,7 @@
     <nav>
         <a href="upload.html" class="nav-logo">
             GST Scanner
-            <span class="nav-logo-pill">AI POWERED</span>
+            <span class="nav-logo-pill">Beta</span>
         </a>
         <ul class="nav-links">
             <li><a href="upload.html">Upload</a></li>
@@ -129,8 +129,8 @@
             <li><a href="analytics.html">Analytics</a></li>
         </ul>
         <div class="user-info">
-            <span class="display-user-name">Operator</span>
-            <button class="logout-btn logout-trigger">Logout</button>
+            <span class="display-user-name">User</span>
+            <button class="logout-btn logout-trigger">Sign out</button>
         </div>
     </nav>
 
@@ -142,20 +142,20 @@
                     <span id="batchIndicator" class="data-font" style="font-weight: 800; font-size: 0.9rem; color: var(--primary-accent);">1 / 5</span>
                     <button id="nextBtn" class="btn btn-outline" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; min-width: auto;">NEXT</button>
                 </div>
-                <h1 class="brand-font" style="font-size: 2.5rem; line-height: 1; margin-bottom: 0.5rem;">EXTRACTION<br>RESULTS</h1>
+                <h1 class="brand-font" style="font-size: 2.5rem; line-height: 1; margin-bottom: 0.5rem;">Scan results</h1>
                 <p class="text-muted data-font">ID: <span id="invoiceId">0000</span> | Processed at <span id="processedTime">--:--</span></p>
             </div>
             <div class="action-bar">
-                <button id="exportBtn" class="btn btn-outline" style="font-size: 0.7rem;">EXPORT EXCEL</button>
-                <button id="whatsappBtn" class="btn btn-outline" style="font-size: 0.7rem;">SHARE WHATSAPP</button>
-                <a href="upload.html" class="btn btn-primary" style="font-size: 0.7rem;">SCAN ANOTHER</a>
+                <button id="exportBtn" class="btn btn-outline" style="font-size: 0.7rem;">Export to Excel</button>
+                <button id="whatsappBtn" class="btn btn-outline" style="font-size: 0.7rem;">Share on WhatsApp</button>
+                <a href="upload.html" class="btn btn-primary" style="font-size: 0.7rem;">Scan another</a>
             </div>
         </header>
 
         <div class="results-grid">
             <div class="main-report">
                 <div class="card mb-2">
-                    <h3 class="mb-1" style="font-size: 0.9rem; color: var(--primary-accent);">INVOICE ENTITIES</h3>
+                    <h3 class="mb-1" style="font-size: 0.9rem; color: var(--primary-accent);">Invoice details</h3>
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
                         <div>
                             <label class="text-muted" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase;">Seller Details</label>
@@ -208,7 +208,7 @@
                     <div class="score-circle">
                         <div class="score-value" id="scoreValue">00</div>
                     </div>
-                    <h3 class="brand-font" id="healthStatus">HEALTH: --</h3>
+                    <h3 class="brand-font" id="healthStatus">Health: --</h3>
                     <p class="text-muted data-font" style="font-size: 0.8rem; margin-top: 0.5rem;" id="scoreSummary">System validation summary...</p>
                 </div>
 
@@ -217,7 +217,7 @@
                 </div>
 
                 <div class="tax-summary-box animate-fade-up stagger-2">
-                    <h4 class="brand-font mb-1" style="font-size: 0.8rem;">TAX COMPUTATION</h4>
+                    <h4 class="brand-font mb-1" style="font-size: 0.8rem;">Tax summary</h4>
                     <div class="tax-row">
                         <span>Subtotal</span>
                         <span id="subtotalValue">₹0.00</span>
@@ -235,7 +235,7 @@
                         <span id="igstValue">₹0.00</span>
                     </div>
                     <div class="tax-row total">
-                        <span>GRAND TOTAL</span>
+                        <span>Total amount</span>
                         <span id="totalValue">₹0.00</span>
                     </div>
                 </div>
