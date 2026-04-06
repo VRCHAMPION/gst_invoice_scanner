@@ -45,6 +45,9 @@ CREATE TABLE invoices (
     igst FLOAT DEFAULT 0,
     total FLOAT DEFAULT 0,
     
+    status VARCHAR(50) DEFAULT 'PROCESSING',
+    error_message TEXT,
+    
     raw_json JSONB,
     created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT (NOW() AT TIME ZONE 'utc')
 );

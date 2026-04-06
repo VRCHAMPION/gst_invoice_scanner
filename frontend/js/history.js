@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function fetchInvoices() {
     try {
-        const response = await fetch(getApiUrl('/api/invoices'), {
+        const response = await apiFetch(getApiUrl('/api/invoices'), {
             headers: getAuthHeaders()
         });
         if (!response.ok) throw new Error('FAILED TO FETCH INVOICES');

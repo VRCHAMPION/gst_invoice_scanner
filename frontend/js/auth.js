@@ -1,30 +1,24 @@
 // API_BASE is now handled by getApiUrl() helper in config.js
 
-// ── Auth Token Management ────────────────────────────────────────────
-function getToken() {
-    return sessionStorage.getItem('authToken');
-}
-
+// ── Auth Management ──────────────────────────────────────────────────
+// We no longer manually manage the token in frontend.
+// HttpOnly Cookies manage the session automatically via apiFetch wrapper.
 function getAuthHeaders() {
-    const token = getToken();
-    return token ? { 'Authorization': `Bearer ${token}` } : {};
+    return {};
 }
 
-function checkAuth() {
-    const token = getToken();
     const user = getCurrentUser();
     const path = window.location.pathname;
-    const isAuthPage = path.includes('login.html') || path.includes('register.html');
+    const isAuthPage = path.includes('login.html') || path.includes('register.html') || path === '/' || path.endsWith('/gst_invoice_scanner/frontend/');
     const isOnboarding = path.includes('onboarding.html');
 
-    if (!token && !isAuthPage) {
+    if (!user && !isAuthPage) {
         window.location.href = 'login.html';
-    } else if (token && isAuthPage) {
-        window.location.href = 'index.html';
-    } else if (token && !isOnboarding && user && !user.company_id) {
+    } else if (user && isAuthPage) {
+        window.location.href = 'upload.html';
+    } else if (user && !isOnboarding && !user.company_id) {
         window.location.href = 'onboarding.html';
     }
-}
 
 // RUN IMMEDIATELY TO PREVENT BLINK
 checkAuth();
@@ -32,7 +26,7 @@ checkAuth();
 // ── Login (API-based) ────────────────────────────────────────────────
 async function login(email, password) {
     try {
-        const response = await fetch(getApiUrl('/api/login'), {
+        const response = await apiFetch(getApiUrl('/api/login'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email, password })
@@ -44,7 +38,7 @@ async function login(email, password) {
         }
 
         const data = await response.json();
-        sessionStorage.setItem('authToken', data.access_token);
+        // token is handled via HttpOnly cookie natively now!
         sessionStorage.setItem('currentUser', JSON.stringify(data.user));
         return { success: true };
     } catch (error) {
@@ -55,7 +49,7 @@ async function login(email, password) {
 // ── Register (API-based) ─────────────────────────────────────────────
 async function register(name, email, password, role) {
     try {
-        const response = await fetch(getApiUrl('/api/register'), {
+        const response = await apiFetch(getApiUrl('/api/register'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, email, password, role })
@@ -67,7 +61,6 @@ async function register(name, email, password, role) {
         }
 
         const data = await response.json();
-        sessionStorage.setItem('authToken', data.access_token);
         sessionStorage.setItem('currentUser', JSON.stringify(data.user));
         return { success: true };
     } catch (error) {
@@ -75,8 +68,10 @@ async function register(name, email, password, role) {
     }
 }
 
-function logout() {
-    sessionStorage.removeItem('authToken');
+async function logout() {
+    try {
+        await apiFetch(getApiUrl('/api/logout'), { method: 'POST' });
+    } catch(e) { console.error(e); }
     sessionStorage.removeItem('currentUser');
     window.location.href = 'login.html';
 }
@@ -103,9 +98,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const logoutBtns = document.querySelectorAll('.logout-trigger');
-    logoutBtns.forEach(btn => btn.addEventListener('click', (e) => {
+    logoutBtns.forEach(btn => btn.addEventListener('click', async (e) => {
         e.preventDefault();
-        logout();
+        await logout();
     }));
 });
 

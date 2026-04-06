@@ -1,5 +1,5 @@
 import uuid
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, BackgroundTasks, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Request, Response, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -56,7 +56,7 @@ class InviteUserRequest(BaseModel):
 
 # ── Auth Routes (PUBLIC) ──────────────────────────────────────────────
 @app.post("/api/login")
-async def login(req: LoginRequest, db: Session = Depends(get_db)):
+async def login(req: LoginRequest, response: Response, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == req.email).first()
     if not user or not verify_password(req.password, user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -69,9 +69,9 @@ async def login(req: LoginRequest, db: Session = Depends(get_db)):
         "company_id": str(user.company_id) if user.company_id else None
     })
     
+    response.set_cookie(key="access_token", value=token, httponly=True, secure=True, samesite="strict")
+    
     return {
-        "access_token": token,
-        "token_type": "bearer",
         "user": {
             "id": user.id, 
             "email": user.email, 
@@ -82,7 +82,7 @@ async def login(req: LoginRequest, db: Session = Depends(get_db)):
     }
 
 @app.post("/api/register")
-async def register(req: RegisterRequest, db: Session = Depends(get_db)):
+async def register(req: RegisterRequest, response: Response, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.email == req.email).first()
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -102,11 +102,16 @@ async def register(req: RegisterRequest, db: Session = Depends(get_db)):
     db.refresh(new_user)
     
     token = create_access_token(data={"sub": str(new_user.id), "email": new_user.email, "role": new_user.role})
+    response.set_cookie(key="access_token", value=token, httponly=True, secure=True, samesite="strict")
+    
     return {
-        "access_token": token,
-        "token_type": "bearer",
         "user": {"id": new_user.id, "email": new_user.email, "role": new_user.role}
     }
+
+@app.post("/api/logout")
+async def logout(response: Response):
+    response.delete_cookie("access_token", secure=True, httponly=True, samesite="strict")
+    return {"message": "Logged out successfully"}
 
 # ── Company Management ────────────────────────────────────────────────
 @app.post("/api/companies")
@@ -222,11 +227,21 @@ def process_invoice_background(job_id: str, file_bytes: bytes, content_type: str
     try:
         data = extract_invoice_data(file_bytes, content_type)
         if data.get("status") == "failed":
+            # Save failed attempt to DB
+            failed_invoice = Invoice(
+                company_id=company_id,
+                uploaded_by=user_id,
+                raw_json=data,
+                status="FAILED",
+                error_message=data.get("error", "Unknown extraction failure")
+            )
+            db.add(failed_invoice)
+            db.commit()
+            
             scan_jobs[job_id] = data
             return
             
         new_invoice = Invoice(
-            user_id=user_id, # This field is 'uploaded_by' in models.py, fixing below
             company_id=company_id,
             uploaded_by=user_id,
             invoice_number=data.get("invoice_number"),
@@ -240,6 +255,7 @@ def process_invoice_background(job_id: str, file_bytes: bytes, content_type: str
             sgst=data.get("sgst"),
             igst=data.get("igst"),
             total=data.get("total"),
+            status="SUCCESS",
             raw_json=data
         )
         db.add(new_invoice)
@@ -250,6 +266,15 @@ def process_invoice_background(job_id: str, file_bytes: bytes, content_type: str
         data["status"] = "completed"
         scan_jobs[job_id] = data
     except Exception as e:
+        failed_invoice = Invoice(
+            company_id=company_id,
+            uploaded_by=user_id,
+            raw_json={"error": str(e)},
+            status="FAILED",
+            error_message=str(e)
+        )
+        db.add(failed_invoice)
+        db.commit()
         scan_jobs[job_id] = {"status": "failed", "error": str(e)}
     finally:
         db.close()
@@ -299,25 +324,58 @@ async def get_analytics(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    from sqlalchemy import func, desc, extract
     if not current_user.company_id:
         return {}
     
-    invoices = db.query(Invoice).filter(Invoice.company_id == current_user.company_id).all()
+    company_id = current_user.company_id
+    base_query = db.query(Invoice).filter(Invoice.company_id == company_id, Invoice.status == "SUCCESS")
     
-    total_spend = sum(inv.total for inv in invoices if inv.total)
-    total_tax = sum((inv.cgst or 0) + (inv.sgst or 0) + (inv.igst or 0) for inv in invoices)
+    totals = base_query.with_entities(
+        func.count(Invoice.id).label('count'),
+        func.sum(Invoice.total).label('spend'),
+        func.sum(Invoice.cgst + Invoice.sgst + Invoice.igst).label('tax')
+    ).first()
     
-    # Simple monthly aggregation
+    monthly_data = base_query.with_entities(
+        extract('year', Invoice.created_at).label('year'),
+        extract('month', Invoice.created_at).label('month'),
+        func.count(Invoice.id).label('count'),
+        func.sum(Invoice.total).label('total'),
+        func.sum(Invoice.cgst + Invoice.sgst + Invoice.igst).label('tax')
+    ).group_by('year', 'month').order_by('year', 'month').all()
+
     monthly_spend = []
-    # (Mock logic for now or simple grouping)
+    monthly_invoice_count = []
+    for row in monthly_data:
+        m_str = f"{int(row.year)}-{int(row.month):02d}"
+        monthly_spend.append({
+            "month": m_str,
+            "total": row.total or 0,
+            "tax": row.tax or 0
+        })
+        monthly_invoice_count.append({
+            "month": m_str,
+            "count": row.count or 0
+        })
+
+    suppliers = base_query.with_entities(
+        Invoice.seller_name,
+        func.sum(Invoice.total).label('total_spend')
+    ).filter(Invoice.seller_name.isnot(None))\
+     .group_by(Invoice.seller_name)\
+     .order_by(desc('total_spend'))\
+     .limit(5).all()
+     
+    top_suppliers = [{"name": s.seller_name, "total_spend": s.total_spend or 0} for s in suppliers]
     
     return {
-        "total_invoices": len(invoices),
-        "total_spend": total_spend,
-        "total_tax": total_tax,
-        "monthly_spend": [],
-        "top_suppliers": [],
-        "monthly_invoice_count": []
+        "total_invoices": totals.count or 0 if totals else 0,
+        "total_spend": totals.spend or 0 if totals else 0,
+        "total_tax": totals.tax or 0 if totals else 0,
+        "monthly_spend": monthly_spend,
+        "top_suppliers": top_suppliers,
+        "monthly_invoice_count": monthly_invoice_count
     }
 
 @app.get("/api/itc-summary")
@@ -325,14 +383,70 @@ async def get_itc_summary(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    from sqlalchemy import func, extract
+    from datetime import datetime
     if not current_user.company_id:
         return {}
+
+    now = datetime.utcnow()
+    company_id = current_user.company_id
     
+    curr_month = db.query(
+        func.sum(Invoice.cgst + Invoice.sgst + Invoice.igst)
+    ).filter(
+        Invoice.company_id == company_id, 
+        Invoice.status == "SUCCESS",
+        extract('year', Invoice.created_at) == now.year,
+        extract('month', Invoice.created_at) == now.month
+    ).scalar() or 0
+
+    prev_month_date = now.month - 1 if now.month > 1 else 12
+    prev_year_date = now.year if now.month > 1 else now.year - 1
+    
+    prev_month = db.query(
+        func.sum(Invoice.cgst + Invoice.sgst + Invoice.igst)
+    ).filter(
+        Invoice.company_id == company_id, 
+        Invoice.status == "SUCCESS",
+        extract('year', Invoice.created_at) == prev_year_date,
+        extract('month', Invoice.created_at) == prev_month_date
+    ).scalar() or 0
+
+    pct_change = 0
+    if prev_month > 0:
+        pct_change = round(((curr_month - prev_month) / prev_month) * 100, 1)
+    elif curr_month > 0:
+        pct_change = 100
+
+    suppliers = db.query(
+        Invoice.seller_name,
+        Invoice.seller_gstin,
+        func.sum(Invoice.cgst).label('cgst'),
+        func.sum(Invoice.sgst).label('sgst'),
+        func.sum(Invoice.igst).label('igst'),
+        func.sum(Invoice.cgst + Invoice.sgst + Invoice.igst).label('total_itc')
+    ).filter(
+        Invoice.company_id == company_id,
+        Invoice.status == "SUCCESS",
+        extract('year', Invoice.created_at) == now.year,
+        extract('month', Invoice.created_at) == now.month,
+        Invoice.seller_name.isnot(None)
+    ).group_by(Invoice.seller_name, Invoice.seller_gstin).all()
+    
+    supplier_breakdown = [{
+        "seller_name": s.seller_name,
+        "seller_gstin": s.seller_gstin or "UNKNOWN",
+        "cgst": s.cgst or 0,
+        "sgst": s.sgst or 0,
+        "igst": s.igst or 0,
+        "total_itc": s.total_itc or 0
+    } for s in suppliers]
+
     return {
-        "current_month": {"total_itc": 0},
-        "percentage_change": 0,
-        "disclaimer": "ITC estimates based on current scans",
-        "supplier_breakdown": []
+        "current_month": {"total_itc": curr_month},
+        "percentage_change": pct_change,
+        "disclaimer": "ITC estimates based on current scans and successfully processed invoices.",
+        "supplier_breakdown": supplier_breakdown
     }
 
 @app.get("/")

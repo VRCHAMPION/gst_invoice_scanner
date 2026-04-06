@@ -3,8 +3,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi import Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from database import get_db
@@ -51,13 +50,17 @@ def decode_access_token(token: str) -> dict:
         )
 
 # ── Route Protection Dependency ───────────────────────────────────────
-security = HTTPBearer()
-
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    request: Request,
     db: Session = Depends(get_db)
 ):
-    token = credentials.credentials
+    token = request.cookies.get("access_token")
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing authentication cookie"
+        )
+        
     payload = decode_access_token(token)
     user_email = payload.get("email") # Use email as sub or separate claim
     if user_email is None:

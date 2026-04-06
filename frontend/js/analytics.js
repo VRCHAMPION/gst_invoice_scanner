@@ -31,7 +31,7 @@ async function loadTeamSize() {
 
 async function loadEmployeeList() {
     try {
-        const res = await fetch(getApiUrl('/api/users'), { headers: getAuthHeaders() });
+        const res = await apiFetch(getApiUrl('/api/users'), { headers: getAuthHeaders() });
         const users = await res.json();
         const container = document.getElementById('employeeList');
         container.innerHTML = '';
@@ -55,7 +55,7 @@ window.openInvitePrompt = () => {
 
 async function loadAnalytics() {
     try {
-        const response = await fetch(getApiUrl('/api/analytics'), {
+        const response = await apiFetch(getApiUrl('/api/analytics'), {
             headers: getAuthHeaders()
         });
         if (!response.ok) throw new Error('FAILED TO FETCH ANALYTICS');
@@ -77,7 +77,7 @@ async function loadAnalytics() {
 
 async function loadItcSummary() {
     try {
-        const response = await fetch(getApiUrl('/api/itc-summary'), {
+        const response = await apiFetch(getApiUrl('/api/itc-summary'), {
             headers: getAuthHeaders()
         });
         if (!response.ok) throw new Error('FAILED TO FETCH ITC');

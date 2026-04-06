@@ -8,11 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load companies into dropdown
     window.loadCompanies = async () => {
         try {
-            const response = await fetch(getApiUrl('/api/companies'), {
+            const companies = await apiFetch(getApiUrl('/api/companies'), {
                 headers: getAuthHeaders()
             });
-            if (!response.ok) throw new Error('Failed to fetch companies');
-            const companies = await response.json();
 
             companySelect.innerHTML = '<option value="">SELECT COMPANY...</option>';
             companies.forEach(company => {
@@ -50,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         try {
-            const response = await fetch(getApiUrl('/api/companies'), {
+            await apiFetch(getApiUrl('/api/companies'), {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -58,11 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 },
                 body: JSON.stringify(data)
             });
-
-            if (!response.ok) {
-                const err = await response.json();
-                throw new Error(err.detail || 'Failed to save company');
-            }
 
             companyModal.style.display = 'none';
             companyForm.reset();

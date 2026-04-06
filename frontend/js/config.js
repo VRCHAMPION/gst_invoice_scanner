@@ -8,3 +8,9 @@ const CONFIG = {
 
 // Global helper to get the base URL
 window.getApiUrl = (endpoint) => `${CONFIG.API_BASE_URL}${endpoint}`;
+
+// Global fetch wrapper to force credentials inclusion for HttpOnly cookies
+window.apiFetch = async (url, options = {}) => {
+    options.credentials = 'include';
+    return fetch(url, options);
+};

@@ -134,7 +134,7 @@ function setupActions(data) {
 
     newExportBtn.addEventListener('click', async () => {
         try {
-            const response = await fetch(getApiUrl('/export'), {
+            const response = await apiFetch(getApiUrl('/export'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify(data)

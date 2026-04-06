@@ -58,6 +58,9 @@ class Invoice(Base):
     igst = Column(Float)
     total = Column(Float)
     
+    status = Column(String, default="PROCESSING")
+    error_message = Column(String, nullable=True)
+    
     raw_json = Column(JSON) # JSONB in Postgres
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 

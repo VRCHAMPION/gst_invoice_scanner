@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('file', selectedFile);
             formData.append('company_id', companyId);
 
-            const response = await fetch(getApiUrl('/scan'), {
+            const response = await apiFetch(getApiUrl('/scan'), {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: formData
@@ -160,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         pollingInterval = setInterval(async () => {
             try {
-                const res = await fetch(getApiUrl(`/scan/status/${jobId}`), {
+                const res = await apiFetch(getApiUrl(`/scan/status/${jobId}`), {
                     headers: getAuthHeaders()
                 });
                 if (!res.ok) throw new Error("Status check failed");
@@ -200,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!container) return;
         
         try {
-            const response = await fetch(getApiUrl('/api/invoices'), {
+            const response = await apiFetch(getApiUrl('/api/invoices'), {
                 headers: getAuthHeaders()
             });
             if (!response.ok) throw new Error('Fetch failed');

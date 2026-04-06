@@ -35,10 +35,12 @@ def extract_raw_text(file_bytes: bytes, content_type: str) -> str:
             image = Image.open(io.BytesIO(file_bytes))
             text = pytesseract.image_to_string(image)
         return text
+    except fitz.FileDataError as e:
+        logging.error(f"PyMuPDF FileDataError corrupted PDF: {e}")
+        return "ERROR_CORRUPT_FILE"
     except Exception as e:
         logging.error(f"OCR Error: {e}")
-        return ""
-
+        return "ERROR_EXTRACTION_FAILURE"
 
 def extract_invoice_data(file_bytes: bytes, content_type: str) -> dict:
     """Pipeline: OCR -> Gemini LLM -> JSON."""
@@ -46,9 +48,11 @@ def extract_invoice_data(file_bytes: bytes, content_type: str) -> dict:
     # 1. OCR Extraction
     raw_text = extract_raw_text(file_bytes, content_type)
 
-    if not raw_text.strip():
+    if raw_text == "ERROR_CORRUPT_FILE":
+        return {"status": "failed", "error": "The uploaded PDF is corrupted or encrypted."}
+    if raw_text == "ERROR_EXTRACTION_FAILURE" or not raw_text.strip():
         logging.warning("OCR returned empty text. Returning failed status.")
-        return {"status": "failed", "error": "Could not extract text from file."}
+        return {"status": "failed", "error": "Could not extract text from file or file is corrupted."}
 
     # 2. Gemini LLM Cleanup
     prompt = f"""You are a strict JSON data extractor. Extract invoice data ONLY from the text inside the <raw_text> tags.
