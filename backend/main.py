@@ -34,8 +34,7 @@ app.add_middleware(
     allow_origins=[
         "https://gstinvoicescanner.netlify.app",
         "http://localhost:8000",
-        "http://127.0.0.1:8000",
-        "*"
+        "http://127.0.0.1:8000"
     ],
     allow_methods=["*"],
     allow_headers=["*"],
@@ -263,8 +262,14 @@ async def scan_invoice(
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="Please associate with a company first")
+        
+    if file.size and file.size > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
 
     contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Payload too large")
+        
     job_id = str(uuid.uuid4())
     scan_jobs[job_id] = {"status": "processing"}
     background_tasks.add_task(

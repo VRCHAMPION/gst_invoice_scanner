@@ -14,7 +14,10 @@ from typing import List, Optional
 load_dotenv()
 
 # ── Config ────────────────────────────────────────────────────────────
-SECRET_KEY = os.getenv("JWT_SECRET", "gst-scanner-secret-key-change-in-production")
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY:
+    raise ValueError("CRITICAL: JWT_SECRET environment variable is missing!")
+    
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 8
 

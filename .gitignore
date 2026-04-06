@@ -1,23 +1,41 @@
-# Environment files
+# ── Environments & Secrets ──
 .env
+.env.*
+!.env.example
+*.pem
+*.key
 
-# Python
+# ── Python & Backend ──
 __pycache__/
 *.py[cod]
 *$py.class
+*.so
 venv/
 env/
 .venv/
-_agents/
 .python-version
 
-# Data & Tests
-test_invoices/
-batch_test_results.json
-debug_extraction.py
-test_all_invoices.py
+# ── Logs & Debugging ──
+*.log
 output.log
+debug_extraction.py
+.pytest_cache/
 
-# OS
+# ── Data & Tests ──
+test_invoices/
+test_all_invoices.py
+batch_test_results.json
+*.sqlite3
+*.db
+
+# ── IDEs & OS Files ──
+.vscode/
+.idea/
 .DS_Store
 Thumbs.db
+ehthumbs.db
+.Spotlight-V100
+.Trashes
+
+# ── Internal Agent Tooling ──
+_agents/

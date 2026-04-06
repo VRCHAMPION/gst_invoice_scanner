@@ -44,8 +44,7 @@ def seed_admin_user_orm():
         admin = db.query(User).filter(User.email == "admin@example.com").first()
         if not admin:
             admin = User(
-                email="admin@example.com",
-                password_hash=hash_password("admin123"),
+                password_hash=hash_password(os.getenv("DEFAULT_ADMIN_PASSWORD", "super-secure-randomization-temp")),
                 name="Admin User",
                 role="owner"
             )
