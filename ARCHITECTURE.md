@@ -1,8 +1,8 @@
-# 🏗️ ARCHITECTURE.md — GST Invoice Scanner
+# ARCHITECTURE.md - GST Invoice Scanner
 
 ---
 
-## 📑 Table of Contents
+## Table of Contents
 
 - [Architecture Overview](#1-architecture-overview)
 - [System Components](#2-system-components)
@@ -23,13 +23,13 @@ GST Invoice Scanner follows an **Event-Driven Pipeline Architecture** with async
 
 ```mermaid
 flowchart LR
-    A[📄 Client Upload] --> B[🔌 FastAPI Ingestion]
-    B --> C[⚙️ Background Worker Dispatch]
-    C --> D[🖼️ PDF-to-Image via PyMuPDF]
-    D --> E[🔍 Tesseract OCR]
-    E --> F[🧠 Groq LLaMa-3 Semantic Parse]
-    F --> G[💾 SQLAlchemy Persistence]
-    G --> H[📊 JSON / XLSX Output to Client]
+    A[Client Upload] --> B[FastAPI Ingestion]
+    B --> C[Background Worker Dispatch]
+    C --> D[PDF-to-Image via PyMuPDF]
+    D --> E[Tesseract OCR]
+    E --> F[Google Gemini 2.5 Flash Semantic Parse]
+    F --> G[Neon Serverless PostgreSQL Persistence]
+    G --> H[JSON / XLSX Output to Client]
 ```
 
 **Key Principle:** No step in the pipeline blocks the API thread. Upload returns a Job ID instantly; the client polls for completion.
@@ -64,24 +64,25 @@ flowchart LR
 
 ### c. NLP Intelligence Layer (Field Extractor)
 
-This is the **core differentiator**. Instead of fragile regex chains, raw OCR text is sent to **Groq's LLaMa-3.1-8b-instant** model with a strict structural prompt.
+This is the **core differentiator**. Instead of fragile regex chains, raw OCR text is sent to **Google Gemini 2.5 Flash** with a strict structural prompt wrapped in XML safeguards.
 
 ```
 Prompt Strategy:
 ┌────────────────────────────────────────────┐
-│ "Extract ONLY these fields from the text:  │
+│ "Extract ONLY these fields from the text   │
+│  inside the <raw_text> bounding tags:      │
 │  seller_gstin, buyer_gstin, invoice_no,    │
-│  date, taxable_amount, cgst, sgst, igst,   │
-│  total_amount. Return valid JSON only."     │
+│  date, taxable_amount, cgst, sgst, igst.   │
+│  Return valid JSON only."                   │
 └────────────────────────────────────────────┘
 ```
 
 | Aspect | Detail |
 |---|---|
-| Provider | Groq Cloud API |
-| Model | `llama-3.1-8b-instant` |
-| Why Groq | ~10x faster inference than OpenAI for structured extraction tasks |
-| Fallback | Returns raw OCR text + error flag if LLM call fails |
+| Provider | Google GenAI SDK |
+| Model | `gemini-2.5-flash` |
+| Why Gemini | Excels at JSON mapping, high rate limits, extreme token speed |
+| Security | XML wrapping prevents Prompt Injection from malicious PDF payloads |
 
 ---
 
@@ -90,8 +91,8 @@ Prompt Strategy:
 | Responsibility | Implementation |
 |---|---|
 | Data modeling | SQLAlchemy ORM models |
-| Database | SQLite (dev) — swappable to PostgreSQL |
-| Job tracking | `status` field: `processing` → `completed` / `failed` |
+| Database | Neon Serverless PostgreSQL |
+| Error Quarantining | `fitz.FileDataError` explicitly trapped into `status="FAILED"` |
 
 ---
 
@@ -108,15 +109,15 @@ flowchart TD
         R6[GET /export/xlsx → Download]
     end
 
-    R2 -->|Bearer Token| R3
+    R2 -->|HttpOnly Cookie| R3
     R3 -->|BackgroundTask| Worker
-    Worker -->|SQLAlchemy| DB[(SQLite)]
+    Worker -->|SQLAlchemy| DB[(Neon PostgreSQL)]
     R4 -->|Query| DB
 ```
 
 | Aspect | Detail |
 |---|---|
-| Auth | JWT (python-jose) + Bcrypt (passlib) |
+| Auth | JWT stored natively in HttpOnly/SameSite Strict Cookies |
 | Rate Limiting | SlowAPI middleware |
 | Async Workers | FastAPI `BackgroundTasks` |
 
