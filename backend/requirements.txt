@@ -11,7 +11,7 @@ slowapi
 openpyxl
 python-jose[cryptography]
 passlib[bcrypt]
-groq
+google-genai
 pytesseract
 pymupdf
 pillow

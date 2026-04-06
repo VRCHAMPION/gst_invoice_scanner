@@ -37,14 +37,13 @@ The system follows an asynchronous processing model:
 
 ## Features
 
-* Works with non-standard invoice formats
-* Asynchronous processing to avoid blocking requests
-* OCR-based text extraction using Tesseract
-* Semantic parsing using LLaMA-3 via Groq API
-* JWT-based authentication
-* Rate limiting for API protection
-* In-memory file handling (no disk writes)
-* Excel export for processed data
+* **Enterprise Document Parsing:** Works gracefully with non-standard invoice formats natively.
+* **Asynchronous Resiliency:** Background processing with built-in PyMuPDF C-level failure trapping.
+* **OCR Text Extraction:** Tesseract handles the dense visual layer.
+* **Semantic Extraction:** Powered by Google Gemini 2.5 Flash for JSON-structured deterministic outputs.
+* **Financial Determinism:** SQLAlchemy aggregations executing heavily optimized Postgres queries.
+* **Military-Grade Security:** Deep HttpOnly/SameSite Cookie pivot prevents XSS token theft.
+* **Cross-Validation:** Programmatic verification of CGST/SGST/IGST mapping and 15-character GSTIN logic.
 
 ---
 
@@ -70,13 +69,12 @@ The system follows an asynchronous processing model:
 
 ## Tech Stack
 
-* Backend: FastAPI
-* OCR: Tesseract (pytesseract)
-* AI Processing: LLaMA-3 (Groq API)
-* PDF Handling: PyMuPDF
-* Database: SQLite with SQLAlchemy
-* Authentication: JWT (python-jose), bcrypt
-* Frontend: HTML, CSS, JavaScript
+* **Backend:** FastAPI (Python)
+* **Database:** Neon Serverless PostgreSQL with SQLAlchemy ORM
+* **Auth:** HttpOnly JWT Cookies (python-jose) + Bcrypt
+* **OCR Foundation:** Tesseract (pytesseract) + PyMuPDF
+* **AI Parsing:** Google Gemini 2.5 Flash
+* **Frontend:** Dynamic HTML/Vanilla JS with apiFetch Credential Interceptors
 
 ---
 
@@ -132,12 +130,10 @@ pip install pytesseract PyMuPDF Pillow
 
 Create a `.env` file inside the `backend/` directory:
 
-```
-GROQ_API_KEY=your_api_key
-SECRET_KEY=your_secret_key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-DATABASE_URL=sqlite:///./gst_scanner.db
+```env
+GEMINI_API_KEY=your_gemini_api_key
+JWT_SECRET=your_jwt_secret_key
+DATABASE_URL=postgresql://user:pass@ep-shiny...
 ```
 
 ---

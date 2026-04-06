@@ -142,8 +142,8 @@ sequenceDiagram
     participant A as FastAPI Server
     participant W as Background Worker
     participant O as Tesseract OCR
-    participant L as Groq LLaMa-3
-    participant D as SQLite DB
+    participant L as Gemini 2.5 Flash
+    participant D as Neon Postgres DB
 
     U->>A: POST /upload (PDF bytes)
     A->>A: Validate file + Generate Job ID
@@ -233,10 +233,10 @@ graph TD
     A --> D[passlib - Bcrypt]
     A --> E[SlowAPI]
     A --> F[SQLAlchemy]
-    F --> G[SQLite]
+    F --> G[Neon PostgreSQL]
     H[pytesseract] --> I[Tesseract Binary - OS Level]
     J[PyMuPDF - fitz] --> K[PDF Rendering]
-    L[Groq SDK] --> M[LLaMa-3.1-8b-instant]
+    L[Google GenAI] --> M[Gemini-2.5-Flash]
     N[openpyxl] --> O[XLSX Export]
     P[Pillow] --> Q[Image Handling]
 ```
@@ -247,7 +247,7 @@ graph TD
 | `pytesseract` | Python wrapper for Tesseract OCR binary |
 | `PyMuPDF (fitz)` | In-memory PDF → Image conversion |
 | `Pillow` | Image object handling between PyMuPDF and Tesseract |
-| `groq` | SDK for Groq cloud LLM inference |
+| `google-genai` | SDK for Google Gemini LLM inference |
 | `sqlalchemy` | ORM for database operations |
 | `python-jose` | JWT token creation and verification |
 | `passlib[bcrypt]` | Secure password hashing |
