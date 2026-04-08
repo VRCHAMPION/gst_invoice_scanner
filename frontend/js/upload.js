@@ -217,12 +217,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             recent.forEach(inv => {
-                let st = 'SUCCESS';
-                let pillClass = 'st-success';
-                
-                // Matches status simulation from history logic
-                if (inv.id % 7 === 0) { st = 'FAILED'; pillClass = 'st-failed'; }
-                else if (inv.id % 5 === 0) { st = 'PROCESSING'; pillClass = 'st-processing'; }
+                // Use the real status from the database (set by the backend pipeline)
+                const st = inv.status || 'PROCESSING';
+                let pillClass = 'st-processing';
+                if (st === 'SUCCESS')    pillClass = 'st-success';
+                else if (st === 'FAILED') pillClass = 'st-failed';
 
                 const fileName = inv.seller_name ? `${inv.seller_name}_${inv.invoice_number || inv.id}` : `SCAN_DATA_${inv.id}`;
                 

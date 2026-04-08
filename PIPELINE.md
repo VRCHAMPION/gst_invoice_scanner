@@ -253,13 +253,12 @@ Each stage includes fallback mechanisms to improve robustness.
 | Stage         | Issue                  | Handling Strategy             | Fallback       |
 | ------------- | ---------------------- | ----------------------------- | -------------- |
 | Input         | Unsupported file       | Reject request                | User re-upload |
-| Validation    | Corrupt file           | Mark as failed                | Skip file      |
+| Validation    | Corrupt file           | Intercept fitz.FileDataError | DB: FAILED     |
 | Preprocessing | Image conversion error | Use original image            | Raw OCR        |
-| OCR           | Low confidence         | Retry with different settings | EasyOCR        |
-| Text Cleaning | Broken structure       | Apply normalization           | Partial output |
-| Extraction    | Missing fields         | Retry with context            | Null values    |
-| Validation    | Tax mismatch           | Flag inconsistency            | Export anyway  |
-| Output        | Export failure         | Retry                         | JSON fallback  |
+| OCR           | Low confidence         | Send raw anyway to LLM        | LLM deciphers  |
+| Text Cleaning | Prompt Injection       | XML boundary wrappers         | Ignore payload |
+| Extraction    | Missing fields         | Strict JSON generation schema | Null values    |
+| Validation    | Tax mismatch           | Flag inconsistency            | UI Warning flag|
 
 ---
 

@@ -189,7 +189,7 @@ sequenceDiagram
 
 | Decision | Chosen | Alternative | Rationale |
 |---|---|---|---|
-| **Field Extraction** | LLM (Groq LLaMa-3) | Regex + NLP pipeline | Invoices have wildly varying formats — regex breaks on edge cases; LLM generalizes across layouts |
+| **Field Extraction** | LLM (Google Gemini 2.5 Flash) | Regex + NLP pipeline | Invoices have wildly varying formats — regex breaks on edge cases; LLM generalizes across layouts. Gemini 2.5 Flash chosen for JSON determinism, high rate limits, and low latency |
 | **OCR Engine** | Tesseract | EasyOCR / PaddleOCR | Lightest installation footprint; sufficient since LLM handles noisy text |
 | **Image Preprocessing** | Skipped | OpenCV pipeline | LLM compensates for OCR noise — adding CV preprocessing would increase latency without proportional accuracy gain |
 | **Async Strategy** | FastAPI BackgroundTasks | Celery + Redis | Avoids infrastructure overhead for a single-server deployment; Celery is overkill at current scale |

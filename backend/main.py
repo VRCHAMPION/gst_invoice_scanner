@@ -87,15 +87,14 @@ async def register(req: RegisterRequest, response: Response, db: Session = Depen
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
     
-    # New user defaults to no company and no role (or first role they take)
-    # Actually, let's default to 'owner' if they are the one creating a company later
-    # OR create a temporary state. Let's say role is 'owner' by default for new registers.
+    # SECURITY: Role is ALWAYS hardcoded server-side to 'owner' on self-registration.
+    # Never trust the client to supply their own role — this prevents privilege escalation.
     hashed = hash_password(req.password)
     new_user = User(
         name=req.name, 
         email=req.email, 
         password_hash=hashed, 
-        role=req.role or 'owner'
+        role='owner'   # ← hardcoded: client cannot inject a role
     )
     db.add(new_user)
     db.commit()
@@ -216,66 +215,65 @@ async def list_company_users(
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="User not part of a company")
     
-    return db.query(User).filter(User.company_id == current_user.company_id).all()
+    users = db.query(User).filter(User.company_id == current_user.company_id).all()
+    # SECURITY: Return only safe fields — never expose password_hash to the client.
+    return [
+        {"id": str(u.id), "name": u.name, "email": u.email, "role": u.role}
+        for u in users
+    ]
 
 # ── Scan & Processing ─────────────────────────────────────────────────
-scan_jobs = {}
+# NOTE: We intentionally do NOT use an in-memory dict (scan_jobs = {}) for job
+# state. Under Gunicorn with multiple workers, each process has isolated memory,
+# so a job written in Worker-1 would be invisible to Workers 2-4 on a status
+# poll. Instead, all job state is persisted to and read from the database.
+# This makes the system worker-safe, horizontally scalable, and Cloud Run ready.
 
 def process_invoice_background(job_id: str, file_bytes: bytes, content_type: str, user_id: uuid.UUID, company_id: uuid.UUID):
     from database import SessionLocal
     db = SessionLocal()
     try:
         data = extract_invoice_data(file_bytes, content_type)
+        
+        # Find the placeholder invoice record created at upload time
+        invoice = db.query(Invoice).filter(Invoice.job_id == job_id).first()
+        if not invoice:
+            return  # Record was deleted between upload and processing — abort silently
+        
         if data.get("status") == "failed":
-            # Save failed attempt to DB
-            failed_invoice = Invoice(
-                company_id=company_id,
-                uploaded_by=user_id,
-                raw_json=data,
-                status="FAILED",
-                error_message=data.get("error", "Unknown extraction failure")
-            )
-            db.add(failed_invoice)
+            invoice.status = "FAILED"
+            invoice.error_message = data.get("error", "Unknown extraction failure")
+            invoice.raw_json = data
             db.commit()
-            
-            scan_jobs[job_id] = data
             return
             
-        new_invoice = Invoice(
-            company_id=company_id,
-            uploaded_by=user_id,
-            invoice_number=data.get("invoice_number"),
-            invoice_date=data.get("invoice_date"),
-            seller_name=data.get("seller_name"),
-            seller_gstin=data.get("seller_gstin"),
-            buyer_name=data.get("buyer_name"),
-            buyer_gstin=data.get("buyer_gstin"),
-            subtotal=data.get("subtotal"),
-            cgst=data.get("cgst"),
-            sgst=data.get("sgst"),
-            igst=data.get("igst"),
-            total=data.get("total"),
-            status="SUCCESS",
-            raw_json=data
-        )
-        db.add(new_invoice)
+        invoice.invoice_number = data.get("invoice_number")
+        invoice.invoice_date   = data.get("invoice_date")
+        invoice.seller_name    = data.get("seller_name")
+        invoice.seller_gstin   = data.get("seller_gstin")
+        invoice.buyer_name     = data.get("buyer_name")
+        invoice.buyer_gstin    = data.get("buyer_gstin")
+        invoice.subtotal       = data.get("subtotal")
+        invoice.cgst           = data.get("cgst")
+        invoice.sgst           = data.get("sgst")
+        invoice.igst           = data.get("igst")
+        invoice.total          = data.get("total")
+        invoice.status         = "SUCCESS"
+        invoice.raw_json       = data
         db.commit()
+        db.refresh(invoice)
         
-        data["id"] = str(new_invoice.id)
-        data["health_score"] = calculate_health_score(data)
-        data["status"] = "completed"
-        scan_jobs[job_id] = data
     except Exception as e:
-        failed_invoice = Invoice(
-            company_id=company_id,
-            uploaded_by=user_id,
-            raw_json={"error": str(e)},
-            status="FAILED",
-            error_message=str(e)
-        )
-        db.add(failed_invoice)
-        db.commit()
-        scan_jobs[job_id] = {"status": "failed", "error": str(e)}
+        # Attempt to mark the job as FAILED in the DB even on unexpected errors
+        try:
+            invoice = db.query(Invoice).filter(Invoice.job_id == job_id).first()
+            if invoice:
+                invoice.status = "FAILED"
+                invoice.error_message = str(e)
+                invoice.raw_json = {"error": str(e)}
+                db.commit()
+        except Exception:
+            pass  # DB itself may be unavailable — nothing more we can do
     finally:
         db.close()
 
@@ -283,7 +281,8 @@ def process_invoice_background(job_id: str, file_bytes: bytes, content_type: str
 async def scan_invoice(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="Please associate with a company first")
@@ -296,7 +295,19 @@ async def scan_invoice(
         raise HTTPException(status_code=413, detail="Payload too large")
         
     job_id = str(uuid.uuid4())
-    scan_jobs[job_id] = {"status": "processing"}
+    
+    # Create a placeholder DB record immediately so the status endpoint
+    # always has a row to query — no in-memory dict required.
+    placeholder = Invoice(
+        job_id=job_id,
+        company_id=current_user.company_id,
+        uploaded_by=current_user.id,
+        status="PROCESSING",
+        raw_json={}
+    )
+    db.add(placeholder)
+    db.commit()
+    
     background_tasks.add_task(
         process_invoice_background, 
         job_id, contents, file.content_type, current_user.id, current_user.company_id
@@ -304,10 +315,26 @@ async def scan_invoice(
     return {"job_id": job_id, "status": "processing"}
 
 @app.get("/scan/status/{job_id}")
-async def get_scan_status(job_id: str):
-    if job_id not in scan_jobs:
+async def get_scan_status(job_id: str, db: Session = Depends(get_db)):
+    """
+    DB-backed status check — safe across multiple Gunicorn workers and Cloud Run instances.
+    """
+    invoice = db.query(Invoice).filter(Invoice.job_id == job_id).first()
+    if not invoice:
         raise HTTPException(status_code=404, detail="Job not found")
-    return scan_jobs[job_id]
+    
+    if invoice.status == "PROCESSING":
+        return {"status": "processing"}
+    
+    if invoice.status == "FAILED":
+        return {"status": "failed", "error": invoice.error_message or "Extraction failed"}
+    
+    # SUCCESS — reconstruct the full result payload
+    data = invoice.raw_json or {}
+    data["id"] = str(invoice.id)
+    data["status"] = "completed"
+    data["health_score"] = calculate_health_score(data)
+    return data
 
 @app.get("/api/invoices")
 async def get_invoices(

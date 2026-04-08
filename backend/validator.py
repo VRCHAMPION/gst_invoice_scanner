@@ -29,7 +29,7 @@ def validate_mathematics(data: dict) -> dict:
 
     if not items:
         issues.append("No items found in invoice")
-        return {"issues": issues}
+        return {"valid": True, "issues": issues}  # missing items is a warning, not a blocker
 
     calculated_subtotal = 0
     for item in items:

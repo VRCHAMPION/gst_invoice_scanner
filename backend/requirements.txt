@@ -15,3 +15,5 @@ google-genai
 pytesseract
 pymupdf
 pillow
+pytest
+httpx

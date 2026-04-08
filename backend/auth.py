@@ -99,4 +99,6 @@ class RegisterRequest(BaseModel):
     name: str
     email: str
     password: str
-    role: Optional[str] = "owner"
+    # NOTE: 'role' is intentionally NOT a client-facing field.
+    # Role assignment is handled server-side only (always 'owner' on self-registration).
+    # Removing this field from the request model closes a privilege escalation vector.

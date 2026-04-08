@@ -42,6 +42,7 @@ class Invoice(Base):
     __tablename__ = "invoices"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    job_id = Column(String, unique=True, index=True, nullable=True)  # set on upload, used for status polling
     company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False)
     uploaded_by = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
     
