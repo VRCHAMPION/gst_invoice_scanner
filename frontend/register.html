@@ -188,6 +188,7 @@
 
             const result = await register(name, email, pass, role);
             if (result.success) {
+                sessionStorage.setItem('intendedRole', role);
                 window.location.href = 'upload.html';
             } else {
                 error.textContent = result.message;

@@ -8,6 +8,249 @@
     <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .onboarding-card {
+            width: 100%; max-width: 560px;
+            padding: 3rem;
+            background: var(--white);
+            border-radius: var(--rl);
+            border: 1px solid var(--border);
+            box-shadow: 0 24px 64px rgba(0,0,0,0.07);
+        }
+        .step-indicator { display: flex; gap: 1rem; margin-bottom: 2.5rem; align-items: center; }
+        .step-dot {
+            width: 36px; height: 36px; border-radius: 50%;
+            background: var(--bg2); border: 2px solid var(--border);
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 800; font-size: 0.85rem; color: var(--muted);
+        }
+        .step-dot.active { background: var(--blue); border-color: var(--blue); color: white; }
+        .step-connector { flex: 1; height: 2px; background: var(--border); border-radius: 2px; }
+        .onboarding-view { display: none; }
+        .onboarding-view.active { display: block; }
+
+        /* Pending screen */
+        .pending-screen { text-align: center; padding: 1rem 0; }
+        .pending-icon { font-size: 3.5rem; margin-bottom: 1.5rem; animation: spin 3s linear infinite; }
+        @keyframes spin { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(15deg)} }
+        .pending-badge {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: var(--amber-lt); color: #B45309;
+            font-family: var(--mono); font-size: 0.75rem; font-weight: 700;
+            padding: 6px 14px; border-radius: 100px; letter-spacing: 1px;
+            text-transform: uppercase; margin-bottom: 1.5rem;
+        }
+        .pending-dot { width: 8px; height: 8px; border-radius: 50%; background: #D97706; animation: blink 1.2s ease-in-out infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    </style>
+</head>
+<body>
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
+    <div class="onboarding-card animate-fade-up">
+        <div class="step-indicator">
+            <div class="step-dot active">1</div>
+            <div class="step-connector"></div>
+            <div class="step-dot" id="stepDot2">2</div>
+        </div>
+
+        <!-- OWNER VIEW -->
+        <div id="ownerView" class="onboarding-view">
+            <h2 class="brand-font" style="margin-bottom: 0.5rem;">Create your workspace</h2>
+            <p class="mb-3">Set up your business entity to begin scanning and inviting your team.</p>
+            <form id="createCompanyForm">
+                <div class="form-group">
+                    <label>Company Display Name</label>
+                    <input type="text" id="compName" required placeholder="e.g. Acme Corp India">
+                </div>
+                <div class="form-group">
+                    <label>GSTIN Number</label>
+                    <input type="text" id="compGstin" required placeholder="22AAAAA0000A1Z5">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">
+                    Create workspace →
+                </button>
+            </form>
+        </div>
+
+        <!-- EMPLOYEE JOIN FORM VIEW -->
+        <div id="employeeView" class="onboarding-view">
+            <h2 class="brand-font" style="margin-bottom: 0.5rem;">Request to join a workspace</h2>
+            <p class="mb-3">Enter the exact name of the company. The owner will be notified and can approve you.</p>
+            <form id="joinCompanyForm">
+                <div class="form-group">
+                    <label>Company Name</label>
+                    <input type="text" id="joinCompName" required placeholder="e.g. Acme Corp India">
+                    <p style="font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem;">ℹ️ Case-sensitive. Ask your owner for the exact name.</p>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;">
+                    Send join request →
+                </button>
+            </form>
+        </div>
+
+        <!-- PENDING APPROVAL VIEW -->
+        <div id="pendingView" class="onboarding-view">
+            <div class="pending-screen">
+                <div class="pending-icon">⏳</div>
+                <div class="pending-badge">
+                    <div class="pending-dot"></div>
+                    Awaiting approval
+                </div>
+                <h2 class="brand-font" style="margin-bottom: 1rem;">Request sent!</h2>
+                <p id="pendingMsg" style="max-width: 340px; margin: 0 auto 2rem;">Your request has been sent to the workspace owner. You'll be redirected automatically once they approve you.</p>
+                <p style="font-family: var(--mono); font-size: 0.75rem; color: var(--muted);">Checking for approval every 10 seconds...</p>
+            </div>
+        </div>
+
+        <div id="errorBox" class="mt-2 data-font" style="color: var(--red); display: none;"></div>
+    </div>
+
+    <script src="js/cursor.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = getCurrentUser();
+            if (!user) return;
+
+            const intendedRole = sessionStorage.getItem('intendedRole') || user.role;
+
+            if (intendedRole === 'owner') {
+                document.getElementById('ownerView').classList.add('active');
+            } else {
+                // Check if they already sent a request
+                checkPendingStatus();
+            }
+        });
+
+        async function checkPendingStatus() {
+            try {
+                const res = await apiFetch(getApiUrl('/api/join-request/status'));
+                if (!res.ok) {
+                    document.getElementById('employeeView').classList.add('active');
+                    return;
+                }
+                const data = await res.json();
+
+                if (data.status === 'approved') {
+                    // Reload session and proceed
+                    const compRes = await apiFetch(getApiUrl('/api/companies'));
+                    const comps = await compRes.json();
+                    if (comps.length > 0) {
+                        sessionStorage.setItem('currentCompany', JSON.stringify(comps[0]));
+                        const user = getCurrentUser();
+                        user.company_id = comps[0].id;
+                        user.role = 'employee';
+                        sessionStorage.setItem('currentUser', JSON.stringify(user));
+                    }
+                    sessionStorage.removeItem('intendedRole');
+                    window.location.href = 'upload.html';
+                } else if (data.status === 'pending') {
+                    showPendingView(data.company_name);
+                    startPolling();
+                } else {
+                    document.getElementById('employeeView').classList.add('active');
+                }
+            } catch {
+                document.getElementById('employeeView').classList.add('active');
+            }
+        }
+
+        function showPendingView(companyName) {
+            document.getElementById('employeeView').classList.remove('active');
+            document.getElementById('pendingView').classList.add('active');
+            document.getElementById('stepDot2').classList.add('active');
+            if (companyName) {
+                document.getElementById('pendingMsg').textContent =
+                    `Your request to join "${companyName}" has been sent. You'll be redirected automatically once the owner approves you.`;
+            }
+        }
+
+        let pollInterval = null;
+        function startPolling() {
+            if (pollInterval) return;
+            pollInterval = setInterval(async () => {
+                try {
+                    const res = await apiFetch(getApiUrl('/api/join-request/status'));
+                    const data = await res.json();
+                    if (data.status === 'approved') {
+                        clearInterval(pollInterval);
+                        const compRes = await apiFetch(getApiUrl('/api/companies'));
+                        const comps = await compRes.json();
+                        if (comps.length > 0) {
+                            sessionStorage.setItem('currentCompany', JSON.stringify(comps[0]));
+                            const user = getCurrentUser();
+                            user.company_id = comps[0].id;
+                            user.role = 'employee';
+                            sessionStorage.setItem('currentUser', JSON.stringify(user));
+                        }
+                        sessionStorage.removeItem('intendedRole');
+                        window.location.href = 'upload.html';
+                    }
+                } catch {}
+            }, 10000);
+        }
+
+        // CREATE WORKSPACE
+        document.getElementById('createCompanyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const name = document.getElementById('compName').value;
+            const gstin = document.getElementById('compGstin').value;
+            const btn = e.target.querySelector('button');
+            btn.textContent = 'Creating...';
+            btn.disabled = true;
+            try {
+                const res = await apiFetch(getApiUrl('/api/companies'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, gstin })
+                });
+                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Creation failed'); }
+                const company = await res.json();
+                sessionStorage.setItem('currentCompany', JSON.stringify(company));
+                const user = getCurrentUser();
+                user.company_id = company.id;
+                sessionStorage.setItem('currentUser', JSON.stringify(user));
+                sessionStorage.removeItem('intendedRole');
+                window.location.href = 'upload.html';
+            } catch (err) {
+                const box = document.getElementById('errorBox');
+                box.textContent = err.message;
+                box.style.display = 'block';
+                btn.textContent = 'Create workspace →';
+                btn.disabled = false;
+            }
+        });
+
+        // SEND JOIN REQUEST
+        document.getElementById('joinCompanyForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const companyName = document.getElementById('joinCompName').value;
+            const btn = e.target.querySelector('button');
+            btn.textContent = 'Sending request...';
+            btn.disabled = true;
+            try {
+                const res = await apiFetch(getApiUrl('/api/join-request'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ company_name: companyName })
+                });
+                if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Request failed'); }
+                showPendingView(companyName);
+                startPolling();
+            } catch (err) {
+                const box = document.getElementById('errorBox');
+                box.textContent = err.message;
+                box.style.display = 'block';
+                btn.textContent = 'Send join request →';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
+
+    <style>
         .onboarding-card {
             max-width: 600px;
             margin: 5rem auto;
@@ -101,7 +344,9 @@
             const user = getCurrentUser();
             if (!user) return;
 
-            if (user.role === 'owner') {
+            const intendedRole = sessionStorage.getItem('intendedRole') || user.role;
+
+            if (intendedRole === 'owner') {
                 document.getElementById('ownerView').classList.add('active');
             } else {
                 document.getElementById('employeeView').classList.add('active');
@@ -119,7 +364,7 @@
             btn.disabled = true;
 
             try {
-                const res = await fetch(getApiUrl('/api/companies'), {
+                const res = await apiFetch(getApiUrl('/api/companies'), {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -161,7 +406,7 @@
             btn.disabled = true;
 
             try {
-                const res = await fetch(getApiUrl('/api/companies/join'), {
+                const res = await apiFetch(getApiUrl('/api/companies/join'), {
                     method: 'POST',
                     headers: { 
                         'Content-Type': 'application/json',
@@ -178,7 +423,7 @@
                 const data = await res.json();
                 
                 // Re-fetch company details to cache properly
-                const compRes = await fetch(getApiUrl('/api/companies'), {
+                const compRes = await apiFetch(getApiUrl('/api/companies'), {
                     headers: getAuthHeaders()
                 });
                 const comps = await compRes.json();

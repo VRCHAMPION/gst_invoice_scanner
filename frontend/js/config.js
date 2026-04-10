@@ -2,7 +2,7 @@
 const CONFIG = {
     // CHANGE THIS TO YOUR RENDER URL (e.g., https://your-app.onrender.com)
     API_BASE_URL: window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost' 
-        ? 'http://127.0.0.1:8000' 
+        ? `http://${window.location.hostname}:8000` 
         : 'https://gst-invoice-scanner.onrender.com'
 };
 

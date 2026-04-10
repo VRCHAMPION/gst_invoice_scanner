@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Invoice | GST Invoice Scanner</title>
     <link rel="stylesheet" href="css/style.css">
+    <script src="js/config.js"></script>
     <script src="js/auth.js"></script>
     <style>
         .upload-section {
@@ -163,6 +164,74 @@
         .guidelines-box li::marker {
             color: var(--blue);
         }
+
+        /* ── TEAM PANEL ── */
+        .team-panel {
+            background: var(--white);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-top: 1.5rem;
+            overflow: hidden;
+        }
+        .team-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.2rem;
+            border-bottom: 1px solid var(--bg2);
+            font-weight: 800;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            color: var(--ink);
+        }
+        .notif-badge {
+            background: var(--red);
+            color: white;
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 100px;
+            min-width: 20px;
+            text-align: center;
+        }
+        .team-stat {
+            background: var(--blue-lt);
+            color: var(--blue);
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 100px;
+        }
+        .request-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.9rem 1.2rem;
+            border-bottom: 1px solid var(--bg2);
+            gap: 1rem;
+        }
+        .request-item:last-child { border-bottom: none; }
+        .request-name { font-weight: 700; font-size: 0.9rem; color: var(--ink); }
+        .request-email { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); }
+        .request-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+        .btn-approve {
+            background: var(--green-lt); color: var(--green);
+            border: 1px solid rgba(0,184,122,0.3);
+            padding: 5px 12px; border-radius: 100px;
+            font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-approve:hover { background: var(--green); color: white; }
+        .btn-reject {
+            background: var(--red-lt); color: var(--red);
+            border: 1px solid rgba(239,68,68,0.3);
+            padding: 5px 12px; border-radius: 100px;
+            font-family: var(--mono); font-size: 0.72rem; font-weight: 700;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .btn-reject:hover { background: var(--red); color: white; }
 
         /* ── FILE PREVIEW ── */
         .file-preview-card {
@@ -323,6 +392,20 @@
                         <div style="color: var(--muted); font-size: 0.85rem; text-align: center; padding: 1rem;">Loading uploads...</div>
                     </div>
                 </div>
+
+                <!-- TEAM PANEL (owners only) -->
+                <div class="team-panel stagger-4" id="teamPanel" style="display:none;">
+                    <div class="team-panel-header">
+                        <span>🏢 Team &amp; Requests</span>
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <span class="team-stat" id="empCountBadge">0 members</span>
+                            <span class="notif-badge" id="requestBadge" style="display:none;">0</span>
+                        </div>
+                    </div>
+                    <div id="requestsList">
+                        <div style="padding: 1rem 1.2rem; color: var(--muted); font-size: 0.82rem;">No pending requests</div>
+                    </div>
+                </div>
             </div>
 
             <!-- RIGHT COLUMN: UPLOAD ZONE -->
@@ -406,5 +489,69 @@
     <script src="js/auth.js"></script>
     <script src="js/companies.js"></script>
     <script src="js/upload.js"></script>
+    <script>
+        // ── TEAM PANEL LOGIC (owners only) ──────────────────────
+        const _user = getCurrentUser();
+        if (_user && _user.role === 'owner') {
+            document.getElementById('teamPanel').style.display = 'block';
+            loadTeamPanel();
+            // Refresh every 30 seconds
+            setInterval(loadTeamPanel, 30000);
+        }
+
+        async function loadTeamPanel() {
+            try {
+                // Employee count
+                const usersRes = await apiFetch(getApiUrl('/api/users'));
+                if (usersRes.ok) {
+                    const users = await usersRes.json();
+                    document.getElementById('empCountBadge').textContent = users.length + ' member' + (users.length !== 1 ? 's' : '');
+                }
+
+                // Pending join requests
+                const jrRes = await apiFetch(getApiUrl('/api/join-requests'));
+                if (!jrRes.ok) return;
+                const requests = await jrRes.json();
+
+                const badge = document.getElementById('requestBadge');
+                const list = document.getElementById('requestsList');
+
+                if (requests.length === 0) {
+                    badge.style.display = 'none';
+                    list.innerHTML = '<div style="padding: 1rem 1.2rem; color: var(--muted); font-size: 0.82rem;">No pending requests ✓</div>';
+                    return;
+                }
+
+                badge.textContent = requests.length;
+                badge.style.display = 'inline-block';
+
+                list.innerHTML = requests.map(r => `
+                    <div class="request-item" id="req-${r.id}">
+                        <div>
+                            <div class="request-name">${r.name}</div>
+                            <div class="request-email">${r.email}</div>
+                        </div>
+                        <div class="request-actions">
+                            <button class="btn-approve" onclick="handleRequest('${r.id}', 'approve')">✓ Approve</button>
+                            <button class="btn-reject" onclick="handleRequest('${r.id}', 'reject')">✕ Reject</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { console.error('Team panel error', e); }
+        }
+
+        async function handleRequest(requestId, action) {
+            const row = document.getElementById('req-' + requestId);
+            if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; }
+            try {
+                const res = await apiFetch(getApiUrl(`/api/join-requests/${requestId}/${action}`), { method: 'POST' });
+                if (res.ok) {
+                    await loadTeamPanel();  // Refresh
+                } else {
+                    if (row) { row.style.opacity = '1'; row.style.pointerEvents = 'auto'; }
+                }
+            } catch { if (row) { row.style.opacity = '1'; row.style.pointerEvents = 'auto'; } }
+        }
+    </script>
 </body>
 </html>

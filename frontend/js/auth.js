@@ -31,7 +31,7 @@ async function login(email, password) {
         const response = await apiFetch(getApiUrl('/api/login'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email: email, password: password })
         });
 
         if (!response.ok) {

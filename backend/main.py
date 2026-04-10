@@ -8,7 +8,7 @@ import os
 
 from parser import extract_invoice_data
 from database import get_db, init_db
-from models import User, Company, Invoice
+from models import User, Company, Invoice, JoinRequest
 from validator import calculate_health_score
 from auth import (
     get_current_user, hash_password, verify_password,
@@ -34,8 +34,11 @@ app.add_middleware(
     allow_origins=[
         "https://gstinvoicescanner.netlify.app",
         "http://localhost:8000",
-        "http://127.0.0.1:8000"
+        "http://127.0.0.1:8000",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500"
     ],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -69,7 +72,7 @@ async def login(req: LoginRequest, response: Response, db: Session = Depends(get
         "company_id": str(user.company_id) if user.company_id else None
     })
     
-    response.set_cookie(key="access_token", value=token, httponly=True, secure=True, samesite="strict")
+    response.set_cookie(key="access_token", value=token, httponly=True, secure=False, samesite="lax")
     
     return {
         "user": {
@@ -101,7 +104,7 @@ async def register(req: RegisterRequest, response: Response, db: Session = Depen
     db.refresh(new_user)
     
     token = create_access_token(data={"sub": str(new_user.id), "email": new_user.email, "role": new_user.role})
-    response.set_cookie(key="access_token", value=token, httponly=True, secure=True, samesite="strict")
+    response.set_cookie(key="access_token", value=token, httponly=True, secure=False, samesite="lax")
     
     return {
         "user": {"id": new_user.id, "email": new_user.email, "role": new_user.role}
@@ -109,7 +112,7 @@ async def register(req: RegisterRequest, response: Response, db: Session = Depen
 
 @app.post("/api/logout")
 async def logout(response: Response):
-    response.delete_cookie("access_token", secure=True, httponly=True, samesite="strict")
+    response.delete_cookie("access_token", secure=False, httponly=True, samesite="lax")
     return {"message": "Logged out successfully"}
 
 # ── Company Management ────────────────────────────────────────────────
@@ -168,23 +171,105 @@ async def get_my_companies(
 class JoinCompanyRequest(BaseModel):
     company_name: str
 
-@app.post("/api/companies/join")
-async def join_company(
+@app.post("/api/join-request")
+async def request_join_company(
     req: JoinCompanyRequest,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    """Employee sends a join request — owner must approve before access is granted."""
     if current_user.company_id:
-        raise HTTPException(status_code=400, detail="User already linked to a company")
-    
+        raise HTTPException(status_code=400, detail="You are already part of a company")
+
     company = db.query(Company).filter(Company.name == req.company_name).first()
     if not company:
-        raise HTTPException(status_code=404, detail="Company not found. Please check the name exactly.")
-    
-    current_user.company_id = company.id
-    current_user.role = "employee" # Force employee role when joining
+        raise HTTPException(status_code=404, detail="Company not found. Check the exact name.")
+
+    # Prevent duplicate requests
+    existing = db.query(JoinRequest).filter(
+        JoinRequest.user_id == current_user.id,
+        JoinRequest.company_id == company.id,
+        JoinRequest.status == "pending"
+    ).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="You already have a pending request for this company")
+
+    jr = JoinRequest(user_id=current_user.id, company_id=company.id)
+    db.add(jr)
     db.commit()
-    return {"message": "Successfully joined company", "company": company.name}
+    return {"message": "Join request sent. Waiting for owner approval.", "request_id": str(jr.id)}
+
+@app.get("/api/join-requests")
+async def list_join_requests(
+    current_user: User = Depends(RoleChecker(['owner'])),
+    db: Session = Depends(get_db)
+):
+    """Owner fetches all pending join requests for their company."""
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="You don't have a company yet")
+
+    requests = db.query(JoinRequest).filter(
+        JoinRequest.company_id == current_user.company_id,
+        JoinRequest.status == "pending"
+    ).all()
+
+    return [{
+        "id": str(r.id),
+        "user_id": str(r.user_id),
+        "name": r.user.name,
+        "email": r.user.email,
+        "created_at": r.created_at.isoformat()
+    } for r in requests]
+
+@app.post("/api/join-requests/{request_id}/approve")
+async def approve_join_request(
+    request_id: str,
+    current_user: User = Depends(RoleChecker(['owner'])),
+    db: Session = Depends(get_db)
+):
+    """Owner approves a join request — links employee to the company."""
+    jr = db.query(JoinRequest).filter(JoinRequest.id == request_id).first()
+    if not jr or str(jr.company_id) != str(current_user.company_id):
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    employee = db.query(User).filter(User.id == jr.user_id).first()
+    employee.company_id = current_user.company_id
+    employee.role = "employee"
+    jr.status = "accepted"
+    db.commit()
+    return {"message": f"{employee.name} has been added to your workspace"}
+
+@app.post("/api/join-requests/{request_id}/reject")
+async def reject_join_request(
+    request_id: str,
+    current_user: User = Depends(RoleChecker(['owner'])),
+    db: Session = Depends(get_db)
+):
+    """Owner rejects a join request."""
+    jr = db.query(JoinRequest).filter(JoinRequest.id == request_id).first()
+    if not jr or str(jr.company_id) != str(current_user.company_id):
+        raise HTTPException(status_code=404, detail="Request not found")
+
+    jr.status = "rejected"
+    db.commit()
+    return {"message": "Request rejected"}
+
+@app.get("/api/join-request/status")
+async def my_join_request_status(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Employee polls this to check if they've been approved."""
+    if current_user.company_id:
+        return {"status": "approved", "company_id": str(current_user.company_id)}
+
+    jr = db.query(JoinRequest).filter(
+        JoinRequest.user_id == current_user.id
+    ).order_by(JoinRequest.created_at.desc()).first()
+
+    if not jr:
+        return {"status": "none"}
+    return {"status": jr.status, "company_name": jr.company.name}
 
 @app.post("/api/invite-user")
 async def invite_user(

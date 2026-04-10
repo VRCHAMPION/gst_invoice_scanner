@@ -67,3 +67,15 @@ class Invoice(Base):
 
     company = relationship("Company", back_populates="invoices")
     uploader = relationship("User", back_populates="uploaded_invoices")
+
+class JoinRequest(Base):
+    __tablename__ = "join_requests"
+
+    id         = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id    = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=False)
+    company_id = Column(UUID(as_uuid=True), ForeignKey("companies.id"), nullable=False)
+    status     = Column(String, default="pending")  # pending | accepted | rejected
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    user    = relationship("User", foreign_keys=[user_id])
+    company = relationship("Company", foreign_keys=[company_id])
