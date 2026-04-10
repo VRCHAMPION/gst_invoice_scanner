@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: gst-invoice-scanner-backend
+    env: docker
+    plan: free
+    region: singapore # Change this to your preferred region (e.g., frankfurt, ohio)
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: DATABASE_URL
+        sync: false # Must be set in Render dashboard
+      - key: GEMINI_API_KEY
+        sync: false # Must be set in Render dashboard
+      - key: JWT_SECRET
+        sync: false # Must be set in Render dashboard
+      - key: PYTHONUNBUFFERED
+        value: "1"
