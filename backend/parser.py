@@ -12,7 +12,7 @@ from PIL import Image
 
 load_dotenv()
 
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY").strip())
 
 # Tesseract path: auto-detected on Linux/Docker; override below only if needed on Windows.
 # On Linux/Docker (Cloud Run), Tesseract is installed via apt and on PATH by default.

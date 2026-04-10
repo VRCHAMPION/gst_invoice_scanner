@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Use PostgreSQL connection string for Database (e.g., Supabase)
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = os.getenv("DATABASE_URL").strip() if os.getenv("DATABASE_URL") else None
 
 if not DATABASE_URL:
     raise ValueError("DATABASE_URL environment variable is not set!")
@@ -57,7 +57,7 @@ def seed_admin_user_orm():
         admin = db.query(User).filter(User.email == "admin@example.com").first()
         if not admin:
             admin = User(
-                password_hash=hash_password(os.getenv("DEFAULT_ADMIN_PASSWORD", "super-secure-randomization-temp")),
+                password_hash=hash_password(os.getenv("DEFAULT_ADMIN_PASSWORD", "super-secure-randomization-temp").strip()),
                 name="Admin User",
                 role="owner"
             )

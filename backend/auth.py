@@ -13,7 +13,7 @@ from typing import List, Optional
 load_dotenv()
 
 # ── Config ────────────────────────────────────────────────────────────
-SECRET_KEY = os.getenv("JWT_SECRET")
+SECRET_KEY = os.getenv("JWT_SECRET").strip() if os.getenv("JWT_SECRET") else None
 if not SECRET_KEY:
     raise ValueError("CRITICAL: JWT_SECRET environment variable is missing!")
     
