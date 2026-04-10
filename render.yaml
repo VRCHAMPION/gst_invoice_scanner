@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: gst-invoice-scanner-backend
+    name: gst-invoice-scanner-api-vrc
     env: docker
     plan: free
     region: singapore # Change this to your preferred region (e.g., frankfurt, ohio)
