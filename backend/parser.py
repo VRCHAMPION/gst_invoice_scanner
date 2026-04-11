@@ -1,5 +1,4 @@
-Instance failed: tck2l
-Ran out of memory (used over 512MB) while running your code.import os
+import os
 import io
 import json
 import time

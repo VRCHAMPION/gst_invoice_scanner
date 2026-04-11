@@ -57,6 +57,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
+        "https://gst-invoice-scanner.vercel.app",
         "https://gstinvoicescanner.netlify.app",
         "https://gstinvoicescanner.netlify.app/",
         "http://localhost:8000",
