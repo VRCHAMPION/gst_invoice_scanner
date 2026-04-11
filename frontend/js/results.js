@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    const isBatch = Array.from(Array.isArray(rawData) ? rawData : [rawData]).length > 1 || Array.isArray(rawData);
+    const isBatch = Array.isArray(rawData) && rawData.length > 1;
     const results = Array.isArray(rawData) ? rawData : [rawData];
     let currentIndex = 0;
     let editMode = false;
@@ -29,17 +29,10 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         prevBtn.addEventListener('click', () => {
-            if (currentIndex > 0) {
-                currentIndex--;
-                updateBatchUI();
-            }
+            if (currentIndex > 0) { currentIndex--; updateBatchUI(); }
         });
-
         nextBtn.addEventListener('click', () => {
-            if (currentIndex < results.length - 1) {
-                currentIndex++;
-                updateBatchUI();
-            }
+            if (currentIndex < results.length - 1) { currentIndex++; updateBatchUI(); }
         });
 
         updateBatchUI();
@@ -49,9 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setupActions(currentData);
     }
 
-    // Edit Mode Toggle
+    // ── Edit Mode ────────────────────────────────────────────────────
     const editBtn = document.getElementById('editBtn');
     const exitEditBtn = document.getElementById('exitEditBtn');
+    const saveEditBtn = document.getElementById('saveEditBtn');
     const editModeBanner = document.getElementById('editModeBanner');
 
     editBtn.addEventListener('click', () => {
@@ -68,8 +62,65 @@ document.addEventListener('DOMContentLoaded', () => {
         disableEditMode();
     });
 
+    if (saveEditBtn) {
+        saveEditBtn.addEventListener('click', async () => {
+            if (!currentData || !currentData.id) {
+                alert('Cannot save — invoice ID is missing.');
+                return;
+            }
+
+            const payload = {
+                invoice_number: currentData.invoice_number || null,
+                invoice_date: currentData.invoice_date || null,
+                seller_name: currentData.seller_name || null,
+                seller_gstin: currentData.seller_gstin || null,
+                buyer_name: currentData.buyer_name || null,
+                buyer_gstin: currentData.buyer_gstin || null,
+                subtotal: currentData.subtotal || null,
+                cgst: currentData.cgst || null,
+                sgst: currentData.sgst || null,
+                igst: currentData.igst || null,
+                total: currentData.total || null,
+            };
+
+            saveEditBtn.disabled = true;
+            saveEditBtn.textContent = 'Saving...';
+
+            try {
+                const response = await apiFetch(getApiUrl(`/api/invoices/${currentData.id}`), {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    body: JSON.stringify(payload),
+                });
+
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || 'Save failed');
+                }
+
+                // Update sessionStorage with persisted data
+                if (isBatch) {
+                    results[currentIndex] = currentData;
+                    sessionStorage.setItem('lastScanResults', JSON.stringify(results));
+                } else {
+                    sessionStorage.setItem('lastScanResults', JSON.stringify(currentData));
+                }
+
+                editMode = false;
+                editModeBanner.style.display = 'none';
+                editBtn.style.display = 'inline-block';
+                disableEditMode();
+                alert('Changes saved successfully.');
+            } catch (error) {
+                alert('ERROR SAVING: ' + error.message);
+            } finally {
+                saveEditBtn.disabled = false;
+                saveEditBtn.textContent = 'Save Changes';
+            }
+        });
+    }
+
     function enableEditMode() {
-        // Make fields editable
         makeEditable('sellerName', 'seller_name');
         makeEditable('sellerGstin', 'seller_gstin');
         makeEditable('buyerName', 'buyer_name');
@@ -87,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.editable-field').forEach(el => {
             el.classList.remove('editable-field');
             el.onclick = null;
+            el.title = '';
         });
     }
 
@@ -100,15 +152,15 @@ document.addEventListener('DOMContentLoaded', () => {
         element.onclick = () => {
             if (!editMode) return;
 
-            const currentValue = isCurrency 
-                ? currentData[dataKey] || 0 
-                : currentData[dataKey] || '';
+            const currentValue = isCurrency
+                ? (currentData[dataKey] || 0)
+                : (currentData[dataKey] || '');
 
             const input = document.createElement('input');
             input.type = isCurrency ? 'number' : 'text';
             input.value = currentValue;
             input.className = 'field-input';
-            input.step = isCurrency ? '0.01' : undefined;
+            if (isCurrency) input.step = '0.01';
 
             element.classList.add('editing');
             const originalHTML = element.innerHTML;
@@ -118,24 +170,19 @@ document.addEventListener('DOMContentLoaded', () => {
             input.select();
 
             const saveEdit = () => {
-                const newValue = isCurrency ? parseFloat(input.value) || 0 : input.value.trim();
+                const newValue = isCurrency
+                    ? (parseFloat(input.value) || 0)
+                    : input.value.trim();
                 currentData[dataKey] = newValue;
-                
-                // Update session storage
-                if (isBatch) {
-                    results[currentIndex] = currentData;
-                    sessionStorage.setItem('lastScanResults', JSON.stringify(results));
-                } else {
-                    sessionStorage.setItem('lastScanResults', JSON.stringify(currentData));
-                }
-
                 element.classList.remove('editing');
                 populateData(currentData);
+                // Re-enable edit mode after repopulate clears it
+                enableEditMode();
             };
 
             input.onblur = saveEdit;
             input.onkeydown = (e) => {
-                if (e.key === 'Enter') saveEdit();
+                if (e.key === 'Enter') { e.preventDefault(); saveEdit(); }
                 if (e.key === 'Escape') {
                     element.classList.remove('editing');
                     element.innerHTML = originalHTML;
@@ -145,33 +192,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// ── Populate ─────────────────────────────────────────────────────────
 function populateData(data) {
-    // Header info
     document.getElementById('invoiceId').textContent = data.id || 'N/A';
     document.getElementById('processedTime').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-    // Show duplicate warning if this is a duplicate invoice
+    // Duplicate warning
     const duplicateWarningBanner = document.getElementById('duplicateWarningBanner');
     const duplicateWarningMessage = document.getElementById('duplicateWarningMessage');
     const viewOriginalBtn = document.getElementById('viewOriginalBtn');
-    
+
     if (data.is_duplicate && data.status === 'FAILED') {
         duplicateWarningBanner.style.display = 'flex';
         duplicateWarningMessage.textContent = data.error_message || 'This invoice is a duplicate of an existing invoice.';
-        
-        // Set up link to original invoice
-        viewOriginalBtn.href = `results.html?id=${data.is_duplicate}`;
+
         viewOriginalBtn.onclick = async (e) => {
             e.preventDefault();
             try {
                 const response = await apiFetch(getApiUrl(`/api/invoices/${data.is_duplicate}`), {
-                    headers: { ...getAuthHeaders() }
+                    headers: getAuthHeaders(),
                 });
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load original invoice');
-                }
-                
+                if (!response.ok) throw new Error('Failed to load original invoice');
                 const originalInvoice = await response.json();
                 sessionStorage.setItem('lastScanResults', JSON.stringify(originalInvoice));
                 window.location.href = 'results.html';
@@ -183,23 +224,57 @@ function populateData(data) {
         duplicateWarningBanner.style.display = 'none';
     }
 
-    // Show approval status badge
+    // Retry button — show only for FAILED non-duplicate invoices
+    const retryBtn = document.getElementById('retryBtn');
+    if (retryBtn) {
+        if (data.status === 'FAILED' && !data.is_duplicate) {
+            retryBtn.style.display = 'inline-block';
+            retryBtn.onclick = async () => {
+                if (!confirm('This will delete the failed record so you can re-upload the file. Continue?')) return;
+                retryBtn.disabled = true;
+                retryBtn.textContent = 'Removing...';
+                try {
+                    const response = await apiFetch(getApiUrl(`/api/invoices/${data.id}/retry`), {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                    });
+                    if (!response.ok) {
+                        const err = await response.json();
+                        throw new Error(err.detail || 'Retry failed');
+                    }
+                    sessionStorage.removeItem('lastScanResults');
+                    alert('Record removed. Please re-upload the invoice file.');
+                    window.location.href = 'upload.html';
+                } catch (error) {
+                    alert('ERROR: ' + error.message);
+                    retryBtn.disabled = false;
+                    retryBtn.textContent = 'Retry';
+                }
+            };
+        } else {
+            retryBtn.style.display = 'none';
+        }
+    }
+
+    // Status badge
     const statusBadge = document.getElementById('approvalStatusBadge');
     if (statusBadge) {
         const status = data.status || 'PENDING_REVIEW';
-        statusBadge.textContent = status.replace('_', ' ');
+        statusBadge.textContent = status.replace(/_/g, ' ');
         statusBadge.className = 'status-badge status-' + status.toLowerCase();
         statusBadge.style.display = 'inline-block';
     }
 
-    // Show/hide approval buttons based on status
+    // Approval buttons
     const approvalActions = document.getElementById('approvalActions');
     if (approvalActions) {
-        if (data.status === 'PENDING_REVIEW') {
-            approvalActions.style.display = 'flex';
-        } else {
-            approvalActions.style.display = 'none';
-        }
+        approvalActions.style.display = data.status === 'PENDING_REVIEW' ? 'flex' : 'none';
+    }
+
+    // Edit button — only show for editable statuses
+    const editBtn = document.getElementById('editBtn');
+    if (editBtn) {
+        editBtn.style.display = (data.status === 'PENDING_REVIEW' || data.status === 'FAILED') ? 'inline-block' : 'none';
     }
 
     // Entities
@@ -208,7 +283,6 @@ function populateData(data) {
     document.getElementById('buyerName').textContent = (data.buyer_name || 'UNKNOWN').toUpperCase();
     document.getElementById('buyerGstin').textContent = data.buyer_gstin || 'NOT DETECTED';
 
-    // Invoice details
     document.getElementById('invoiceNumber').textContent = data.invoice_number || '---';
     document.getElementById('invoiceDate').textContent = formatDate(data.invoice_date);
     document.getElementById('itemCount').textContent = data.items ? data.items.length : 0;
@@ -233,25 +307,19 @@ function populateData(data) {
 
     // Health Score
     const health = data.health_score || { score: 0, grade: 'F', status: 'Incomplete', issues: [], warnings: [], summary: 'No health data available' };
-
-    // Animate score
     animateCounter(document.getElementById('scoreValue'), health.score);
-
     document.getElementById('gradeBadge').textContent = health.grade;
     document.getElementById('healthStatus').textContent = `HEALTH: ${health.status.toUpperCase()}`;
     document.getElementById('scoreSummary').textContent = health.summary;
 
-    // Issues & Warnings
     const issuesContainer = document.getElementById('issuesContainer');
     issuesContainer.innerHTML = '';
-
     health.issues.forEach(issue => {
         const div = document.createElement('div');
         div.className = 'issue-card';
         div.innerHTML = `<span style="color: var(--danger); font-weight: 1000;">●</span> ${issue.toUpperCase()}`;
         issuesContainer.appendChild(div);
     });
-
     health.warnings.forEach(warning => {
         const div = document.createElement('div');
         div.className = 'warning-card';
@@ -259,7 +327,7 @@ function populateData(data) {
         issuesContainer.appendChild(div);
     });
 
-    // Tax Summary
+    // Tax summary
     animateCounterValue('subtotalValue', data.subtotal || 0);
     animateCounterValue('cgstValue', data.cgst || 0);
     animateCounterValue('sgstValue', data.sgst || 0);
@@ -267,39 +335,29 @@ function populateData(data) {
     animateCounterValue('totalValue', data.total || 0);
 }
 
+// ── Actions ──────────────────────────────────────────────────────────
 function setupActions(data) {
-    // Clone buttons to clear existing listeners (important for batch navigation)
-    const exportBtn = document.getElementById('exportBtn');
-    const newExportBtn = exportBtn.cloneNode(true);
-    exportBtn.parentNode.replaceChild(newExportBtn, exportBtn);
+    // Clone to clear old listeners
+    ['exportBtn', 'whatsappBtn', 'approveBtn', 'rejectBtn'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const clone = el.cloneNode(true);
+        el.parentNode.replaceChild(clone, el);
+    });
 
-    const whatsappBtn = document.getElementById('whatsappBtn');
-    const newWhatsappBtn = whatsappBtn.cloneNode(true);
-    whatsappBtn.parentNode.replaceChild(newWhatsappBtn, whatsappBtn);
-
-    // Setup approval buttons
     const approveBtn = document.getElementById('approveBtn');
-    const rejectBtn = document.getElementById('rejectBtn');
-    
     if (approveBtn) {
-        const newApproveBtn = approveBtn.cloneNode(true);
-        approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
-        
-        newApproveBtn.addEventListener('click', async () => {
+        approveBtn.addEventListener('click', async () => {
             if (!confirm('Approve this invoice?')) return;
-            
             try {
                 const response = await apiFetch(getApiUrl(`/api/invoices/${data.id}/approve`), {
                     method: 'POST',
-                    headers: { ...getAuthHeaders() }
+                    headers: getAuthHeaders(),
                 });
-                
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Approval failed');
+                    const err = await response.json();
+                    throw new Error(err.detail || 'Approval failed');
                 }
-                
-                alert('Invoice approved successfully!');
                 data.status = 'APPROVED';
                 populateData(data);
             } catch (error) {
@@ -307,26 +365,20 @@ function setupActions(data) {
             }
         });
     }
-    
+
+    const rejectBtn = document.getElementById('rejectBtn');
     if (rejectBtn) {
-        const newRejectBtn = rejectBtn.cloneNode(true);
-        rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
-        
-        newRejectBtn.addEventListener('click', async () => {
+        rejectBtn.addEventListener('click', async () => {
             if (!confirm('Reject this invoice?')) return;
-            
             try {
                 const response = await apiFetch(getApiUrl(`/api/invoices/${data.id}/reject`), {
                     method: 'POST',
-                    headers: { ...getAuthHeaders() }
+                    headers: getAuthHeaders(),
                 });
-                
                 if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Rejection failed');
+                    const err = await response.json();
+                    throw new Error(err.detail || 'Rejection failed');
                 }
-                
-                alert('Invoice rejected successfully!');
                 data.status = 'REJECTED';
                 populateData(data);
             } catch (error) {
@@ -335,31 +387,37 @@ function setupActions(data) {
         });
     }
 
-    newExportBtn.addEventListener('click', async () => {
-        try {
-            const response = await apiFetch(getApiUrl('/api/export'), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                body: JSON.stringify(data)
-            });
+    const exportBtn = document.getElementById('exportBtn');
+    if (exportBtn) {
+        exportBtn.addEventListener('click', async () => {
+            try {
+                const response = await apiFetch(getApiUrl('/api/export'), {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    body: JSON.stringify(data),
+                });
+                if (!response.ok) throw new Error('EXPORT FAILED');
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `invoice_${data.invoice_number || 'export'}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('ERROR EXPORTING: ' + error.message);
+            }
+        });
+    }
 
-            if (!response.ok) throw new Error('EXPORT FAILED');
-
-            const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `invoice_${data.invoice_number || 'export'}.csv`;
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        } catch (error) {
-            alert('ERROR EXPORTING: ' + error.message);
-        }
-    });
-
-    newWhatsappBtn.addEventListener('click', () => {
-        const text = `Invoice Report: ${data.invoice_number}\nTotal: ${formatCurrency(data.total)}\nHealth Score: ${data.health_score.score}/100`;
-        window.open('https://wa.me/?text=' + encodeURIComponent(text));
-    });
+    const whatsappBtn = document.getElementById('whatsappBtn');
+    if (whatsappBtn) {
+        whatsappBtn.addEventListener('click', () => {
+            const score = (data.health_score && data.health_score.score) || 0;
+            const text = `Invoice Report: ${data.invoice_number || 'N/A'}\nTotal: ${formatCurrency(data.total)}\nHealth Score: ${score}/100`;
+            window.open('https://wa.me/?text=' + encodeURIComponent(text));
+        });
+    }
 }

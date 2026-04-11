@@ -1,16 +1,18 @@
 import csv
 import io
 import uuid
+from datetime import datetime
 from math import ceil
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from auth import get_current_user
 from database import get_db
-from models import Invoice, User
+from models import Invoice, User, Vendor
 from schemas import (
     ExportRequest,
     InvoiceListItem,
@@ -24,8 +26,38 @@ from validator import calculate_health_score
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
+
+class InvoiceUpdateRequest(BaseModel):
+    invoice_number: Optional[str] = None
+    invoice_date: Optional[str] = None
+    seller_name: Optional[str] = None
+    seller_gstin: Optional[str] = None
+    buyer_name: Optional[str] = None
+    buyer_gstin: Optional[str] = None
+    subtotal: Optional[float] = None
+    cgst: Optional[float] = None
+    sgst: Optional[float] = None
+    igst: Optional[float] = None
+    total: Optional[float] = None
+
+
+class ManualInvoiceRequest(BaseModel):
+    invoice_number: str = Field(min_length=1, max_length=100)
+    invoice_date: str = Field(min_length=1)
+    seller_name: str = Field(min_length=1, max_length=200)
+    seller_gstin: Optional[str] = Field(default=None, max_length=15)
+    buyer_name: Optional[str] = Field(default=None, max_length=200)
+    buyer_gstin: Optional[str] = Field(default=None, max_length=15)
+    subtotal: Optional[float] = None
+    cgst: Optional[float] = None
+    sgst: Optional[float] = None
+    igst: Optional[float] = None
+    total: float = Field(gt=0)
+
+
 limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api", tags=["invoices"])
+
 
 @router.post("/scan", response_model=ScanJobResponse)
 @limiter.limit("10/minute")
@@ -39,7 +71,6 @@ async def scan_invoice(
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="Please associate with a company first")
 
-    # Check file size (10MB limit)
     if file.size and file.size > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
 
@@ -49,7 +80,6 @@ async def scan_invoice(
 
     job_id = str(uuid.uuid4())
 
-    # Create placeholder record
     placeholder = Invoice(
         job_id=job_id,
         company_id=current_user.company_id,
@@ -60,7 +90,6 @@ async def scan_invoice(
     db.add(placeholder)
     db.commit()
 
-    # Process in background
     background_tasks.add_task(
         process_invoice_background,
         job_id, contents, file.content_type,
@@ -90,12 +119,17 @@ async def get_scan_status(
         return ScanStatusResponse(
             status="failed",
             error=invoice.error_message or "Extraction failed",
+            id=str(invoice.id),
+            **{
+                "is_duplicate": invoice.is_duplicate,
+                "error_message": invoice.error_message,
+            },
         )
 
-    # Success - return full data with health score
     data = invoice.raw_json or {}
     data["id"] = str(invoice.id)
-    data["status"] = "completed"
+    data["status"] = invoice.status
+    data["is_duplicate"] = invoice.is_duplicate
     data["health_score"] = calculate_health_score(data)
     return ScanStatusResponse(**data)
 
@@ -106,12 +140,12 @@ async def get_invoices(
     db: Session = Depends(get_db),
     page: int = 1,
     limit: int = 50,
-    q: Optional[str] = None,  # Search query
-    status: Optional[str] = None,  # Filter by status
-    date_from: Optional[str] = None,  # Filter by date range
+    q: Optional[str] = None,
+    status: Optional[str] = None,
+    date_from: Optional[str] = None,
     date_to: Optional[str] = None,
-    vendor: Optional[str] = None,  # Filter by seller_gstin
-    amount_min: Optional[float] = None,  # Filter by amount range
+    vendor: Optional[str] = None,
+    amount_min: Optional[float] = None,
     amount_max: Optional[float] = None,
 ):
     """Get paginated invoice list with search and filters."""
@@ -122,10 +156,8 @@ async def get_invoices(
     page = max(page, 1)
     offset = (page - 1) * limit
 
-    # Base query
     base = db.query(Invoice).filter(Invoice.company_id == current_user.company_id)
-    
-    # Apply search
+
     if q:
         search_term = f"%{q}%"
         base = base.filter(
@@ -135,27 +167,23 @@ async def get_invoices(
             (Invoice.seller_gstin.ilike(search_term)) |
             (Invoice.buyer_gstin.ilike(search_term))
         )
-    
-    # Apply status filter
+
     if status:
         base = base.filter(Invoice.status == status.upper())
-    
-    # Apply date range filter
+
     if date_from:
         base = base.filter(Invoice.invoice_date >= date_from)
     if date_to:
         base = base.filter(Invoice.invoice_date <= date_to)
-    
-    # Apply vendor filter
+
     if vendor:
         base = base.filter(Invoice.seller_gstin == vendor.upper())
-    
-    # Apply amount range filter
+
     if amount_min is not None:
         base = base.filter(Invoice.total >= amount_min)
     if amount_max is not None:
         base = base.filter(Invoice.total <= amount_max)
-    
+
     total = base.count()
     invoices = base.order_by(Invoice.created_at.desc()).offset(offset).limit(limit).all()
 
@@ -165,6 +193,117 @@ async def get_invoices(
         page=page,
         pages=ceil(total / limit) if total > 0 else 0,
     )
+
+
+@router.get("/invoices/{invoice_id}")
+async def get_invoice(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get a single invoice by ID."""
+    try:
+        invoice_uuid = uuid.UUID(invoice_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid invoice ID format")
+
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if str(invoice.company_id) != str(current_user.company_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    data = dict(invoice.raw_json or {})
+    data["id"] = str(invoice.id)
+    data["status"] = invoice.status
+    data["is_duplicate"] = invoice.is_duplicate
+    data["error_message"] = invoice.error_message
+    data["invoice_number"] = invoice.invoice_number
+    data["invoice_date"] = invoice.invoice_date
+    data["seller_name"] = invoice.seller_name
+    data["seller_gstin"] = invoice.seller_gstin
+    data["buyer_name"] = invoice.buyer_name
+    data["buyer_gstin"] = invoice.buyer_gstin
+    data["subtotal"] = invoice.subtotal
+    data["cgst"] = invoice.cgst
+    data["sgst"] = invoice.sgst
+    data["igst"] = invoice.igst
+    data["total"] = invoice.total
+    data["health_score"] = calculate_health_score(data)
+    return data
+
+
+@router.patch("/invoices/{invoice_id}", response_model=MessageResponse)
+async def update_invoice(
+    invoice_id: str,
+    req: InvoiceUpdateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update extracted invoice data (edit mode corrections)."""
+    try:
+        invoice_uuid = uuid.UUID(invoice_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid invoice ID format")
+
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if str(invoice.company_id) != str(current_user.company_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if invoice.status not in ("PENDING_REVIEW", "FAILED"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot edit invoice with status: {invoice.status}. Only PENDING_REVIEW or FAILED invoices can be edited.",
+        )
+
+    update_data = req.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(invoice, field, value)
+
+    # Keep raw_json in sync so health score recalculates correctly
+    raw = dict(invoice.raw_json or {})
+    raw.update(update_data)
+    invoice.raw_json = raw
+    invoice.manually_verified = "true"
+
+    db.commit()
+    return MessageResponse(message="Invoice updated successfully")
+
+
+@router.post("/invoices/{invoice_id}/retry", response_model=MessageResponse)
+async def retry_invoice(
+    invoice_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Reset a FAILED invoice so the user can re-upload and reprocess it."""
+    try:
+        invoice_uuid = uuid.UUID(invoice_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid invoice ID format")
+
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if str(invoice.company_id) != str(current_user.company_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    if invoice.status != "FAILED":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot retry invoice with status: {invoice.status}. Only FAILED invoices can be retried.",
+        )
+
+    # We don't store the original file bytes, so we delete this record
+    # and let the user re-upload. Alternatively, mark it deleted.
+    db.delete(invoice)
+    db.commit()
+
+    return MessageResponse(message="Failed invoice removed. Please re-upload the file to reprocess it.")
 
 
 @router.post("/export")
@@ -214,45 +353,39 @@ async def approve_invoice(
     db: Session = Depends(get_db),
 ):
     """Approve a pending invoice."""
-    from datetime import datetime
-    from models import Vendor
-    
     try:
         invoice_uuid = uuid.UUID(invoice_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid invoice ID format")
-    
+
     invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
-    
+
     if str(invoice.company_id) != str(current_user.company_id):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     if invoice.status != "PENDING_REVIEW":
         raise HTTPException(
-            status_code=400, 
-            detail=f"Cannot approve invoice with status: {invoice.status}. Only PENDING_REVIEW invoices can be approved."
+            status_code=400,
+            detail=f"Cannot approve invoice with status: {invoice.status}. Only PENDING_REVIEW invoices can be approved.",
         )
-    
+
     invoice.status = "APPROVED"
     invoice.approval_status = "approved"
     invoice.approved_by = current_user.id
     invoice.approved_at = datetime.utcnow()
-    
-    # Update vendor stats
+
     if invoice.seller_gstin:
         vendor = db.query(Vendor).filter(
             Vendor.company_id == current_user.company_id,
             Vendor.gstin == invoice.seller_gstin.upper()
         ).first()
-        
         if vendor:
             vendor.total_invoices += 1
             vendor.total_amount += (invoice.total or 0.0)
-    
+
     db.commit()
-    
     return MessageResponse(message=f"Invoice {invoice.invoice_number or invoice_id} approved successfully")
 
 
@@ -263,30 +396,27 @@ async def reject_invoice(
     db: Session = Depends(get_db),
 ):
     """Reject a pending invoice."""
-    from datetime import datetime
-    
     try:
         invoice_uuid = uuid.UUID(invoice_id)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid invoice ID format")
-    
+
     invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Invoice not found")
-    
+
     if str(invoice.company_id) != str(current_user.company_id):
         raise HTTPException(status_code=403, detail="Access denied")
-    
+
     if invoice.status != "PENDING_REVIEW":
         raise HTTPException(
-            status_code=400, 
-            detail=f"Cannot reject invoice with status: {invoice.status}. Only PENDING_REVIEW invoices can be rejected."
+            status_code=400,
+            detail=f"Cannot reject invoice with status: {invoice.status}. Only PENDING_REVIEW invoices can be rejected.",
         )
-    
+
     invoice.status = "REJECTED"
     invoice.approval_status = "rejected"
     invoice.approved_by = current_user.id
     invoice.approved_at = datetime.utcnow()
     db.commit()
-    
     return MessageResponse(message=f"Invoice {invoice.invoice_number or invoice_id} rejected successfully")

@@ -52,7 +52,7 @@ async def get_analytics(
 def _build_analytics(db: Session, company_id) -> AnalyticsResponse:
     base = db.query(Invoice).filter(
         Invoice.company_id == company_id,
-        Invoice.status == "SUCCESS",
+        Invoice.status == "APPROVED",
     )
 
     totals = base.with_entities(
@@ -154,7 +154,7 @@ def _build_itc_summary(db: Session, company_id) -> ItcSummaryResponse:
             )
         ).filter(
             Invoice.company_id == company_id,
-            Invoice.status == "SUCCESS",
+            Invoice.status == "APPROVED",
             extract("year", Invoice.created_at) == year,
             extract("month", Invoice.created_at) == month,
         ).scalar() or 0
@@ -184,7 +184,7 @@ def _build_itc_summary(db: Session, company_id) -> ItcSummaryResponse:
         ).label("total_itc"),
     ).filter(
         Invoice.company_id == company_id,
-        Invoice.status == "SUCCESS",
+        Invoice.status == "APPROVED",
         extract("year", Invoice.created_at) == now.year,
         extract("month", Invoice.created_at) == now.month,
         Invoice.seller_name.isnot(None),

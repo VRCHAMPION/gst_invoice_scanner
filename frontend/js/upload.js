@@ -127,13 +127,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (item.status === 'processing') {
             statusBadge = '<span class="queue-item-status" style="background: var(--blue); color: white;">PROCESSING...</span>';
         } else if (item.status === 'success') {
-            statusBadge = '<span class="queue-item-status" style="background: var(--green); color: white;">✓ SUCCESS</span>';
+            statusBadge = '<span class="queue-item-status" style="background: var(--green); color: white;">SUCCESS</span>';
         } else if (item.status === 'failed') {
-            statusBadge = '<span class="queue-item-status" style="background: var(--red); color: white;">✖ FAILED</span>';
+            statusBadge = '<span class="queue-item-status" style="background: var(--red); color: white;">FAILED</span>';
         }
 
         div.innerHTML = `
-            <div class="queue-item-icon">📄</div>
+            <div class="queue-item-icon" style="font-size: 0.7rem; font-weight: 700; color: var(--muted); font-family: var(--mono);">FILE</div>
             <div class="queue-item-info">
                 <div class="queue-item-name">${item.file.name}</div>
                 <div class="queue-item-size">${fileSize}</div>

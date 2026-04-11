@@ -270,7 +270,7 @@
         <!-- Duplicate Warning Banner -->
         <div id="duplicateWarningBanner" class="duplicate-warning-banner" style="display: none;">
             <div>
-                <strong>⚠️ Duplicate Invoice Detected</strong>
+                <strong>Duplicate Invoice Detected</strong>
                 <p id="duplicateWarningMessage" style="font-size: 0.9rem; margin-top: 0.5rem; color: var(--text);"></p>
             </div>
             <a id="viewOriginalBtn" href="#" class="btn btn-primary" style="font-size: 0.75rem;">View Original Invoice</a>
@@ -279,10 +279,13 @@
         <!-- Edit Mode Banner -->
         <div id="editModeBanner" class="edit-mode-banner" style="display: none;">
             <div>
-                <strong>✏️ Edit Mode Active</strong>
-                <p style="font-size: 0.85rem; margin-top: 0.3rem; color: var(--muted);">Click any field to edit. Changes are saved automatically.</p>
+                <strong>Edit Mode Active</strong>
+                <p style="font-size: 0.85rem; margin-top: 0.3rem; color: var(--muted);">Click any field to edit. Press Save to persist changes to the database.</p>
             </div>
-            <button id="exitEditBtn" class="btn btn-outline" style="font-size: 0.75rem;">Exit Edit Mode</button>
+            <div style="display: flex; gap: 0.5rem;">
+                <button id="saveEditBtn" class="btn btn-primary" style="font-size: 0.75rem;">Save Changes</button>
+                <button id="exitEditBtn" class="btn btn-outline" style="font-size: 0.75rem;">Cancel</button>
+            </div>
         </div>
 
         <header style="display: flex; justify-content: space-between; align-items: flex-end; position: relative;">
@@ -297,10 +300,11 @@
             </div>
             <div class="action-bar">
                 <div id="approvalActions" style="display: none; gap: 0.5rem; margin-right: 1rem;">
-                    <button id="approveBtn" class="btn btn-success" style="font-size: 0.7rem;">✓ Approve</button>
-                    <button id="rejectBtn" class="btn btn-danger" style="font-size: 0.7rem;">✗ Reject</button>
+                    <button id="approveBtn" class="btn btn-success" style="font-size: 0.7rem;">Approve</button>
+                    <button id="rejectBtn" class="btn btn-danger" style="font-size: 0.7rem;">Reject</button>
                 </div>
-                <button id="editBtn" class="btn btn-outline" style="font-size: 0.7rem;">✏️ Edit Data</button>
+                <button id="retryBtn" class="btn btn-outline" style="font-size: 0.7rem; display: none;">Retry</button>
+                <button id="editBtn" class="btn btn-outline" style="font-size: 0.7rem;">Edit Data</button>
                 <button id="exportBtn" class="btn btn-outline" style="font-size: 0.7rem;">Export to CSV</button>
                 <button id="whatsappBtn" class="btn btn-outline" style="font-size: 0.7rem;">Share on WhatsApp</button>
                 <a href="upload.html" class="btn btn-primary" style="font-size: 0.7rem;">Scan another</a>

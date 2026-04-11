@@ -183,9 +183,7 @@ function renderTable() {
             statusText = inv.status === 'PENDING_REVIEW' ? 'PENDING' : 'PROCESSING';
         }
         
-        const pillHtml = `<span class="status-pill ${pillClass}">
-            ${(inv.status === 'SUCCESS' || inv.status === 'APPROVED') ? '✓ ' : ''}${(inv.status === 'FAILED' || inv.status === 'REJECTED') ? '✖ ' : ''}${(inv.status === 'PROCESSING' || inv.status === 'PENDING_REVIEW') ? '⏳ ' : ''}${statusText}
-        </span>`;
+        const pillHtml = `<span class="status-pill ${pillClass}">${statusText}</span>`;
 
         row.innerHTML = `
             <td class="data-font" style="color: var(--blue); font-weight: 800;">#${inv.id}</td>
@@ -245,10 +243,10 @@ function setupAdvancedFilters() {
     toggleBtn.addEventListener('click', () => {
         if (advancedPanel.style.display === 'none') {
             advancedPanel.style.display = 'block';
-            toggleBtn.textContent = '🔧 Hide Filters';
+            toggleBtn.textContent = 'Hide Filters';
         } else {
             advancedPanel.style.display = 'none';
-            toggleBtn.textContent = '🔧 More Filters';
+            toggleBtn.textContent = 'More Filters';
         }
     });
     
@@ -362,7 +360,7 @@ function setupBulkExport() {
             alert('EXPORT FAILED: ' + error.message);
         } finally {
             bulkExportBtn.disabled = false;
-            bulkExportBtn.textContent = '📥 Export All';
+            bulkExportBtn.textContent = 'Export All';
         }
     });
 }

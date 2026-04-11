@@ -554,7 +554,7 @@
                 <!-- TEAM PANEL (owners only) -->
                 <div class="team-panel stagger-4" id="teamPanel" style="display:none;">
                     <div class="team-panel-header">
-                        <span>🏢 Team &amp; Requests</span>
+                        <span>Team &amp; Requests</span>
                         <div style="display:flex; align-items:center; gap:0.5rem;">
                             <span class="team-stat" id="empCountBadge">0 members</span>
                             <span class="notif-badge" id="requestBadge" style="display:none;">0</span>
@@ -569,7 +569,9 @@
             <!-- RIGHT COLUMN: UPLOAD ZONE -->
             <div class="animate-fade-up stagger-1">
                 <div class="drop-zone" id="dropZone">
-                    <div class="drop-zone-icon">⎗</div>
+                    <div class="drop-zone-icon" style="font-size: 3rem; color: var(--blue); margin-bottom: 1rem;">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    </div>
                     <p class="drop-zone-text">Drag & drop invoices</p>
                     <p style="color: var(--muted); margin-top: 1rem;">Click or drag files to start upload (max 20 files)</p>
                     <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf" multiple>
@@ -603,7 +605,7 @@
                     <div class="file-preview-card">
                         <div class="thumbnail-wrapper">
                             <img id="fileThumbnail" src="" style="display: none;">
-                            <div id="fileTypeIcon" style="font-size: 20px;">📄</div>
+                            <div id="fileTypeIcon" style="font-size: 20px; color: var(--muted);">PDF</div>
                         </div>
                         <div style="flex: 1; overflow: hidden;">
                             <strong id="fileName" class="data-font" style="display: block; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem;">invoice.jpg</strong>
@@ -689,7 +691,7 @@
 
                 if (requests.length === 0) {
                     badge.style.display = 'none';
-                    list.innerHTML = '<div style="padding: 1rem 1.2rem; color: var(--muted); font-size: 0.82rem;">No pending requests ✓</div>';
+                    list.innerHTML = '<div style="padding: 1rem 1.2rem; color: var(--muted); font-size: 0.82rem;">No pending requests</div>';
                     return;
                 }
 
@@ -703,8 +705,8 @@
                             <div class="request-email">${r.email}</div>
                         </div>
                         <div class="request-actions">
-                            <button class="btn-approve" onclick="handleRequest('${r.id}', 'approve')">✓ Approve</button>
-                            <button class="btn-reject" onclick="handleRequest('${r.id}', 'reject')">✕ Reject</button>
+                            <button class="btn-approve" onclick="handleRequest('${r.id}', 'approve')">Approve</button>
+                            <button class="btn-reject" onclick="handleRequest('${r.id}', 'reject')">Reject</button>
                         </div>
                     </div>
                 `).join('');
