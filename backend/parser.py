@@ -1,4 +1,5 @@
-import os
+Instance failed: tck2l
+Ran out of memory (used over 512MB) while running your code.import os
 import io
 import json
 import time
@@ -35,6 +36,13 @@ log = structlog.get_logger()
 
 def preprocess_image(image: Image.Image) -> Image.Image:
     """Preprocess image for better OCR accuracy."""
+    # Resize large images to save memory (max 2000px width)
+    max_width = 2000
+    if image.width > max_width:
+        ratio = max_width / image.width
+        new_size = (max_width, int(image.height * ratio))
+        image = image.resize(new_size, Image.Resampling.LANCZOS)
+    
     gray = ImageOps.grayscale(image)
     gray = ImageOps.autocontrast(gray, cutoff=2)
     gray = gray.filter(ImageFilter.SHARPEN)
@@ -49,19 +57,25 @@ def extract_raw_text(file_bytes: bytes, content_type: str) -> str:
     try:
         if "pdf" in content_type.lower():
             doc = fitz.open(stream=file_bytes, filetype="pdf")
-            # Process first 2 pages only
-            for page_num in range(min(2, len(doc))):
+            # Process first page only to save memory
+            for page_num in range(min(1, len(doc))):
                 page = doc.load_page(page_num)
-                mat = fitz.Matrix(300 / 72, 300 / 72)  # 300 DPI
+                # Reduce DPI to 200 to save memory (was 300)
+                mat = fitz.Matrix(200 / 72, 200 / 72)
                 pix = page.get_pixmap(matrix=mat)
                 img_bytes = pix.tobytes("png")
                 image = Image.open(io.BytesIO(img_bytes))
                 processed = preprocess_image(image)
                 text += pytesseract.image_to_string(processed) + "\n"
+                # Clean up to free memory
+                del image, processed, pix
+            doc.close()
         else:
             image = Image.open(io.BytesIO(file_bytes))
             processed = preprocess_image(image)
             text = pytesseract.image_to_string(processed)
+            # Clean up
+            del image, processed
         return text
     except fitz.FileDataError as e:
         log.error("ocr_pdf_corrupt", error=str(e))
@@ -75,22 +89,47 @@ def _call_gemini_with_retry(prompt: str, max_attempts: int = 3) -> str:
     """Call Gemini API with exponential backoff on rate limit errors."""
     delays = [2, 4, 8]
     last_error = None
+    
+    # Try multiple model names in order of preference
+    model_names = [
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-flash",
+        "gemini-pro",
+        "models/gemini-1.5-flash-latest",
+        "models/gemini-pro"
+    ]
+    
     for attempt in range(max_attempts):
-        try:
-            response = client.models.generate_content(
-                model="gemini-1.5-flash",
-                contents=prompt
-            )
-            return response.text
-        except (ResourceExhausted, ServiceUnavailable) as e:
-            last_error = e
-            if attempt < max_attempts - 1:
-                wait = delays[attempt]
-                log.warning("gemini_retry", attempt=attempt + 1, wait_seconds=wait, error=str(e))
-                time.sleep(wait)
-        except Exception as e:
-            raise e
-    raise last_error
+        for model_name in model_names:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt
+                )
+                # If successful, log which model worked and return
+                log.info("gemini_success", model=model_name)
+                return response.text
+            except Exception as e:
+                error_msg = str(e)
+                # If it's a "not found" error, try next model
+                if "not found" in error_msg.lower() or "not supported" in error_msg.lower():
+                    continue
+                # If it's a rate limit, retry with backoff
+                elif isinstance(e, (ResourceExhausted, ServiceUnavailable)):
+                    last_error = e
+                    if attempt < max_attempts - 1:
+                        wait = delays[attempt]
+                        log.warning("gemini_retry", attempt=attempt + 1, wait_seconds=wait, error=error_msg)
+                        time.sleep(wait)
+                    break  # Break model loop, continue attempt loop
+                else:
+                    # Other errors, raise immediately
+                    raise e
+    
+    # If we exhausted all attempts and models
+    if last_error:
+        raise last_error
+    raise Exception("All Gemini models failed or are unavailable")
 
 
 def extract_invoice_data(file_bytes: bytes, content_type: str) -> dict:

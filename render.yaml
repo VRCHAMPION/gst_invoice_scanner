@@ -22,3 +22,8 @@ services:
         value: "true"
       - key: ENV
         value: "production"
+      # Memory optimization for 512MB free tier
+      - key: MALLOC_ARENA_MAX
+        value: "2"
+      - key: PYTHONMALLOC
+        value: "malloc"
