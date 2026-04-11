@@ -6,10 +6,14 @@ import structlog
 from dotenv import load_dotenv
 from google import genai
 # google-api-core exceptions are used for retry logic below.
-# This import is intentionally guarded inside _call_gemini_with_retry's except clause
-# so the app starts cleanly even if google-api-core is not installed — the retry
-# will still catch generic Exception and fail gracefully on non-retryable errors.
-from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+# Imported at module level — google-api-core is an explicit dependency in requirements.txt.
+# If somehow absent, the except clause in _call_gemini_with_retry falls back to
+# catching generic Exception, so the app degrades gracefully rather than crashing.
+try:
+    from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
+except ImportError:  # pragma: no cover
+    ResourceExhausted = Exception  # type: ignore[misc,assignment]
+    ServiceUnavailable = Exception  # type: ignore[misc,assignment]
 
 import pytesseract
 import fitz  # PyMuPDF

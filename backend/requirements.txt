@@ -12,6 +12,7 @@ python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1
 google-genai==1.68.0
+google-api-core==2.25.2
 pytesseract==0.3.13
 pymupdf==1.27.2.2
 pillow==12.1.1
