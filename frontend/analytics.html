@@ -87,20 +87,27 @@
                 height: 80px;
                 font-size: 2rem;
             }
+            /* Summary stat cards: 2 columns on mobile */
             .stat-grid {
-                grid-template-columns: 1fr 1fr;
+                grid-template-columns: 1fr 1fr !important;
             }
-            .stat-card:nth-child(3) {
-                grid-column: span 2;
+            .stat-grid .stat-card:nth-child(n) {
+                grid-column: span 1 !important;
             }
-            .stat-card:nth-child(4) {
-                grid-column: span 2;
+            /* Volume chart: full width (no span 2) */
+            .chart-full-width {
+                grid-column: span 1 !important;
             }
             .team-management {
                 padding: 1.5rem;
             }
             .chart-card {
                 min-height: 300px;
+            }
+            /* ITC table horizontal scroll */
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
             }
         }
     </style>
@@ -187,7 +194,7 @@
             </div>
             
             <!-- Invoice Volume -->
-            <div class="chart-card animate-fade-up stagger-4" style="grid-column: span 2;">
+            <div class="chart-card animate-fade-up stagger-4 chart-full-width" style="grid-column: span 2;">
                 <div class="chart-header">
                     <h3 class="brand-font" style="font-size: 0.9rem;">Invoice Volume Activity</h3>
                     <span class="text-muted data-font" style="font-size: 0.7rem;">count per period</span>

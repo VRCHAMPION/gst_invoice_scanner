@@ -88,27 +88,32 @@
         @media (max-width: 768px) {
             body {
                 flex-direction: column;
+                height: auto;
+                min-height: 100vh;
                 overflow-y: auto;
             }
             .auth-left {
-                padding: 2rem;
-                flex: none;
-            }
-            .auth-left::after {
-                background-size: 24px 24px;
-            }
-            .app-title {
-                font-size: 2.5rem;
-            }
-            .feature-list {
-                margin-top: 2rem;
-            }
-            .feature-item {
-                font-size: 1rem;
+                display: none;
             }
             .auth-right {
-                padding: 2rem;
-                flex: none;
+                flex: 1;
+                padding: 1.5rem;
+                justify-content: flex-start;
+                padding-top: 2.5rem;
+            }
+            .auth-form-card {
+                max-width: 100%;
+                width: 100%;
+                margin: 0;
+            }
+            .mobile-brand-header {
+                display: block;
+                font-size: 1.4rem;
+                font-weight: 900;
+                color: var(--ink);
+                letter-spacing: -0.5px;
+                margin-bottom: 2rem;
+                font-family: var(--display);
             }
             .auth-header h2 {
                 font-size: 2rem;
@@ -138,6 +143,7 @@
 
     <div class="auth-right animate-fade-up stagger-1">
         <div class="auth-form-card">
+            <span class="mobile-brand-header" style="display: none;">GST Scanner</span>
             <div class="auth-header">
                 <h2 class="brand-font">Create your account</h2>
                 <p class="data-font">Set up your profile to start scanning invoices.</p>

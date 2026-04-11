@@ -146,6 +146,22 @@
             .action-bar {
                 flex-wrap: wrap;
             }
+            /* Stack page header vertically */
+            .container > header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1.5rem;
+            }
+            .container > header .action-bar {
+                width: 100%;
+            }
+            /* Collapse invoice detail grids to single column */
+            .main-report .card [style*="grid-template-columns: 1fr 1fr"],
+            .main-report .card [style*="grid-template-columns: 1fr 1fr 1fr"] {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 1.5rem !important;
+            }
         }
     </style>
 </head>

@@ -200,6 +200,17 @@
                 background: var(--muted);
                 border-radius: 4px;
             }
+            /* Reduce oversized heading */
+            .history-page-title {
+                font-size: 2rem !important;
+            }
+            /* Truncate long ID column */
+            #historyTable td:first-child {
+                max-width: 80px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
         }
     </style>
 </head>
@@ -227,7 +238,7 @@
 
     <div style="padding: 120px 5% 60px; max-width: 1320px; margin: 0 auto; min-height: 100vh;">
         <header class="mb-2 animate-fade-up">
-            <h1 class="brand-font" style="font-size: 3.5rem; line-height: 1;">Invoice history</h1>
+            <h1 class="brand-font history-page-title" style="font-size: 3.5rem; line-height: 1;">Invoice history</h1>
             <p style="color: var(--muted); margin-bottom: 2rem;">A record of all your processed GST invoices.</p>
         </header>
 

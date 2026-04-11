@@ -342,7 +342,7 @@
             }
             .drop-zone {
                 padding: 2rem;
-                min-height: 250px;
+                min-height: 200px;
             }
             .drop-zone-icon {
                 font-size: 2.5rem;
@@ -375,6 +375,22 @@
                 flex-direction: column;
                 align-items: stretch;
             }
+            .upload-heading {
+                font-size: 2rem !important;
+            }
+            .scan-btn {
+                font-size: 1rem;
+                padding: 1rem;
+            }
+            .modal-content {
+                padding: 1.5rem;
+                margin: 1rem;
+                max-width: calc(100% - 2rem);
+            }
+            .display-company-name,
+            .display-user-name {
+                display: none;
+            }
         }
     </style>
 </head>
@@ -405,7 +421,7 @@
             
             <!-- LEFT COLUMN: SYSTEM HUB -->
             <div class="animate-fade-up">
-                <h1 class="brand-font" style="font-size: 3.5rem; line-height: 0.9; margin-bottom: 2rem;">
+                <h1 class="brand-font upload-heading" style="font-size: 3.5rem; line-height: 0.9; margin-bottom: 2rem;">
                     Upload invoices
                 </h1>
                 <p style="font-size: 1.1rem; color: var(--muted); margin-bottom: 2rem; max-width: 400px; line-height: 1.5;">

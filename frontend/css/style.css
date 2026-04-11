@@ -5,7 +5,7 @@
     --bg2: #EFECEA;
     --ink: #0A0A0A;
     --ink2: #2D2D2D;
-    --muted: #8A8680;
+    --muted: #6B6762;
     --blue: #0047FF;
     --blue-lt: #E0E9FF;
     --green: #00B87A;
@@ -224,6 +224,12 @@ tr:hover td { background: var(--bg); }
 
 @media (max-width: 1024px) { .dashboard-grid { grid-template-columns: repeat(6, 1fr); } .stat-card:nth-child(n) { grid-column: span 3; } }
 @media (max-width: 768px) { .dashboard-grid { grid-template-columns: 1fr 1fr; } .stat-card:nth-child(n) { grid-column: span 1; } }
+
+@media (max-width: 640px) {
+    .user-info .display-user-name { display: none; }
+    .user-info .display-company-name { display: none; }
+    nav { padding: 0 4%; }
+}
 
 /* Section overrides for layout */
 .section-label { font-family: var(--mono); font-size: 10px; letter-spacing: 2.5px; color: var(--blue); text-transform: uppercase; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
