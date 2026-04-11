@@ -56,7 +56,8 @@ async function login(email, password) {
         }
 
         const data = await response.json();
-        // token is handled via HttpOnly cookie natively now!
+        // Store token for Bearer auth on cross-origin requests
+        if (data.token) window.setToken(data.token);
         sessionStorage.setItem('currentUser', JSON.stringify(data.user));
         return { success: true };
     } catch (error) {
@@ -79,6 +80,8 @@ async function register(name, email, password, role) {
         }
 
         const data = await response.json();
+        // Store token for Bearer auth on cross-origin requests
+        if (data.token) window.setToken(data.token);
         sessionStorage.setItem('currentUser', JSON.stringify(data.user));
         return { success: true };
     } catch (error) {
@@ -91,6 +94,8 @@ async function logout() {
         await apiFetch(getApiUrl('/api/logout'), { method: 'POST' });
     } catch(e) { console.error(e); }
     sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('currentCompany');
+    window.clearToken();
     window.location.href = 'login.html';
 }
 

@@ -59,6 +59,7 @@ class UserOut(BaseModel):
 
 class AuthResponse(BaseModel):
     user: UserOut
+    token: Optional[str] = None  # Returned for cross-origin clients to use as Bearer
 
 
 class MessageResponse(BaseModel):

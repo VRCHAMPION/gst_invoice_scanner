@@ -20,10 +20,12 @@ SECRET_KEY = SECRET_KEY.strip()
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 8
 
-# Cookie security — gated on IS_PRODUCTION env var
+# Cookie security — cross-origin setup (Netlify frontend + Render backend)
+# SameSite=None + Secure=True is REQUIRED for cookies to be sent cross-origin.
+# IS_PRODUCTION gates this so local dev (http://localhost) still works.
 IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false").lower() == "true"
-COOKIE_SECURE = IS_PRODUCTION
-COOKIE_SAMESITE = "none" if IS_PRODUCTION else "lax"
+COOKIE_SECURE = IS_PRODUCTION          # True on Render (HTTPS), False on localhost
+COOKIE_SAMESITE = "none" if IS_PRODUCTION else "lax"  # "none" required for cross-origin
 
 # ── Password Hashing ──────────────────────────────────────────────────
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -62,7 +64,14 @@ def decode_access_token(token: str) -> dict:
 # ── Route Protection Dependency ───────────────────────────────────────
 
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    token = request.cookies.get("access_token")
+    # Try Authorization header first (Bearer token — works cross-origin reliably)
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    else:
+        # Fallback to HttpOnly cookie (local dev)
+        token = request.cookies.get("access_token")
+
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

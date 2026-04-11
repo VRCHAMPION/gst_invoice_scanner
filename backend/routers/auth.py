@@ -46,7 +46,7 @@ async def login(
         samesite=COOKIE_SAMESITE,
     )
 
-    return AuthResponse(user=UserOut.model_validate(user))
+    return AuthResponse(user=UserOut.model_validate(user), token=token)
 
 
 @router.post("/register", response_model=AuthResponse)
@@ -85,7 +85,7 @@ async def register(
         samesite=COOKIE_SAMESITE,
     )
 
-    return AuthResponse(user=UserOut.model_validate(new_user))
+    return AuthResponse(user=UserOut.model_validate(new_user), token=token)
 
 
 @router.post("/logout", response_model=MessageResponse)
