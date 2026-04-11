@@ -53,27 +53,3 @@ def ping_db() -> bool:
         return True
     except Exception:
         return False
-
-
-def seed_admin_user_orm():
-    """Create a default admin user if one doesn't already exist."""
-    from models import User
-    from auth import hash_password
-
-    admin_email = os.getenv("DEFAULT_ADMIN_EMAIL", "admin@gstscanner.internal").strip()
-    admin_password = os.getenv("DEFAULT_ADMIN_PASSWORD", "change-me-immediately").strip()
-
-    db = SessionLocal()
-    try:
-        existing = db.query(User).filter(User.email == admin_email).first()
-        if not existing:
-            admin = User(
-                email=admin_email,
-                name="Admin User",
-                password_hash=hash_password(admin_password),
-                role="owner",
-            )
-            db.add(admin)
-            db.commit()
-    finally:
-        db.close()
