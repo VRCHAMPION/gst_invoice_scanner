@@ -106,28 +106,33 @@ def _call_gemini_with_retry(prompt: str, max_attempts: int = 3) -> str:
                     contents=prompt
                 )
                 # If successful, log which model worked and return
-                log.info("gemini_success", model=model_name)
+                log.info("gemini_success", model=model_name, attempt=attempt + 1)
                 return response.text
             except Exception as e:
                 error_msg = str(e)
                 # If it's a "not found" error, try next model
                 if "not found" in error_msg.lower() or "not supported" in error_msg.lower():
+                    log.debug("gemini_model_not_found", model=model_name, error=error_msg[:100])
                     continue
                 # If it's a rate limit, retry with backoff
                 elif isinstance(e, (ResourceExhausted, ServiceUnavailable)):
                     last_error = e
                     if attempt < max_attempts - 1:
                         wait = delays[attempt]
-                        log.warning("gemini_retry", attempt=attempt + 1, wait_seconds=wait, error=error_msg)
+                        log.warning("gemini_retry", attempt=attempt + 1, wait_seconds=wait, error=error_msg[:100])
                         time.sleep(wait)
                     break  # Break model loop, continue attempt loop
                 else:
-                    # Other errors, raise immediately
+                    # Other errors, log and raise immediately
+                    log.error("gemini_api_error", model=model_name, error=error_msg[:200], error_type=type(e).__name__)
                     raise e
     
     # If we exhausted all attempts and models
     if last_error:
+        log.error("gemini_exhausted_retries", error=str(last_error)[:200])
         raise last_error
+    
+    log.error("gemini_all_models_failed", models_tried=model_names)
     raise Exception("All Gemini models failed or are unavailable")
 
 
@@ -164,6 +169,7 @@ Output: {{"seller_name":"ABC Tech","seller_gstin":"27ABCDE1234F1Z5","buyer_name"
         end_idx = raw_json.rfind('}')
 
         if start_idx == -1 or end_idx == -1:
+            log.error("llm_no_json_found", response=raw_json[:200])
             raise ValueError("No JSON object found in response")
 
         cleaned_json = raw_json[start_idx:end_idx + 1]
@@ -171,6 +177,9 @@ Output: {{"seller_name":"ABC Tech","seller_gstin":"27ABCDE1234F1Z5","buyer_name"
         data["status"] = "completed"
         return data
 
+    except json.JSONDecodeError as e:
+        log.error("llm_json_decode_failed", error=str(e), raw_response=raw_json[:200] if 'raw_json' in locals() else "N/A")
+        return {"status": "failed", "error": "Failed to parse OCR text into structured data."}
     except Exception as e:
-        log.error("llm_parse_failed", error=str(e))
+        log.error("llm_parse_failed", error=str(e), error_type=type(e).__name__)
         return {"status": "failed", "error": "Failed to parse invoice data."}
