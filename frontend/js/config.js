@@ -10,7 +10,6 @@ const CONFIG = {
         
         // Vercel deployment
         if (hostname.includes('vercel.app')) {
-            // TODO: Replace with your actual Render backend URL
             return 'https://gst-invoice-scanner-api-vrc-3o7k.onrender.com';
         }
         

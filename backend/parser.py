@@ -115,7 +115,7 @@ def extract_invoice_data(file_bytes: bytes, content_type: str) -> dict:
         log.warning("ocr_empty_result")
         return {"status": "failed", "error": "Could not extract text from file."}
 
-    # Use Gemini to parse OCR text into structured JSON
+    # Use Groq LLM to parse OCR text into structured JSON
     # XML tags prevent prompt injection from malicious PDFs
     prompt = f"""You are a JSON data extractor for Indian GST invoices. Extract invoice data from the text inside <raw_text> tags.
 Return ONLY valid JSON with these keys (use null if not found):

@@ -4,7 +4,7 @@ Extract structured data from Indian GST invoices using OCR and LLMs.
 
 ## What It Does
 
-Processes invoices (PDF, JPG, PNG) and extracts key fields like GSTIN, amounts, tax breakdowns, etc. Uses Tesseract for OCR and Google Gemini for parsing the text into structured JSON.
+Processes invoices (PDF, JPG, PNG) and extracts key fields like GSTIN, amounts, tax breakdowns, etc. Uses Tesseract for OCR and Groq LLM for parsing the text into structured JSON.
 
 ## Why
 
@@ -13,11 +13,11 @@ Manual invoice data entry is tedious. This automates it. Works with varying invo
 ## Tech Stack
 
 - **Backend**: FastAPI + Python
-- **Database**: PostgreSQL (Neon serverless)
+- **Database**: PostgreSQL (Supabase)
 - **OCR**: Tesseract + PyMuPDF
-- **AI**: Google Gemini 1.5 Flash
+- **AI**: Groq (Llama 3.3 70B)
 - **Frontend**: Vanilla JS (no framework)
-- **Auth**: JWT cookies + Bcrypt
+- **Auth**: JWT + Bcrypt
 
 ## Setup
 
@@ -39,11 +39,12 @@ You'll need Tesseract installed:
 Create `backend/.env`:
 
 ```env
-GEMINI_API_KEY=your_gemini_api_key
+GROQ_API_KEY=your_groq_api_key
 JWT_SECRET=your_secret_key
 DATABASE_URL=postgresql://user:pass@host/db
-IS_PRODUCTION=false
 ```
+
+Get your Groq API key from: https://console.groq.com/keys
 
 ## Running
 
@@ -70,9 +71,21 @@ API docs: http://localhost:8000/docs
 3. Background worker:
    - Converts PDF to image (if needed)
    - Runs OCR with Tesseract
-   - Sends text to Gemini for parsing
-   - Saves structured data to DB
+   - Sends text to Groq LLM for parsing
+   - Validates and saves structured data to DB
 4. Frontend polls for results
+
+## Features
+
+- ✅ Multi-format support (PDF, JPG, PNG)
+- ✅ Bulk upload (up to 20 files)
+- ✅ Manual edit after OCR
+- ✅ Duplicate detection
+- ✅ Invoice approval workflow
+- ✅ Vendor management
+- ✅ Search & filters
+- ✅ CSV export
+- ✅ Health score validation
 
 ## Example Output
 
@@ -86,23 +99,22 @@ API docs: http://localhost:8000/docs
   "subtotal": 5000.00,
   "cgst": 450.00,
   "sgst": 450.00,
-  "total": 5900.00
+  "total": 5900.00,
+  "health_score": {
+    "score": 88,
+    "grade": "B",
+    "status": "Good"
+  }
 }
 ```
 
-## Known Issues
+## Deployment
 
-- OCR accuracy varies with image quality
-- Polling timeout is arbitrary (2 minutes)
-- No batch upload yet
-- Mobile layout needs work
+- **Frontend**: Vercel / Netlify
+- **Backend**: Render
+- **Database**: Supabase PostgreSQL
 
-## Future Ideas
-
-- Migrate to Celery for better background job handling
-- Add batch processing
-- Improve error messages
-- Better mobile support
+See `VERCEL_DEPLOYMENT.md` for deployment instructions.
 
 ## License
 

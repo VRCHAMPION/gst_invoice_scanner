@@ -2,19 +2,99 @@ let allInvoices = [];
 let filteredInvoices = [];
 let sortCol = 'created_at';
 let sortDesc = true;
+let vendors = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
+    await fetchVendors();
     await fetchInvoices();
     setupFilters();
     setupSorting();
     setupBulkExport();
+    setupAdvancedFilters();
 });
+
+async function fetchVendors() {
+    try {
+        const response = await apiFetch(getApiUrl('/api/vendors'), {
+            headers: getAuthHeaders()
+        });
+        if (!response.ok) {
+            console.error('Failed to fetch vendors');
+            return;
+        }
+        
+        vendors = await response.json();
+        populateVendorDropdown();
+    } catch (error) {
+        console.error('Error fetching vendors:', error);
+    }
+}
+
+function populateVendorDropdown() {
+    const vendorFilter = document.getElementById('vendorFilter');
+    
+    // Clear existing options except the first one
+    while (vendorFilter.options.length > 1) {
+        vendorFilter.remove(1);
+    }
+    
+    // Add vendor options
+    vendors.forEach(vendor => {
+        const option = document.createElement('option');
+        option.value = vendor.gstin;
+        option.textContent = `${vendor.name} (${vendor.gstin})`;
+        vendorFilter.appendChild(option);
+    });
+}
 
 async function fetchInvoices() {
     try {
-        const response = await apiFetch(getApiUrl('/api/invoices'), {
+        // Build query parameters from filters
+        const params = new URLSearchParams();
+        
+        const searchQuery = document.getElementById('searchInput')?.value.trim();
+        if (searchQuery) {
+            params.append('q', searchQuery);
+        }
+        
+        const statusFilter = document.getElementById('statusFilter')?.value;
+        if (statusFilter) {
+            params.append('status', statusFilter);
+        }
+        
+        const vendorFilter = document.getElementById('vendorFilter')?.value;
+        if (vendorFilter) {
+            params.append('vendor', vendorFilter);
+        }
+        
+        const dateFrom = document.getElementById('dateFromFilter')?.value;
+        if (dateFrom) {
+            params.append('date_from', dateFrom);
+        }
+        
+        const dateTo = document.getElementById('dateToFilter')?.value;
+        if (dateTo) {
+            params.append('date_to', dateTo);
+        }
+        
+        const amountMin = document.getElementById('amountMinFilter')?.value;
+        if (amountMin) {
+            params.append('amount_min', amountMin);
+        }
+        
+        const amountMax = document.getElementById('amountMaxFilter')?.value;
+        if (amountMax) {
+            params.append('amount_max', amountMax);
+        }
+        
+        // Set high limit to get all results for client-side operations
+        params.append('limit', '1000');
+        
+        const url = getApiUrl('/api/invoices') + '?' + params.toString();
+        const response = await apiFetch(url, {
             headers: getAuthHeaders()
         });
+        
         if (!response.ok) throw new Error('FAILED TO FETCH INVOICES');
         
         const payload = await response.json();
@@ -88,14 +168,23 @@ function renderTable() {
         const row = document.createElement('tr');
         row.dataset.id = inv.id;
         
-        // Status Pill HTML
+        // Status Pill HTML - handle all status types
         let pillClass = '';
-        if (inv.status === 'SUCCESS') pillClass = 'pill-success';
-        if (inv.status === 'FAILED') pillClass = 'pill-failed';
-        if (inv.status === 'PROCESSING') pillClass = 'pill-processing';
+        let statusText = inv.status;
+        
+        if (inv.status === 'SUCCESS' || inv.status === 'APPROVED') {
+            pillClass = 'pill-success';
+            statusText = inv.status === 'APPROVED' ? 'APPROVED' : 'SUCCESS';
+        } else if (inv.status === 'FAILED' || inv.status === 'REJECTED') {
+            pillClass = 'pill-failed';
+            statusText = inv.status === 'REJECTED' ? 'REJECTED' : 'FAILED';
+        } else if (inv.status === 'PROCESSING' || inv.status === 'PENDING_REVIEW') {
+            pillClass = 'pill-processing';
+            statusText = inv.status === 'PENDING_REVIEW' ? 'PENDING' : 'PROCESSING';
+        }
         
         const pillHtml = `<span class="status-pill ${pillClass}">
-            ${inv.status === 'SUCCESS' ? '✓ ' : ''}${inv.status === 'FAILED' ? '✖ ' : ''}${inv.status === 'PROCESSING' ? '⏳ ' : ''}${inv.status}
+            ${(inv.status === 'SUCCESS' || inv.status === 'APPROVED') ? '✓ ' : ''}${(inv.status === 'FAILED' || inv.status === 'REJECTED') ? '✖ ' : ''}${(inv.status === 'PROCESSING' || inv.status === 'PENDING_REVIEW') ? '⏳ ' : ''}${statusText}
         </span>`;
 
         row.innerHTML = `
@@ -123,39 +212,56 @@ function renderTable() {
 function setupFilters() {
     const input = document.getElementById('searchInput');
     const statusFilter = document.getElementById('statusFilter');
-    const dateFilter = document.getElementById('dateFilter');
+    const vendorFilter = document.getElementById('vendorFilter');
+    const dateFromFilter = document.getElementById('dateFromFilter');
+    const dateToFilter = document.getElementById('dateToFilter');
+    const amountMinFilter = document.getElementById('amountMinFilter');
+    const amountMaxFilter = document.getElementById('amountMaxFilter');
 
-    function applyFilters() {
-        const query = input.value.toLowerCase();
-        const statusVal = statusFilter.value;
-        const dateVal = dateFilter.value; // YYYY-MM-DD
-
-        filteredInvoices = allInvoices.filter(inv => {
-            // Search Match
-            const matchesSearch = 
-                (inv.seller_name || '').toLowerCase().includes(query) ||
-                (inv.buyer_name || '').toLowerCase().includes(query) ||
-                (inv.invoice_number || '').toLowerCase().includes(query);
-                
-            // Status Match
-            const matchesStatus = statusVal === 'ALL' || inv.status === statusVal;
-            
-            // Date Match
-            let matchesDate = true;
-            if (dateVal) {
-                const invDate = new Date(inv.created_at).toISOString().split('T')[0];
-                matchesDate = (invDate === dateVal);
-            }
-            
-            return matchesSearch && matchesStatus && matchesDate;
-        });
-        
-        renderTable();
+    // Debounce function to avoid too many API calls
+    let debounceTimer;
+    function debounceFilter() {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            fetchInvoices();
+        }, 500);
     }
 
-    input.addEventListener('input', applyFilters);
-    statusFilter.addEventListener('change', applyFilters);
-    dateFilter.addEventListener('change', applyFilters);
+    // Attach event listeners
+    input.addEventListener('input', debounceFilter);
+    statusFilter.addEventListener('change', () => fetchInvoices());
+    vendorFilter.addEventListener('change', () => fetchInvoices());
+    dateFromFilter.addEventListener('change', () => fetchInvoices());
+    dateToFilter.addEventListener('change', () => fetchInvoices());
+    amountMinFilter.addEventListener('input', debounceFilter);
+    amountMaxFilter.addEventListener('input', debounceFilter);
+}
+
+function setupAdvancedFilters() {
+    const toggleBtn = document.getElementById('toggleFiltersBtn');
+    const advancedPanel = document.getElementById('advancedFilters');
+    const clearBtn = document.getElementById('clearFiltersBtn');
+    
+    toggleBtn.addEventListener('click', () => {
+        if (advancedPanel.style.display === 'none') {
+            advancedPanel.style.display = 'block';
+            toggleBtn.textContent = '🔧 Hide Filters';
+        } else {
+            advancedPanel.style.display = 'none';
+            toggleBtn.textContent = '🔧 More Filters';
+        }
+    });
+    
+    clearBtn.addEventListener('click', () => {
+        document.getElementById('searchInput').value = '';
+        document.getElementById('statusFilter').value = '';
+        document.getElementById('vendorFilter').value = '';
+        document.getElementById('dateFromFilter').value = '';
+        document.getElementById('dateToFilter').value = '';
+        document.getElementById('amountMinFilter').value = '';
+        document.getElementById('amountMaxFilter').value = '';
+        fetchInvoices();
+    });
 }
 
 function setupSorting() {

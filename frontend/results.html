@@ -10,6 +10,32 @@
     <script src="js/utils.js?v=1.2"></script>
     <script src="js/auth.js?v=1.2"></script>
     <style>
+        /* Duplicate Warning Banner */
+        .duplicate-warning-banner {
+            background: linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%);
+            border: 3px solid var(--red);
+            border-left: 8px solid var(--red);
+            padding: 1.5rem 2rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+            animation: pulse-warning 2s ease-in-out infinite;
+        }
+        
+        @keyframes pulse-warning {
+            0%, 100% { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15); }
+            50% { box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3); }
+        }
+        
+        .duplicate-warning-banner strong {
+            color: var(--red);
+            font-size: 1.1rem;
+            display: block;
+        }
+        
         /* Edit Mode Styles */
         .edit-mode-banner {
             background: var(--amber-lt);
@@ -107,8 +133,8 @@
 
         .issue-card {
             padding: 1rem;
-            border-left: 3px solid var(--danger);
-            background: rgba(255, 51, 85, 0.05);
+            border-left: 3px solid var(--red);
+            background: rgba(239, 68, 68, 0.05);
             margin-bottom: 0.5rem;
             font-size: 0.85rem;
         }
@@ -154,6 +180,21 @@
 
         /* ── MOBILE ── */
         @media (max-width: 768px) {
+            .duplicate-warning-banner {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 1rem;
+                padding: 1.2rem;
+            }
+            
+            .duplicate-warning-banner strong {
+                font-size: 1rem;
+            }
+            
+            .duplicate-warning-banner p {
+                font-size: 0.85rem !important;
+            }
+            
             .results-grid {
                 grid-template-columns: 1fr;
             }
@@ -216,6 +257,7 @@
         <ul class="nav-links">
             <li><a href="upload.html">Upload</a></li>
             <li><a href="history.html">History</a></li>
+            <li><a href="vendors.html">Vendors</a></li>
             <li><a href="analytics.html">Analytics</a></li>
         </ul>
         <div class="user-info">
@@ -225,6 +267,15 @@
     </nav>
 
     <div class="container animate-fade-up">
+        <!-- Duplicate Warning Banner -->
+        <div id="duplicateWarningBanner" class="duplicate-warning-banner" style="display: none;">
+            <div>
+                <strong>⚠️ Duplicate Invoice Detected</strong>
+                <p id="duplicateWarningMessage" style="font-size: 0.9rem; margin-top: 0.5rem; color: var(--text);"></p>
+            </div>
+            <a id="viewOriginalBtn" href="#" class="btn btn-primary" style="font-size: 0.75rem;">View Original Invoice</a>
+        </div>
+
         <!-- Edit Mode Banner -->
         <div id="editModeBanner" class="edit-mode-banner" style="display: none;">
             <div>
@@ -242,9 +293,13 @@
                     <button id="nextBtn" class="btn btn-outline" style="padding: 0.3rem 0.8rem; font-size: 0.7rem; min-width: auto;">NEXT</button>
                 </div>
                 <h1 class="brand-font" style="font-size: 2.5rem; line-height: 1; margin-bottom: 0.5rem;">Scan results</h1>
-                <p class="text-muted data-font">ID: <span id="invoiceId">0000</span> | Processed at <span id="processedTime">--:--</span></p>
+                <p class="text-muted data-font">ID: <span id="invoiceId">0000</span> | Processed at <span id="processedTime">--:--</span> | <span id="approvalStatusBadge" class="status-badge" style="display: none;">PENDING REVIEW</span></p>
             </div>
             <div class="action-bar">
+                <div id="approvalActions" style="display: none; gap: 0.5rem; margin-right: 1rem;">
+                    <button id="approveBtn" class="btn btn-success" style="font-size: 0.7rem;">✓ Approve</button>
+                    <button id="rejectBtn" class="btn btn-danger" style="font-size: 0.7rem;">✗ Reject</button>
+                </div>
                 <button id="editBtn" class="btn btn-outline" style="font-size: 0.7rem;">✏️ Edit Data</button>
                 <button id="exportBtn" class="btn btn-outline" style="font-size: 0.7rem;">Export to CSV</button>
                 <button id="whatsappBtn" class="btn btn-outline" style="font-size: 0.7rem;">Share on WhatsApp</button>

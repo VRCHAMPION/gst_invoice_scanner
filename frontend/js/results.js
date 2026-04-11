@@ -150,6 +150,58 @@ function populateData(data) {
     document.getElementById('invoiceId').textContent = data.id || 'N/A';
     document.getElementById('processedTime').textContent = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
+    // Show duplicate warning if this is a duplicate invoice
+    const duplicateWarningBanner = document.getElementById('duplicateWarningBanner');
+    const duplicateWarningMessage = document.getElementById('duplicateWarningMessage');
+    const viewOriginalBtn = document.getElementById('viewOriginalBtn');
+    
+    if (data.is_duplicate && data.status === 'FAILED') {
+        duplicateWarningBanner.style.display = 'flex';
+        duplicateWarningMessage.textContent = data.error_message || 'This invoice is a duplicate of an existing invoice.';
+        
+        // Set up link to original invoice
+        viewOriginalBtn.href = `results.html?id=${data.is_duplicate}`;
+        viewOriginalBtn.onclick = async (e) => {
+            e.preventDefault();
+            try {
+                const response = await apiFetch(getApiUrl(`/api/invoices/${data.is_duplicate}`), {
+                    headers: { ...getAuthHeaders() }
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to load original invoice');
+                }
+                
+                const originalInvoice = await response.json();
+                sessionStorage.setItem('lastScanResults', JSON.stringify(originalInvoice));
+                window.location.href = 'results.html';
+            } catch (error) {
+                alert('ERROR: Could not load original invoice. ' + error.message);
+            }
+        };
+    } else {
+        duplicateWarningBanner.style.display = 'none';
+    }
+
+    // Show approval status badge
+    const statusBadge = document.getElementById('approvalStatusBadge');
+    if (statusBadge) {
+        const status = data.status || 'PENDING_REVIEW';
+        statusBadge.textContent = status.replace('_', ' ');
+        statusBadge.className = 'status-badge status-' + status.toLowerCase();
+        statusBadge.style.display = 'inline-block';
+    }
+
+    // Show/hide approval buttons based on status
+    const approvalActions = document.getElementById('approvalActions');
+    if (approvalActions) {
+        if (data.status === 'PENDING_REVIEW') {
+            approvalActions.style.display = 'flex';
+        } else {
+            approvalActions.style.display = 'none';
+        }
+    }
+
     // Entities
     document.getElementById('sellerName').textContent = (data.seller_name || 'UNKNOWN').toUpperCase();
     document.getElementById('sellerGstin').textContent = data.seller_gstin || 'NOT DETECTED';
@@ -224,6 +276,64 @@ function setupActions(data) {
     const whatsappBtn = document.getElementById('whatsappBtn');
     const newWhatsappBtn = whatsappBtn.cloneNode(true);
     whatsappBtn.parentNode.replaceChild(newWhatsappBtn, whatsappBtn);
+
+    // Setup approval buttons
+    const approveBtn = document.getElementById('approveBtn');
+    const rejectBtn = document.getElementById('rejectBtn');
+    
+    if (approveBtn) {
+        const newApproveBtn = approveBtn.cloneNode(true);
+        approveBtn.parentNode.replaceChild(newApproveBtn, approveBtn);
+        
+        newApproveBtn.addEventListener('click', async () => {
+            if (!confirm('Approve this invoice?')) return;
+            
+            try {
+                const response = await apiFetch(getApiUrl(`/api/invoices/${data.id}/approve`), {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders() }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Approval failed');
+                }
+                
+                alert('Invoice approved successfully!');
+                data.status = 'APPROVED';
+                populateData(data);
+            } catch (error) {
+                alert('ERROR: ' + error.message);
+            }
+        });
+    }
+    
+    if (rejectBtn) {
+        const newRejectBtn = rejectBtn.cloneNode(true);
+        rejectBtn.parentNode.replaceChild(newRejectBtn, rejectBtn);
+        
+        newRejectBtn.addEventListener('click', async () => {
+            if (!confirm('Reject this invoice?')) return;
+            
+            try {
+                const response = await apiFetch(getApiUrl(`/api/invoices/${data.id}/reject`), {
+                    method: 'POST',
+                    headers: { ...getAuthHeaders() }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Rejection failed');
+                }
+                
+                alert('Invoice rejected successfully!');
+                data.status = 'REJECTED';
+                populateData(data);
+            } catch (error) {
+                alert('ERROR: ' + error.message);
+            }
+        });
+    }
 
     newExportBtn.addEventListener('click', async () => {
         try {

@@ -150,9 +150,27 @@ nav {
 .btn-primary:hover { transform: translateY(-2px) scale(1.02); box-shadow: 0 8px 24px rgba(0, 71, 255, 0.35); }
 .btn-outline { background: transparent; color: var(--ink); border: 1.5px solid var(--border); }
 .btn-outline:hover { border-color: var(--ink); background: var(--white); transform: translateY(-2px); }
+.btn-success { background: var(--green-lt); color: var(--green); border: 1.5px solid rgba(0, 184, 122, 0.2); }
+.btn-success:hover { background: var(--green); color: white; transform: translateY(-1px); }
 .btn-danger { background: var(--red-lt); color: var(--red); border: 1.5px solid rgba(239, 68, 68, 0.2); }
 .btn-danger:hover { background: #fee2e2; transform: translateY(-1px); }
 .btn:disabled { opacity: 0.5; transform: none !important; box-shadow: none !important; cursor: not-allowed; }
+
+/* Status Badges */
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+.status-pending_review { background: var(--amber-lt); color: var(--amber); }
+.status-approved { background: var(--green-lt); color: var(--green); }
+.status-rejected { background: var(--red-lt); color: var(--red); }
+.status-processing { background: var(--blue-lt); color: var(--blue); }
+.status-failed { background: var(--red-lt); color: var(--red); }
 
 /* Forms */
 .form-group { margin-bottom: 20px; }

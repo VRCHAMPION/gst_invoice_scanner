@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vendors | GST Invoice Scanner</title>
+    <meta name="description" content="Manage your vendors and track spending across all suppliers." />
+    <link rel="stylesheet" href="css/style.css">
+    <script src="js/config.js?v=1.2"></script>
+    <script src="js/utils.js?v=1.2"></script>
+    <script src="js/auth.js?v=1.2"></script>
+    <style>
+        .vendors-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .vendor-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--rl);
+            padding: 1.5rem;
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .vendor-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+            border-color: var(--blue);
+        }
+
+        .vendor-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--blue), var(--green));
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .vendor-card:hover::before {
+            opacity: 1;
+        }
+
+        .vendor-name {
+            font-family: var(--display);
+            font-weight: 800;
+            font-size: 1.25rem;
+            color: var(--ink);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.5px;
+        }
+
+        .vendor-gstin {
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            color: var(--muted);
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.5px;
+        }
+
+        .vendor-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .vendor-stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .vendor-stat-label {
+            font-family: var(--mono);
+            font-size: 0.7rem;
+            font-weight: 600;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .vendor-stat-value {
+            font-family: var(--display);
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: var(--ink);
+            letter-spacing: -0.5px;
+        }
+
+        .vendor-stat-value.amount {
+            color: var(--green);
+        }
+
+        .vendor-detail-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        .vendor-detail-content {
+            max-width: 900px;
+            margin: 0 auto;
+            background: var(--bg);
+            border-radius: var(--rl);
+            padding: 2.5rem;
+            position: relative;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .close-modal {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1.5rem;
+            color: var(--muted);
+        }
+
+        .close-modal:hover {
+            background: var(--red);
+            color: white;
+            border-color: var(--red);
+            transform: rotate(90deg);
+        }
+
+        .vendor-detail-header {
+            margin-bottom: 2rem;
+        }
+
+        .vendor-detail-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .detail-stat-card {
+            background: var(--white);
+            padding: 1.5rem;
+            border-radius: var(--r);
+            border-left: 4px solid var(--blue);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+        }
+
+        .detail-stat-card:nth-child(2) {
+            border-left-color: var(--green);
+        }
+
+        .detail-stat-card:nth-child(3) {
+            border-left-color: var(--amber);
+        }
+
+        .empty-state {
+            padding: 4rem;
+            text-align: center;
+            color: var(--muted);
+            font-family: var(--display);
+            text-transform: uppercase;
+            font-weight: 800;
+            background: var(--white);
+            border-radius: var(--rl);
+            border: 2px dashed var(--border);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid var(--border);
+            border-top-color: var(--blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .vendors-grid {
+                grid-template-columns: 1fr;
+            }
+            .vendor-detail-content {
+                padding: 1.5rem;
+            }
+            .vendor-detail-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- CURSOR -->
+    <div id="cursor"></div>
+    <div id="cursor-ring"></div>
+
+    <nav>
+        <a href="upload.html" class="nav-logo" style="text-decoration:none; color:inherit;">
+            GST Scanner
+            <span class="nav-logo-pill">Beta</span>
+        </a>
+        <ul class="nav-links">
+            <li><a href="upload.html">Upload</a></li>
+            <li><a href="history.html">History</a></li>
+            <li><a href="vendors.html" class="active">Vendors</a></li>
+            <li><a href="analytics.html">Analytics</a></li>
+        </ul>
+        <div class="user-info">
+            <span class="display-company-name" style="color: var(--blue); font-weight: 800; margin-right: 1rem; border-right: 1px solid var(--border-color); padding-right: 1rem;">Workspace</span>
+            <span class="display-user-name">User</span>
+            <button class="logout-btn logout-trigger">Sign out</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <header class="mb-2 animate-fade-up">
+            <h1 class="brand-font" style="font-size: 3.5rem; line-height: 1;">Vendors</h1>
+            <p style="color: var(--muted); margin-bottom: 2rem;">Track spending and invoices across all your suppliers.</p>
+        </header>
+
+        <!-- Loading State -->
+        <div id="loadingState" style="text-align: center; padding: 4rem;">
+            <div class="loading-spinner"></div>
+            <p style="margin-top: 1rem; color: var(--muted); font-family: var(--mono);">Loading vendors...</p>
+        </div>
+
+        <!-- Vendors Grid -->
+        <div id="vendorsGrid" class="vendors-grid animate-fade-up stagger-1" style="display: none;">
+            <!-- Vendor cards will be inserted here -->
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="empty-state animate-fade-up" style="display: none;">
+            No vendors found
+            <p style="font-size: 0.9rem; margin-top: 1rem; text-transform: none; font-weight: 500;">
+                Vendors are automatically created when you upload invoices.
+            </p>
+        </div>
+    </div>
+
+    <!-- Vendor Detail Modal -->
+    <div id="vendorDetailModal" class="vendor-detail-modal">
+        <div class="vendor-detail-content">
+            <button class="close-modal" onclick="closeVendorDetail()">×</button>
+            
+            <div class="vendor-detail-header">
+                <h2 id="modalVendorName" class="brand-font" style="font-size: 2rem; margin-bottom: 0.5rem;"></h2>
+                <p id="modalVendorGstin" class="data-font" style="color: var(--muted);"></p>
+            </div>
+
+            <div class="vendor-detail-stats">
+                <div class="detail-stat-card">
+                    <div class="stat-label">Total Invoices</div>
+                    <div id="modalTotalInvoices" class="stat-value">0</div>
+                </div>
+                <div class="detail-stat-card">
+                    <div class="stat-label">Total Amount</div>
+                    <div id="modalTotalAmount" class="stat-value" style="color: var(--green);">₹0.00</div>
+                </div>
+                <div class="detail-stat-card">
+                    <div class="stat-label">Pending Review</div>
+                    <div id="modalPendingInvoices" class="stat-value" style="color: var(--amber);">0</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <h3 class="brand-font" style="font-size: 1.5rem; margin-bottom: 1rem;">Invoices</h3>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th class="brand-font">Invoice No</th>
+                            <th class="brand-font">Date</th>
+                            <th class="brand-font">Amount</th>
+                            <th class="brand-font">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vendorInvoicesTable">
+                        <!-- Invoice rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="noInvoices" style="display: none; text-align: center; padding: 2rem; color: var(--muted);">
+                No invoices found for this vendor
+            </div>
+        </div>
+    </div>
+
+    <script src="js/cursor.js?v=1.2"></script>
+    <script src="js/vendors.js?v=1.2"></script>
+</body>
+</html>

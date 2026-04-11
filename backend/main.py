@@ -13,7 +13,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
 from database import init_db, ping_db
-from routers import auth, companies, invoices, analytics
+from routers import auth, companies, invoices, analytics, vendors
 from schemas import HealthResponse
 
 structlog.configure(
@@ -92,6 +92,7 @@ app.include_router(auth.router)
 app.include_router(companies.router)
 app.include_router(invoices.router)
 app.include_router(analytics.router)
+app.include_router(vendors.router)
 
 
 @app.api_route("/health", methods=["GET", "HEAD"], response_model=HealthResponse, tags=["system"])
@@ -109,8 +110,8 @@ async def root():
     return {"message": "GST Invoice Scanner API", "version": APP_VERSION, "docs": "/docs"}
 
 
-@app.get("/debug/gemini-status", tags=["system"])
-async def gemini_status():
+@app.get("/debug/groq-status", tags=["system"])
+async def groq_status():
     """Check if Groq API is configured and working."""
     import os
     
