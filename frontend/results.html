@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Scan Results | GST Invoice Scanner</title>
+    <meta name="description" content="View extracted invoice data, ITC calculation, and your Invoice Health Score with detailed compliance checks." />
     <link rel="stylesheet" href="css/style.css">
     <script src="js/config.js?v=1.2"></script>
     <script src="js/utils.js?v=1.2"></script>
@@ -111,6 +112,40 @@
             display: flex;
             gap: 1rem;
             margin-top: 2rem;
+        }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            .score-hero {
+                padding: 2rem;
+            }
+            .score-circle {
+                width: 140px;
+                height: 140px;
+            }
+            .score-value {
+                font-size: 2.5rem;
+            }
+            .grade-badge {
+                font-size: 2rem;
+                top: 10px;
+                right: 10px;
+            }
+            .issue-card, .warning-card {
+                padding: 0.8rem;
+            }
+            .tax-summary-box {
+                padding: 1rem;
+            }
+            .tax-row {
+                font-size: 0.9rem;
+            }
+            .action-bar {
+                flex-wrap: wrap;
+            }
         }
     </style>
 </head>

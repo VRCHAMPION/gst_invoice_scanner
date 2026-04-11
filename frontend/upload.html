@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Upload Invoice | GST Invoice Scanner</title>
+    <meta name="description" content="Upload a GST invoice to extract data, calculate ITC, and get an instant compliance health score." />
     <link rel="stylesheet" href="css/style.css">
     <style>
         .upload-section {
@@ -332,6 +333,49 @@
         .form-group { margin-bottom: 1.5rem; }
         .form-label { display: block; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.8rem; color: var(--muted); }
         .form-input { width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 6px; font-family: var(--mono); }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            .drop-zone {
+                padding: 2rem;
+                min-height: 250px;
+            }
+            .drop-zone-icon {
+                font-size: 2.5rem;
+            }
+            .drop-zone-text {
+                font-size: 1.2rem;
+            }
+            .stat-mini-grid {
+                grid-template-columns: 1fr;
+            }
+            .recent-scans-widget {
+                margin-top: 1rem;
+            }
+            .guidelines-box {
+                padding: 1rem;
+            }
+            .guidelines-box ul {
+                padding-left: 1rem;
+            }
+            .team-panel {
+                margin-top: 1rem;
+            }
+            .file-preview-card {
+                flex-wrap: wrap;
+            }
+            .progress-bar-container {
+                width: 100%;
+            }
+            .company-selector-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+        }
     </style>
 </head>
 <body>

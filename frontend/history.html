@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Invoice History | GST Invoice Scanner</title>
+    <meta name="description" content="Browse your complete GST invoice scan history with health scores, ITC amounts, and compliance status for every invoice." />
     <link rel="stylesheet" href="css/style.css">
     <script src="js/config.js?v=1.2"></script>
     <script src="js/utils.js?v=1.2"></script>
@@ -165,6 +166,40 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
+        }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+            .history-controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .search-container {
+                min-width: auto;
+            }
+            .filter-select {
+                width: 100%;
+            }
+            .stat-mini-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stat-card:nth-child(3) {
+                grid-column: span 2;
+            }
+            .table-container {
+                overflow-x: auto;
+            }
+            .table-container::-webkit-scrollbar {
+                height: 8px;
+            }
+            .table-container::-webkit-scrollbar-track {
+                background: var(--bg2);
+                border-radius: 4px;
+            }
+            .table-container::-webkit-scrollbar-thumb {
+                background: var(--muted);
+                border-radius: 4px;
+            }
         }
     </style>
 </head>

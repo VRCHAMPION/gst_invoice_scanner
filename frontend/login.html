@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login | GST Invoice Scanner</title>
+    <meta name="description" content="Sign in to GST Invoice Scanner to manage your invoices, track ITC, and view compliance health scores." />
     <link rel="stylesheet" href="css/style.css">
     <style>
         body {
@@ -98,6 +99,37 @@
             font-size: 1.2rem;
             opacity: 0.8;
             max-width: 400px;
+        }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            .login-left {
+                padding: 2rem;
+                flex: none;
+            }
+            .login-left::after {
+                background-size: 24px 24px;
+            }
+            .app-title {
+                font-size: 2.5rem;
+            }
+            .feature-list {
+                margin-top: 2rem;
+            }
+            .feature-item {
+                font-size: 1rem;
+            }
+            .login-right {
+                padding: 2rem;
+                flex: none;
+            }
+            .login-header h2 {
+                font-size: 2rem;
+            }
         }
     </style>
 </head>

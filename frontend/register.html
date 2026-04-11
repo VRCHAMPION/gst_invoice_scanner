@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register | GST Invoice Scanner</title>
+    <meta name="description" content="Create a free GST Invoice Scanner account. Scan invoices, auto-calculate ITC, and get compliance health scores — no subscription required." />
     <link rel="stylesheet" href="css/style.css">
     <style>
         body {
@@ -81,6 +82,41 @@
             font-size: 1.2rem;
             opacity: 0.8;
             max-width: 400px;
+        }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                overflow-y: auto;
+            }
+            .auth-left {
+                padding: 2rem;
+                flex: none;
+            }
+            .auth-left::after {
+                background-size: 24px 24px;
+            }
+            .app-title {
+                font-size: 2.5rem;
+            }
+            .feature-list {
+                margin-top: 2rem;
+            }
+            .feature-item {
+                font-size: 1rem;
+            }
+            .auth-right {
+                padding: 2rem;
+                flex: none;
+            }
+            .auth-header h2 {
+                font-size: 2rem;
+            }
+            .role-btn {
+                padding: 0.6rem;
+                font-size: 0.9rem;
+            }
         }
     </style>
 </head>

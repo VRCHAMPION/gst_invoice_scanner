@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analytics Dashboard | GST Invoice Scanner</title>
+    <meta name="description" content="Track your GST invoice analytics — total ITC claimed, health score trends, and compliance insights across all scanned invoices." />
     <link rel="stylesheet" href="css/style.css">
     <script src="js/config.js?v=1.2"></script>
     <script src="js/utils.js?v=1.2"></script>
@@ -68,6 +69,39 @@
         .itc-table-container {
             margin-top: 2rem;
             border: 1px solid var(--border-color);
+        }
+
+        /* ── MOBILE ── */
+        @media (max-width: 768px) {
+            .analytics-grid {
+                grid-template-columns: 1fr;
+            }
+            .deadline-grid {
+                grid-template-columns: 1fr;
+            }
+            .deadline-card {
+                padding: 1.5rem;
+            }
+            .days-circle {
+                width: 80px;
+                height: 80px;
+                font-size: 2rem;
+            }
+            .stat-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .stat-card:nth-child(3) {
+                grid-column: span 2;
+            }
+            .stat-card:nth-child(4) {
+                grid-column: span 2;
+            }
+            .team-management {
+                padding: 1.5rem;
+            }
+            .chart-card {
+                min-height: 300px;
+            }
         }
     </style>
 </head>
