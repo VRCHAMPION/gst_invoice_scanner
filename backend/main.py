@@ -103,7 +103,7 @@ app.include_router(analytics.router)
 
 
 # ── Items 5 & 24: Health check with real DB ping ──────────────────────
-@app.get("/health", response_model=HealthResponse, tags=["system"])
+@app.api_route("/health", methods=["GET", "HEAD"], response_model=HealthResponse, tags=["system"])
 async def health_check():
     db_status = "connected" if ping_db() else "unreachable"
     return HealthResponse(
