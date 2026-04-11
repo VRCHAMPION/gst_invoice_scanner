@@ -1,0 +1,11 @@
+# Clean URL support — /login → /login.html etc.
+/login          /login.html         200
+/register       /register.html      200
+/upload         /upload.html        200
+/results        /results.html       200
+/analytics      /analytics.html     200
+/history        /history.html       200
+/onboarding     /onboarding.html    200
+
+# 404 fallback
+/*              /index.html         404

@@ -10,8 +10,9 @@ function getAuthHeaders() {
 function checkAuth() {
     const user = getCurrentUser();
     const path = window.location.pathname;
-    const isAuthPage = path.includes('login.html') || path.includes('register.html') || path === '/' || path.endsWith('/gst_invoice_scanner/frontend/');
-    const isOnboarding = path.includes('onboarding.html');
+    // Match both /login.html and /login (Netlify serves both)
+    const isAuthPage = path.includes('login') || path.includes('register') || path === '/';
+    const isOnboarding = path.includes('onboarding');
 
     if (!user && !isAuthPage) {
         window.location.href = 'login.html';
