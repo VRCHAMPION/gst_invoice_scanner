@@ -111,40 +111,40 @@ async def root():
 
 @app.get("/debug/gemini-status", tags=["system"])
 async def gemini_status():
-    """Check if Gemini API is configured and working."""
+    """Check if Groq API is configured and working."""
     import os
     
-    api_key = os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GROQ_API_KEY")
     
     if not api_key:
         return {
             "status": "error",
-            "message": "GEMINI_API_KEY environment variable is not set",
+            "message": "GROQ_API_KEY environment variable is not set",
             "configured": False
         }
     
     if len(api_key.strip()) < 20:
         return {
             "status": "error", 
-            "message": "GEMINI_API_KEY appears to be invalid (too short)",
+            "message": "GROQ_API_KEY appears to be invalid (too short)",
             "configured": False,
             "key_length": len(api_key.strip())
         }
     
     # Try a simple API call
     try:
-        from parser import _call_gemini_with_retry
-        response = _call_gemini_with_retry("Say 'OK' if you can read this.", max_attempts=1)
+        from parser import _call_groq_with_retry
+        response = _call_groq_with_retry("Say 'OK' if you can read this.", max_attempts=1)
         return {
             "status": "success",
-            "message": "Gemini API is working correctly",
+            "message": "Groq API is working correctly",
             "configured": True,
             "test_response": response[:50]
         }
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Gemini API call failed: {str(e)[:200]}",
+            "message": f"Groq API call failed: {str(e)[:200]}",
             "configured": True,
             "error_type": type(e).__name__
         }

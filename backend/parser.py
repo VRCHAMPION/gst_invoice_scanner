@@ -4,16 +4,7 @@ import json
 import time
 import structlog
 from dotenv import load_dotenv
-from google import genai
-# google-api-core exceptions are used for retry logic below.
-# Imported at module level — google-api-core is an explicit dependency in requirements.txt.
-# If somehow absent, the except clause in _call_gemini_with_retry falls back to
-# catching generic Exception, so the app degrades gracefully rather than crashing.
-try:
-    from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
-except ImportError:  # pragma: no cover
-    ResourceExhausted = Exception  # type: ignore[misc,assignment]
-    ServiceUnavailable = Exception  # type: ignore[misc,assignment]
+from groq import Groq
 
 import pytesseract
 import fitz  # PyMuPDF
@@ -21,12 +12,12 @@ from PIL import Image, ImageFilter, ImageOps
 
 load_dotenv()
 
-_GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not _GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY environment variable is missing")
-_GEMINI_API_KEY = _GEMINI_API_KEY.strip()
+_GROQ_API_KEY = os.getenv("GROQ_API_KEY")
+if not _GROQ_API_KEY:
+    raise ValueError("GROQ_API_KEY environment variable is missing")
+_GROQ_API_KEY = _GROQ_API_KEY.strip()
 
-client = genai.Client(api_key=_GEMINI_API_KEY)
+client = Groq(api_key=_GROQ_API_KEY)
 log = structlog.get_logger()
 
 # Windows users: uncomment and set tesseract path if needed
@@ -84,56 +75,33 @@ def extract_raw_text(file_bytes: bytes, content_type: str) -> str:
         return "ERROR_EXTRACTION_FAILURE"
 
 
-def _call_gemini_with_retry(prompt: str, max_attempts: int = 3) -> str:
-    """Call Gemini API with exponential backoff on rate limit errors."""
+def _call_groq_with_retry(prompt: str, max_attempts: int = 3) -> str:
+    """Call Groq API with exponential backoff on rate limit errors."""
     delays = [2, 4, 8]
-    last_error = None
-    
-    # Try multiple model names in order of preference
-    model_names = [
-        "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-1.5-flash",
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-pro",
-    ]
     
     for attempt in range(max_attempts):
-        for model_name in model_names:
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt
-                )
-                # If successful, log which model worked and return
-                log.info("gemini_success", model=model_name, attempt=attempt + 1)
-                return response.text
-            except Exception as e:
-                error_msg = str(e)
-                # If it's a "not found" error, try next model
-                if "not found" in error_msg.lower() or "not supported" in error_msg.lower():
-                    log.debug("gemini_model_not_found", model=model_name, error=error_msg[:100])
-                    continue
-                # If it's a rate limit, retry with backoff
-                elif isinstance(e, (ResourceExhausted, ServiceUnavailable)):
-                    last_error = e
-                    if attempt < max_attempts - 1:
-                        wait = delays[attempt]
-                        log.warning("gemini_retry", attempt=attempt + 1, wait_seconds=wait, error=error_msg[:100])
-                        time.sleep(wait)
-                    break  # Break model loop, continue attempt loop
+        try:
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.1,
+                max_tokens=512,
+            )
+            log.info("groq_success", attempt=attempt + 1)
+            return response.choices[0].message.content
+        except Exception as e:
+            error_msg = str(e)
+            if "rate_limit" in error_msg.lower() or "429" in error_msg:
+                if attempt < max_attempts - 1:
+                    wait = delays[attempt]
+                    log.warning("groq_retry", attempt=attempt + 1, wait_seconds=wait, error=error_msg[:100])
+                    time.sleep(wait)
                 else:
-                    # Other errors, log and raise immediately
-                    log.error("gemini_api_error", model=model_name, error=error_msg[:200], error_type=type(e).__name__)
-                    raise e
-    
-    # If we exhausted all attempts and models
-    if last_error:
-        log.error("gemini_exhausted_retries", error=str(last_error)[:200])
-        raise last_error
-    
-    log.error("gemini_all_models_failed", models_tried=model_names)
-    raise Exception("All Gemini models failed or are unavailable")
+                    log.error("groq_exhausted_retries", error=error_msg[:200])
+                    raise
+            else:
+                log.error("groq_api_error", error=error_msg[:200], error_type=type(e).__name__)
+                raise
 
 
 def extract_invoice_data(file_bytes: bytes, content_type: str) -> dict:
@@ -163,7 +131,7 @@ Output: {{"seller_name":"ABC Tech","seller_gstin":"27ABCDE1234F1Z5","buyer_name"
 </raw_text>"""
 
     try:
-        raw_json = _call_gemini_with_retry(prompt)
+        raw_json = _call_groq_with_retry(prompt)
         
         start_idx = raw_json.find('{')
         end_idx = raw_json.rfind('}')
