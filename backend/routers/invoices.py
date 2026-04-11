@@ -126,7 +126,7 @@ async def get_scan_status(
             },
         )
 
-    data = invoice.raw_json or {}
+    data = dict(invoice.raw_json or {})
     data["id"] = str(invoice.id)
     data["status"] = invoice.status
     data["is_duplicate"] = invoice.is_duplicate
@@ -195,8 +195,79 @@ async def get_invoices(
     )
 
 
+# NOTE: /invoices/manual must be declared BEFORE /invoices/{invoice_id}
+# otherwise FastAPI matches "manual" as the invoice_id path parameter.
+@router.post("/invoices/manual", response_model=MessageResponse)
+async def create_manual_invoice(
+    req: ManualInvoiceRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create an invoice record from manually entered data, bypassing OCR."""
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="Please associate with a company first")
+
+    # Duplicate check
+    existing = db.query(Invoice).filter(
+        Invoice.company_id == current_user.company_id,
+        Invoice.invoice_number == req.invoice_number,
+        Invoice.status != "FAILED",
+    ).first()
+    if existing:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Invoice {req.invoice_number} already exists (uploaded on {existing.created_at.strftime('%Y-%m-%d')})",
+        )
+
+    raw = {
+        "invoice_number": req.invoice_number,
+        "invoice_date": req.invoice_date,
+        "seller_name": req.seller_name,
+        "seller_gstin": req.seller_gstin,
+        "buyer_name": req.buyer_name,
+        "buyer_gstin": req.buyer_gstin,
+        "subtotal": req.subtotal,
+        "cgst": req.cgst,
+        "sgst": req.sgst,
+        "igst": req.igst,
+        "total": req.total,
+        "items": [],
+        "manual_entry": True,
+    }
+
+    invoice = Invoice(
+        job_id=str(uuid.uuid4()),
+        company_id=current_user.company_id,
+        uploaded_by=current_user.id,
+        invoice_number=req.invoice_number,
+        invoice_date=req.invoice_date,
+        seller_name=req.seller_name,
+        seller_gstin=req.seller_gstin.upper() if req.seller_gstin else None,
+        buyer_name=req.buyer_name,
+        buyer_gstin=req.buyer_gstin.upper() if req.buyer_gstin else None,
+        subtotal=req.subtotal,
+        cgst=req.cgst,
+        sgst=req.sgst,
+        igst=req.igst,
+        total=req.total,
+        status="PENDING_REVIEW",
+        manually_verified="true",
+        raw_json=raw,
+    )
+    db.add(invoice)
+    db.commit()
+    db.refresh(invoice)
+
+    if req.seller_gstin and req.seller_name:
+        from services.invoice_service import _create_or_update_vendor
+        _create_or_update_vendor(db, current_user.company_id, req.seller_gstin, req.seller_name)
+
+    return MessageResponse(message=str(invoice.id))
+
+
 @router.get("/invoices/{invoice_id}")
 async def get_invoice(
+    invoice_id: str,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -260,10 +331,9 @@ async def update_invoice(
         )
 
     update_data = req.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(invoice, field, value)
+    for field_name, value in update_data.items():
+        setattr(invoice, field_name, value)
 
-    # Keep raw_json in sync so health score recalculates correctly
     raw = dict(invoice.raw_json or {})
     raw.update(update_data)
     invoice.raw_json = raw
@@ -279,7 +349,7 @@ async def retry_invoice(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Reset a FAILED invoice so the user can re-upload and reprocess it."""
+    """Delete a FAILED invoice record so the user can re-upload."""
     try:
         invoice_uuid = uuid.UUID(invoice_id)
     except ValueError:
@@ -298,11 +368,8 @@ async def retry_invoice(
             detail=f"Cannot retry invoice with status: {invoice.status}. Only FAILED invoices can be retried.",
         )
 
-    # We don't store the original file bytes, so we delete this record
-    # and let the user re-upload. Alternatively, mark it deleted.
     db.delete(invoice)
     db.commit()
-
     return MessageResponse(message="Failed invoice removed. Please re-upload the file to reprocess it.")
 
 
