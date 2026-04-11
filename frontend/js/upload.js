@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.append('file', selectedFile);
             formData.append('company_id', companyId);
 
-            const response = await apiFetch(getApiUrl('/scan'), {
+            const response = await apiFetch(getApiUrl('/api/scan'), {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: formData
@@ -157,16 +157,25 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadProgress.style.width = '45%';
         
         let pollCount = 0;
+        const MAX_POLLS = 60; // 60 × 2s = 2 minute timeout
         
         pollingInterval = setInterval(async () => {
             try {
-                const res = await apiFetch(getApiUrl(`/scan/status/${jobId}`), {
+                const res = await apiFetch(getApiUrl(`/api/scan/status/${jobId}`), {
                     headers: getAuthHeaders()
                 });
                 if (!res.ok) throw new Error("Status check failed");
                 
                 const job = await res.json();
                 pollCount++;
+
+                // Item 21: timeout after MAX_POLLS attempts
+                if (pollCount >= MAX_POLLS) {
+                    clearInterval(pollingInterval);
+                    overlay.style.display = 'none';
+                    alert('Processing is taking longer than expected. Please refresh and try again.');
+                    return;
+                }
                 
                 if (job.status === "completed") {
                     clearInterval(pollingInterval);

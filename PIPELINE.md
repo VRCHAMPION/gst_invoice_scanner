@@ -2,244 +2,149 @@
 
 ## Overview
 
-This pipeline converts raw invoice files into structured GST data through a series of clearly defined stages.
-
-Each stage has a specific responsibility, making the system easier to debug, improve, and scale.
+This pipeline converts raw invoice files into structured GST data through clearly defined stages.
 
 The overall flow:
 
-* Ingest file
-* Validate input
-* Preprocess image
-* Extract text (OCR)
-* Clean text
-* Extract GST fields
-* Validate results
-* Export structured output
+1. Ingest and validate file
+2. Convert PDF pages to images (PyMuPDF)
+3. Preprocess image (grayscale + binary threshold)
+4. Extract text (Tesseract OCR)
+5. Semantic extraction via LLM (Gemini 1.5 Flash)
+6. Validate extracted data
+7. Persist to database and return to client
 
 ---
 
 ## 1. Input Ingestion
 
-### Purpose
-
-Accept invoice files and ensure they are valid before processing.
-
 ### Supported Formats
+- PDF, JPG, PNG
 
-* PDF
-* JPG
-* PNG
-* TIFF
-
-### Input Modes
-
-* Single file processing
-* Batch processing (folder input)
-
-### Processing Steps
-
-* Detect file type
-* Validate format and file size
-* For PDFs:
-
-  * Split into pages
-  * Convert each page to an image
-* For images:
-
-  * Load directly into memory
+### Steps
+- Validate MIME type and file extension (whitelist)
+- Enforce 10 MB file size limit
+- For PDFs: render up to 2 pages via PyMuPDF at 300 DPI
+- For images: load directly into memory
 
 ### Output
-
-Validated file or list of page images
+PIL `Image` objects ready for preprocessing
 
 ---
 
 ## 2. Image Preprocessing
 
 ### Purpose
+Improve image quality to increase Tesseract OCR accuracy.
 
-Improve image quality to increase OCR accuracy.
+### Implemented Steps
+- Convert to grayscale (`ImageOps.grayscale`)
+- Apply autocontrast to normalize brightness (`ImageOps.autocontrast`)
+- Sharpen character edges (`ImageFilter.SHARPEN`)
+- Apply binary threshold — pixels below 128 → black, above → white
 
-### Steps
-
-* Convert to grayscale
-* Reduce noise (Gaussian / median filters)
-* Enhance contrast (CLAHE / histogram equalization)
-* Apply binarization (Otsu / adaptive thresholding)
-* Correct skew and rotation
-* Remove borders and crop
-
-### Libraries
-
-* OpenCV
-* Pillow
-* NumPy
+### Library
+- Pillow (PIL)
 
 ### Output
-
-Clean, high-contrast image optimized for OCR
+High-contrast grayscale image optimized for OCR
 
 ---
 
 ## 3. OCR (Optical Character Recognition)
 
-### Purpose
-
-Convert images into raw text.
-
-### Engines
-
-* Primary: Tesseract
-* Fallback: EasyOCR
-* Last resort: manual review / error flag
-
-### Configuration
-
-* Language: English (optional Hindi support)
-* Page segmentation modes:
-
-  * Structured text: `--psm 6`
-  * Sparse text: `--psm 11`
-* Retry logic for low-confidence outputs
+### Engine
+- Tesseract via `pytesseract`
 
 ### Output
-
-* Raw extracted text
-* Confidence scores
+Raw unstructured text blob
 
 ### Expected Performance
-
-* 1–3 seconds per page
-* 85–95% accuracy depending on scan quality
+- 1–3 seconds per page
+- Accuracy improved by preprocessing step above
 
 ---
 
-## 4. Text Post-Processing
+## 4. Semantic Field Extraction (LLM)
 
 ### Purpose
+Convert noisy OCR text into structured JSON with GST-specific fields.
 
-Clean and normalize OCR output before extraction.
+### Implementation
+- Provider: Google Gemini 1.5 Flash via `google-genai` SDK
+- Prompt: hardcoded structural prompt with XML `<raw_text>` boundary tags
+- Retry: exponential backoff — 3 attempts, delays 2s / 4s / 8s on 429/503
 
-### Steps
+### Key Fields Extracted
+- `seller_name`, `seller_gstin`
+- `buyer_name`, `buyer_gstin`
+- `invoice_number`, `invoice_date`
+- `subtotal`, `cgst`, `sgst`, `igst`, `total`
 
-* Remove non-printable characters
-* Correct common OCR errors:
-
-  * 0 ↔ O
-  * 1 ↔ I / l
-  * 5 ↔ S
-* Normalize spacing and line breaks
-* Group text into logical sections:
-
-  * Seller details
-  * Buyer details
-  * Tax summary
-  * Item table
+### Security
+XML boundary tags prevent prompt injection from malicious PDF content.
 
 ### Output
-
-Structured text blocks
+Structured JSON object
 
 ---
 
-## 5. Field Extraction
+## 5. Validation and Cross-Verification
 
-### Purpose
-
-Extract GST-specific data from cleaned text.
-
-### Key Fields
-
-* Seller GSTIN
-* Buyer GSTIN
-* Invoice number
-* Invoice date
-* Taxable amount
-* CGST / SGST / IGST
-* Total amount
-* HSN/SAC codes
-* Line items
-
-### Extraction Methods
-
-* Regex patterns
-* Context-based matching
-* Table parsing for item rows
-
-### Confidence Scoring
-
-Each field can include:
-
-* OCR confidence
-* Parsing confidence
-* Validation status
+### Rules Applied
+- GSTIN format: 15-char regex + state code range check (1–37)
+- Invoice date: multi-format parsing, future date rejection, age warning (>90 days)
+- Tax math: subtotal × rate ≈ tax; CGST must equal SGST for intrastate
+- IGST/CGST mutual exclusion: interstate invoices should only have IGST
+- Fraud signals: round totals, identical item amounts, single high-value items
+- Required fields: seller name, buyer name, invoice number, date, total
 
 ### Output
-
-Structured key-value data
-
----
-
-## 6. Validation and Cross-Verification
-
-### Purpose
-
-Ensure extracted data is logically and structurally correct.
-
-### Validation Rules
-
-* GSTIN format and checksum
-* Valid date formats
-* Tax calculations:
-
-  * Taxable amount × rate ≈ tax
-* Consistency:
-
-  * CGST + SGST vs IGST
-* Mandatory fields:
-
-  * Invoice number
-  * Date
-  * Seller GSTIN
-  * Total amount
-
-### Output
-
-* Validated data
-* Field-level validation report
+Health score (0–100), grade (A–F), issues list, warnings list
 
 ---
 
-## 7. Output Generation
+## 6. Persistence
 
-### Purpose
+### Database
+Neon Serverless PostgreSQL via SQLAlchemy ORM
 
-Prepare structured data for downstream use.
+### Job State
+All job state is DB-backed — no in-memory dicts. Safe across multiple Gunicorn workers.
 
-### Output Formats
+### Indexes
+- `(company_id, status)` — for status filtering
+- `(company_id, created_at)` — for analytics time-series queries
 
-* JSON
-* CSV
-* Excel
-* Database records
+---
 
-### Example
+## 7. Output
 
-```json id="y1k9l2"
+### Formats
+- JSON (API response)
+- CSV (export via `POST /api/export`)
+
+### Example JSON Response
+```json
 {
+  "id": "uuid",
+  "status": "completed",
   "invoice_number": "INV-1024",
   "invoice_date": "12-06-2025",
   "seller_gstin": "29ABCDE1234F1Z5",
   "buyer_gstin": "27PQRSX5678L1Z2",
-  "taxable_amount": 10000.0,
+  "subtotal": 10000.0,
   "cgst": 900.0,
   "sgst": 900.0,
   "igst": 0.0,
-  "total_amount": 11800.0,
-  "confidence": {
-    "invoice_number": 0.96,
-    "seller_gstin": 0.93
+  "total": 11800.0,
+  "health_score": {
+    "score": 88,
+    "grade": "B",
+    "status": "Good",
+    "issues": [],
+    "warnings": [],
+    "summary": "Invoice scored 88/100 — Good"
   }
 }
 ```
@@ -248,100 +153,23 @@ Prepare structured data for downstream use.
 
 ## 8. Error Handling
 
-Each stage includes fallback mechanisms to improve robustness.
-
-| Stage         | Issue                  | Handling Strategy             | Fallback       |
-| ------------- | ---------------------- | ----------------------------- | -------------- |
-| Input         | Unsupported file       | Reject request                | User re-upload |
-| Validation    | Corrupt file           | Intercept fitz.FileDataError | DB: FAILED     |
-| Preprocessing | Image conversion error | Use original image            | Raw OCR        |
-| OCR           | Low confidence         | Send raw anyway to LLM        | LLM deciphers  |
-| Text Cleaning | Prompt Injection       | XML boundary wrappers         | Ignore payload |
-| Extraction    | Missing fields         | Strict JSON generation schema | Null values    |
-| Validation    | Tax mismatch           | Flag inconsistency            | UI Warning flag|
+| Stage | Issue | Handling |
+|---|---|---|
+| Input | Unsupported file type | HTTP 422 / 413 |
+| Input | Corrupt PDF | `fitz.FileDataError` → `status=FAILED` in DB |
+| Preprocessing | Image conversion error | Log + fall back to raw image |
+| OCR | Empty text output | `status=FAILED` with descriptive error |
+| LLM | Transient 429/503 | Exponential backoff retry (3 attempts) |
+| LLM | No JSON in response | `status=FAILED` |
+| Validation | Tax mismatch / bad GSTIN | Health score deduction + issue flag |
 
 ---
 
-## 9. Configuration
+## 9. Performance
 
-The pipeline is configurable via a YAML file.
-
-### Example
-
-```yaml id="6l9x2p"
-input:
-  formats: [pdf, jpg, png, tiff]
-  max_file_size_mb: 20
-
-preprocessing:
-  dpi: 300
-  grayscale: true
-  denoise: true
-  threshold: otsu
-  deskew: true
-
-ocr:
-  engine: tesseract
-  language: eng
-  fallback_engine: easyocr
-  confidence_threshold: 0.60
-  psm: 6
-
-output:
-  format: json
-  save_validation_report: true
-```
-
----
-
-## 10. Performance Metrics
-
-| Metric                        | Typical Range      |
-| ----------------------------- | ------------------ |
-| Processing time (per invoice) | 2–8 seconds        |
-| Processing time (per page)    | 1–3 seconds        |
-| OCR accuracy                  | 85–95%             |
-| Field extraction accuracy     | 80–92%             |
-| Throughput                    | 10–30 invoices/min |
-
-Performance depends on invoice quality and system configuration.
-
----
-
-## 11. Execution Modes
-
-### Single File
-
-```bash id="8y2q1z"
-python main.py --input invoice.pdf --output result.json
-```
-
-### Batch Processing
-
-```bash id="m3x7c1"
-python main.py --input ./invoices/ --output ./results/ --format csv
-```
-
-### API Mode
-
-```bash id="r4n8k2"
-curl -X POST http://localhost:8000/extract -F "file=@invoice.pdf"
-```
-
-### Scheduled Processing
-
-```bash id="q2t9p0"
-0 * * * * python batch_runner.py
-```
-
----
-
-## Summary
-
-The pipeline is designed as a modular, stage-based workflow that separates concerns clearly.
-
-This makes it:
-
-* Easier to debug
-* Easier to extend
-* Suitable for scaling into production systems
+| Metric | Typical Range |
+|---|---|
+| Processing time (per invoice) | 3–10 seconds |
+| OCR time (per page) | 1–3 seconds |
+| LLM extraction | 1–4 seconds |
+| Health score calculation | < 50ms |

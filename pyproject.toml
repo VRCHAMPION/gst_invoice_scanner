@@ -1,0 +1,30 @@
+[tool.ruff]
+# Target Python 3.11 (matches Dockerfile and CI)
+target-version = "py311"
+
+# Directories to lint
+src = ["backend"]
+
+[tool.ruff.lint]
+# E: pycodestyle errors
+# F: pyflakes (undefined names, unused imports)
+# I: isort (import ordering)
+# W: pycodestyle warnings
+select = ["E", "F", "I", "W"]
+
+ignore = [
+    "E501",   # line too long — handled by formatter, not enforced here
+    "E402",   # module-level import not at top — needed for sys.path manipulation in tests
+    "F401",   # imported but unused — some re-exports are intentional
+    "E711",   # comparison to None — SQLAlchemy uses == None in filters
+    "E712",   # comparison to True/False — used in tests
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["auth", "database", "models", "schemas", "validator", "parser", "routers", "services"]
+
+[tool.pytest.ini_options]
+# Run tests from the backend directory so relative imports resolve correctly
+testpaths = ["backend/tests"]
+pythonpath = ["backend"]
+asyncio_mode = "auto"

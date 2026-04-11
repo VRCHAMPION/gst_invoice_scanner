@@ -134,7 +134,7 @@ function setupActions(data) {
 
     newExportBtn.addEventListener('click', async () => {
         try {
-            const response = await apiFetch(getApiUrl('/export'), {
+            const response = await apiFetch(getApiUrl('/api/export'), {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
                 body: JSON.stringify(data)
@@ -146,7 +146,7 @@ function setupActions(data) {
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `invoice_${data.invoice_number || 'export'}.xlsx`;
+            a.download = `invoice_${data.invoice_number || 'export'}.csv`;
             document.body.appendChild(a);
             a.click();
             a.remove();

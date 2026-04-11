@@ -94,11 +94,38 @@ The system follows an asynchronous processing model:
 ```
 gst_invoice_scanner/
 ├── backend/
-│   ├── main.py
-│   ├── parser.py
-│   └── database.py
+│   ├── main.py              # App factory — middleware + router registration
+│   ├── auth.py              # JWT, bcrypt, RBAC dependency
+│   ├── schemas.py           # All Pydantic request + response models
+│   ├── models.py            # SQLAlchemy ORM models
+│   ├── database.py          # Engine, session, ping_db
+│   ├── validator.py         # GSTIN, math, fraud, health score
+│   ├── parser.py            # OCR + Gemini pipeline
+│   ├── run.py               # Dev entry point
+│   ├── routers/
+│   │   ├── auth.py          # /api/login, /api/register, /api/logout, /api/me
+│   │   ├── companies.py     # /api/companies, /api/join-request, /api/users
+│   │   ├── invoices.py      # /api/scan, /api/scan/status, /api/invoices, /api/export
+│   │   └── analytics.py     # /api/analytics, /api/itc-summary
+│   ├── services/
+│   │   └── invoice_service.py  # Background processing logic
+│   └── tests/
+│       ├── conftest.py
+│       ├── test_auth.py
+│       ├── test_companies.py
+│       ├── test_invoices.py
+│       └── test_validator.py
 ├── frontend/
-├── test_invoices/
+│   ├── js/
+│   │   ├── config.js        # API base URL, apiFetch wrapper
+│   │   ├── utils.js         # Shared: formatCurrency, formatDate, animateCounter
+│   │   ├── auth.js          # Auth state management
+│   │   ├── upload.js        # File upload + polling (2-min timeout)
+│   │   ├── results.js       # Scan result display + CSV export
+│   │   └── analytics.js     # Charts + ITC summary
+├── .github/workflows/ci.yml # CI: ruff lint + pytest
+├── Dockerfile               # Production container with HEALTHCHECK
+├── render.yaml              # Render deployment config
 ├── ARCHITECTURE.md
 ├── PIPELINE.md
 └── README.md
@@ -120,8 +147,7 @@ git clone https://github.com/VRCHAMPION/gst_invoice_scanner.git
 cd gst_invoice_scanner
 python -m venv .venv
 source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-pip install pytesseract PyMuPDF Pillow
+pip install -r backend/requirements.txt
 ```
 
 ---
@@ -149,6 +175,8 @@ python run.py
 
 API documentation will be available at:
 http://127.0.0.1:8000/docs
+
+> **Tip:** The `/docs` endpoint provides a full interactive API reference (Swagger UI) — use it to explore and test all endpoints directly from your browser.
 
 Start the frontend:
 

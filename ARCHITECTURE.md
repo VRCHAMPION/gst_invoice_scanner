@@ -1,4 +1,4 @@
-# ARCHITECTURE.md - GST Invoice Scanner
+# ARCHITECTURE.md — GST Invoice Scanner
 
 ---
 
@@ -26,10 +26,11 @@ flowchart LR
     A[Client Upload] --> B[FastAPI Ingestion]
     B --> C[Background Worker Dispatch]
     C --> D[PDF-to-Image via PyMuPDF]
-    D --> E[Tesseract OCR]
-    E --> F[Google Gemini 2.5 Flash Semantic Parse]
-    F --> G[Neon Serverless PostgreSQL Persistence]
-    G --> H[JSON / XLSX Output to Client]
+    D --> E[Grayscale + Threshold Preprocessing]
+    E --> F[Tesseract OCR]
+    F --> G[Google Gemini 1.5 Flash Semantic Parse]
+    G --> H[Neon Serverless PostgreSQL Persistence]
+    H --> I[JSON / CSV Output to Client]
 ```
 
 **Key Principle:** No step in the pipeline blocks the API thread. Upload returns a Job ID instantly; the client polls for completion.
@@ -43,7 +44,7 @@ flowchart LR
 | Responsibility | Implementation |
 |---|---|
 | Accept PDF / JPG / PNG uploads | FastAPI `UploadFile` |
-| PDF → Image conversion | PyMuPDF (`fitz`) — renders pages to PIL Images directly in RAM |
+| PDF → Image conversion | PyMuPDF (`fitz`) — renders pages to PIL Images directly in RAM at 300 DPI |
 | File validation | MIME type check + extension whitelist |
 
 > **Design Choice:** PyMuPDF maps PDF bytes to memory instead of writing temp files to disk. This eliminates disk I/O bottlenecks and temp-file cleanup risks.
@@ -55,16 +56,16 @@ flowchart LR
 | Aspect | Detail |
 |---|---|
 | Primary Engine | **Tesseract OCR** via `pytesseract` |
-| Image Prep | PyMuPDF renders PDF pages at **300 DPI** as PIL `Image` objects |
+| Image Preprocessing | Grayscale conversion → autocontrast → sharpen → binary threshold (Otsu-style via Pillow) |
 | Output | Raw unstructured text blob |
 
-> No separate image preprocessing module (grayscale, deskew, etc.) is currently implemented — the system relies on LLM intelligence to parse noisy OCR output directly. This is a deliberate trade-off favoring speed over traditional CV pipelines.
+> Image preprocessing (grayscale + binary threshold) is applied before Tesseract to improve accuracy on scanned/photographed invoices.
 
 ---
 
 ### c. NLP Intelligence Layer (Field Extractor)
 
-This is the **core differentiator**. Instead of fragile regex chains, raw OCR text is sent to **Google Gemini 2.5 Flash** with a strict structural prompt wrapped in XML safeguards.
+This is the **core differentiator**. Instead of fragile regex chains, raw OCR text is sent to **Google Gemini 1.5 Flash** with a strict structural prompt wrapped in XML safeguards.
 
 ```
 Prompt Strategy:
@@ -80,8 +81,8 @@ Prompt Strategy:
 | Aspect | Detail |
 |---|---|
 | Provider | Google GenAI SDK |
-| Model | `gemini-2.5-flash` |
-| Why Gemini | Excels at JSON mapping, high rate limits, extreme token speed |
+| Model | `gemini-1.5-flash` |
+| Retry | Exponential backoff — 3 attempts, delays 2s / 4s / 8s on 429/503 |
 | Security | XML wrapping prevents Prompt Injection from malicious PDF payloads |
 
 ---
@@ -90,9 +91,10 @@ Prompt Strategy:
 
 | Responsibility | Implementation |
 |---|---|
-| Data modeling | SQLAlchemy ORM models |
+| Data modeling | SQLAlchemy ORM models (`models.py`) |
 | Database | Neon Serverless PostgreSQL |
 | Error Quarantining | `fitz.FileDataError` explicitly trapped into `status="FAILED"` |
+| Composite indexes | `(company_id, status)` and `(company_id, created_at)` for analytics performance |
 
 ---
 
@@ -101,12 +103,15 @@ Prompt Strategy:
 ```mermaid
 flowchart TD
     subgraph FastAPI Routes
-        R1[POST /auth/register]
-        R2[POST /auth/login → JWT]
-        R3[POST /upload → Job ID]
-        R4[GET /status/job_id → Poll]
-        R5[GET /results → Dashboard Data]
-        R6[GET /export/xlsx → Download]
+        R1[POST /api/register]
+        R2[POST /api/login → JWT Cookie]
+        R3[POST /api/scan → Job ID]
+        R4[GET /api/scan/status/job_id → Poll]
+        R5[GET /api/invoices → Paginated List]
+        R6[POST /api/export → CSV Download]
+        R7[GET /api/analytics]
+        R8[GET /api/itc-summary]
+        R9[GET /health]
     end
 
     R2 -->|HttpOnly Cookie| R3
@@ -117,9 +122,12 @@ flowchart TD
 
 | Aspect | Detail |
 |---|---|
-| Auth | JWT stored natively in HttpOnly/SameSite Strict Cookies |
-| Rate Limiting | SlowAPI middleware |
-| Async Workers | FastAPI `BackgroundTasks` |
+| Auth | JWT stored in HttpOnly/SameSite cookies; `secure=True` in production |
+| Rate Limiting | SlowAPI: 5/min on login/register, 10/min on scan |
+| Async Workers | FastAPI `BackgroundTasks` (Celery migration path documented) |
+| Response Models | All endpoints use explicit Pydantic `response_model=` |
+| Pagination | `GET /api/invoices?page=1&limit=50` |
+| Caching | TTLCache (5-min) on analytics and ITC summary, keyed by company_id |
 
 ---
 
@@ -128,9 +136,10 @@ flowchart TD
 | Aspect | Detail |
 |---|---|
 | Technology | Vanilla JS + HTML5 + CSS3 Grid |
-| Pages | `login.html`, `register.html`, `dashboard.html` |
-| Polling | `setInterval()` at 2-second intervals checking `/status/{job_id}` |
-| Export | Client-triggered download of XLSX from `/export` endpoint |
+| Pages | `login.html`, `register.html`, `upload.html`, `results.html`, `analytics.html`, `history.html` |
+| Polling | `setInterval()` at 2-second intervals, max 60 attempts (2-minute timeout) |
+| Export | Client-triggered CSV download via `POST /api/export` |
+| Shared Utilities | `utils.js` — `formatCurrency`, `formatDate`, `animateCounter` |
 
 ---
 
@@ -141,27 +150,29 @@ sequenceDiagram
     participant U as User (Browser)
     participant A as FastAPI Server
     participant W as Background Worker
+    participant P as Preprocessor
     participant O as Tesseract OCR
-    participant L as Gemini 2.5 Flash
+    participant L as Gemini 1.5 Flash
     participant D as Neon Postgres DB
 
-    U->>A: POST /upload (PDF bytes)
+    U->>A: POST /api/scan (PDF bytes)
     A->>A: Validate file + Generate Job ID
+    A->>D: INSERT placeholder invoice (status=PROCESSING)
     A->>W: Dispatch to BackgroundTask
-    A-->>U: 202 Accepted {job_id}
+    A-->>U: 200 OK {job_id}
 
-    U->>A: GET /status/{job_id} (poll every 2s)
+    U->>A: GET /api/scan/status/{job_id} (poll every 2s)
     A-->>U: {status: "processing"}
 
-    W->>O: PDF bytes → PyMuPDF → PIL Image → pytesseract
+    W->>P: PIL Image → grayscale → threshold
+    P->>O: Preprocessed image
     O-->>W: Raw text blob
-    W->>L: Send text + structural prompt
+    W->>L: Send text + structural prompt (with retry)
     L-->>W: Parsed JSON {gstin, amounts, etc.}
-    W->>D: INSERT extracted data
-    W->>D: UPDATE job status → "completed"
+    W->>D: UPDATE invoice with extracted data + status=SUCCESS
 
-    U->>A: GET /status/{job_id} (next poll)
-    A-->>U: {status: "completed", data: {...}}
+    U->>A: GET /api/scan/status/{job_id} (next poll)
+    A-->>U: {status: "completed", data: {...}, health_score: {...}}
 ```
 
 ---
@@ -170,18 +181,29 @@ sequenceDiagram
 
 | Directory / File | Architectural Component |
 |---|---|
-| `backend/` | API Layer, Workers, Business Logic |
-| `backend/run.py` | Application entry point |
-| `backend/routes/` | FastAPI route definitions (auth, upload, results) |
-| `backend/models/` | SQLAlchemy ORM models |
-| `backend/services/` | OCR + LLM extraction logic |
-| `backend/auth/` | JWT generation, password hashing |
-| `backend/.env` | Secrets (Groq key, JWT secret) |
-| `frontend/` | UI Layer |
-| `frontend/login.html` | Authentication page |
-| `frontend/dashboard.html` | Upload + results + export page |
-| `frontend/js/` | Polling logic, API calls, DOM rendering |
-| `requirements.txt` | Dependency manifest |
+| `backend/main.py` | App factory — middleware, router registration, startup hooks |
+| `backend/run.py` | Development entry point (reload gated on ENV=development) |
+| `backend/auth.py` | JWT creation/verification, password hashing, RBAC dependency |
+| `backend/schemas.py` | All Pydantic request + response models |
+| `backend/models.py` | SQLAlchemy ORM models with composite indexes |
+| `backend/database.py` | Engine, session factory, `ping_db()`, `init_db()` |
+| `backend/validator.py` | GSTIN validation, math checks, fraud signals, health score |
+| `backend/parser.py` | OCR pipeline: PyMuPDF → Pillow preprocessing → Tesseract → Gemini |
+| `backend/routers/auth.py` | Login, register, logout, /me routes |
+| `backend/routers/companies.py` | Company CRUD, join requests, invite user |
+| `backend/routers/invoices.py` | Scan upload, status poll, paginated list, CSV export |
+| `backend/routers/analytics.py` | Analytics aggregations, ITC summary (TTL cached) |
+| `backend/services/invoice_service.py` | Background invoice processing logic |
+| `backend/tests/` | pytest suite — unit + integration tests |
+| `frontend/js/config.js` | API base URL, `apiFetch` wrapper |
+| `frontend/js/utils.js` | Shared utilities: formatCurrency, formatDate, animateCounter |
+| `frontend/js/auth.js` | Auth state management, login/register/logout |
+| `frontend/js/upload.js` | File upload, polling with 2-minute timeout |
+| `frontend/js/results.js` | Scan result display, CSV export trigger |
+| `frontend/js/analytics.js` | Charts, ITC summary, team management |
+| `.github/workflows/ci.yml` | CI: lint (ruff) + pytest on push/PR |
+| `Dockerfile` | Production container with HEALTHCHECK |
+| `render.yaml` | Render deployment config |
 
 ---
 
@@ -189,13 +211,13 @@ sequenceDiagram
 
 | Decision | Chosen | Alternative | Rationale |
 |---|---|---|---|
-| **Field Extraction** | LLM (Google Gemini 2.5 Flash) | Regex + NLP pipeline | Invoices have wildly varying formats — regex breaks on edge cases; LLM generalizes across layouts. Gemini 2.5 Flash chosen for JSON determinism, high rate limits, and low latency |
-| **OCR Engine** | Tesseract | EasyOCR / PaddleOCR | Lightest installation footprint; sufficient since LLM handles noisy text |
-| **Image Preprocessing** | Skipped | OpenCV pipeline | LLM compensates for OCR noise — adding CV preprocessing would increase latency without proportional accuracy gain |
-| **Async Strategy** | FastAPI BackgroundTasks | Celery + Redis | Avoids infrastructure overhead for a single-server deployment; Celery is overkill at current scale |
-| **PDF Handling** | PyMuPDF (in-memory) | pdf2image + Poppler | Zero disk writes — PDF bytes → RAM → PIL Image directly |
-| **Frontend** | Vanilla JS | React / Streamlit | Zero build step, no node_modules, instant load — appropriate for a utility dashboard |
-| **Error Handling** | Job status set to `failed` + error message stored in DB | Raise HTTP exceptions | Non-blocking — user sees failure on next poll without crashing the worker queue |
+| **Field Extraction** | LLM (Gemini 1.5 Flash) | Regex + NLP pipeline | Invoices have wildly varying formats — LLM generalizes across layouts |
+| **OCR Engine** | Tesseract + Pillow preprocessing | EasyOCR / PaddleOCR | Lightest footprint; preprocessing compensates for noise |
+| **Async Strategy** | FastAPI BackgroundTasks | Celery + Redis | Avoids infrastructure overhead at current scale; Celery is the documented migration path |
+| **PDF Handling** | PyMuPDF (in-memory, 300 DPI) | pdf2image + Poppler | Zero disk writes — PDF bytes → RAM → PIL Image directly |
+| **Frontend** | Vanilla JS | React / Streamlit | Zero build step, no node_modules, instant load |
+| **Error Handling** | Job status set to `FAILED` + error stored in DB | Raise HTTP exceptions | Non-blocking — user sees failure on next poll without crashing the worker |
+| **Cookie Security** | `secure=True`, `samesite=none` in production | Bearer tokens | HttpOnly prevents XSS token theft; `samesite=none` required for cross-origin Netlify+Render |
 
 ---
 
@@ -203,11 +225,12 @@ sequenceDiagram
 
 | Concern | Current | Future Path |
 |---|---|---|
-| **Concurrent uploads** | Single-threaded BackgroundTasks | Migrate to **Celery + Redis** worker pool |
-| **Database** | SQLite (single-writer lock) | Swap to **PostgreSQL** via `DATABASE_URL` env change |
+| **Concurrent uploads** | FastAPI BackgroundTasks (thread pool) | Migrate to **Celery + Redis** worker pool |
+| **Analytics queries** | TTLCache (5-min, in-process) | Redis distributed cache |
 | **OCR throughput** | Sequential per job | Parallelize multi-page PDFs across threads |
-| **LLM rate limits** | Single Groq API key | Key rotation pool + retry with exponential backoff |
-| **Horizontal scaling** | Single instance | Containerize (Docker) → deploy behind load balancer |
+| **LLM rate limits** | Exponential backoff retry (3 attempts) | Key rotation pool |
+| **Horizontal scaling** | Stateless — DB-backed job state, no in-memory dicts | Already containerized → deploy behind load balancer |
+| **Invoice list** | Paginated (default 50, max 200) | Cursor-based pagination for very large datasets |
 
 ---
 
@@ -215,12 +238,16 @@ sequenceDiagram
 
 | Layer | Measure |
 |---|---|
-| **Authentication** | Bcrypt-hashed passwords + JWT access tokens with expiry |
-| **Rate Limiting** | SlowAPI middleware prevents brute-force and upload abuse |
+| **Authentication** | Bcrypt-hashed passwords + JWT access tokens (8h expiry) |
+| **Cookie Security** | `httponly=True`, `secure=True` (production), `samesite=none` (cross-origin) |
+| **Rate Limiting** | 5/min on login/register; 10/min on scan |
+| **Input Validation** | Pydantic: EmailStr, min/max lengths, GSTIN regex validator |
+| **Role Hardcoding** | Self-registration always sets `role='owner'` server-side |
 | **File Validation** | MIME type + extension whitelist (PDF/JPG/PNG only) |
-| **Data Privacy** | Invoice bytes are processed in-memory and **never written to disk** |
-| **Secret Management** | API keys and JWT secrets isolated in `.env` (gitignored) |
-| **Input Sanitization** | LLM prompt is hardcoded — user-uploaded text is treated as data, not instruction |
+| **Data Privacy** | Invoice bytes processed in-memory, never written to disk |
+| **Secret Management** | API keys and JWT secrets in `.env` (gitignored); validated at startup |
+| **Prompt Injection** | LLM prompt uses XML `<raw_text>` boundary tags to isolate user content |
+| **Response Safety** | `password_hash` never returned in any API response |
 
 ---
 
@@ -228,32 +255,35 @@ sequenceDiagram
 
 ```mermaid
 graph TD
-    A[FastAPI] --> B[Uvicorn]
+    A[FastAPI] --> B[Uvicorn / Gunicorn]
     A --> C[python-jose - JWT]
     A --> D[passlib - Bcrypt]
-    A --> E[SlowAPI]
+    A --> E[SlowAPI - Rate Limiting]
     A --> F[SQLAlchemy]
     F --> G[Neon PostgreSQL]
     H[pytesseract] --> I[Tesseract Binary - OS Level]
-    J[PyMuPDF - fitz] --> K[PDF Rendering]
-    L[Google GenAI] --> M[Gemini-2.5-Flash]
-    N[openpyxl] --> O[XLSX Export]
-    P[Pillow] --> Q[Image Handling]
+    J[PyMuPDF - fitz] --> K[PDF Rendering at 300 DPI]
+    L[Pillow] --> M[Image Preprocessing - grayscale + threshold]
+    N[Google GenAI] --> O[Gemini 1.5 Flash]
+    P[cachetools] --> Q[TTL Analytics Cache]
+    R[structlog] --> S[Structured JSON Logging]
 ```
 
 | Dependency | Role |
 |---|---|
 | `fastapi` + `uvicorn` | HTTP server and ASGI runtime |
 | `pytesseract` | Python wrapper for Tesseract OCR binary |
-| `PyMuPDF (fitz)` | In-memory PDF → Image conversion |
-| `Pillow` | Image object handling between PyMuPDF and Tesseract |
+| `PyMuPDF (fitz)` | In-memory PDF → Image conversion at 300 DPI |
+| `Pillow` | Image preprocessing (grayscale, threshold) + PyMuPDF bridge |
 | `google-genai` | SDK for Google Gemini LLM inference |
 | `sqlalchemy` | ORM for database operations |
 | `python-jose` | JWT token creation and verification |
 | `passlib[bcrypt]` | Secure password hashing |
 | `slowapi` | Rate limiting middleware |
-| `openpyxl` | Excel file generation for data export |
+| `cachetools` | In-process TTL cache for analytics endpoints |
+| `structlog` | Structured JSON logging with request ID context |
+| `email-validator` | Pydantic EmailStr validation |
 
 ---
 
-<p align="center"><i>Architecture authored for <a href="https://github.com/VRCHAMPION/gst_invoice_scanner">gst_invoice_scanner</a></i></p>
+<p align="center"><i>Architecture for <a href="https://github.com/VRCHAMPION/gst_invoice_scanner">gst_invoice_scanner</a> — last updated after full audit refactor</i></p>

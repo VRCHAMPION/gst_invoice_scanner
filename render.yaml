@@ -6,7 +6,7 @@ services:
     region: singapore # Change this to your preferred region (e.g., frankfurt, ohio)
     dockerContext: .
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /
+    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 8000
@@ -18,3 +18,7 @@ services:
         sync: false # Must be set in Render dashboard
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: IS_PRODUCTION
+        value: "true"
+      - key: ENV
+        value: "production"

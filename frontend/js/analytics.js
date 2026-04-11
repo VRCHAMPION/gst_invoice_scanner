@@ -248,8 +248,4 @@ function calculateDeadlines() {
     });
 }
 
-function animateCounterValue(id, target) {
-    const el = document.getElementById(id);
-    el.dataset.type = 'currency';
-    animateCounter(el, target);
-}
+// animateCounterValue is defined in utils.js
