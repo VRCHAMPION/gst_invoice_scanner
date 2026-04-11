@@ -91,11 +91,11 @@ def _call_gemini_with_retry(prompt: str, max_attempts: int = 3) -> str:
     
     # Try multiple model names in order of preference
     model_names = [
-        "gemini-1.5-flash-latest",
+        "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
         "gemini-1.5-flash",
-        "gemini-pro",
-        "models/gemini-1.5-flash-latest",
-        "models/gemini-pro"
+        "gemini-1.5-flash-latest",
+        "gemini-1.5-pro",
     ]
     
     for attempt in range(max_attempts):
