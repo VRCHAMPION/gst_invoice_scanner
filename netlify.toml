@@ -1,5 +1,5 @@
 [build]
-  publish = "frontend"
+  publish = "."
 
 [[headers]]
   for = "/js/*"
