@@ -77,7 +77,6 @@ app.add_middleware(
 )
 
 
-# ── Item 23: Request ID middleware ────────────────────────────────────
 @app.middleware("http")
 async def request_id_middleware(request: Request, call_next):
     request_id = str(uuid.uuid4())
@@ -102,7 +101,6 @@ app.include_router(invoices.router)
 app.include_router(analytics.router)
 
 
-# ── Items 5 & 24: Health check with real DB ping ──────────────────────
 @app.api_route("/health", methods=["GET", "HEAD"], response_model=HealthResponse, tags=["system"])
 async def health_check():
     db_status = "connected" if ping_db() else "unreachable"

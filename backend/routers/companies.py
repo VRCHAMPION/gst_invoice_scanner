@@ -83,7 +83,7 @@ async def request_join_company(
     if not company:
         raise HTTPException(status_code=404, detail="Company not found. Check the exact name.")
 
-    # Item 14: block if already accepted; allow re-apply if rejected; block duplicate pending
+    # block if already accepted; allow re-apply if rejected; block duplicate pending
     existing = db.query(JoinRequest).filter(
         JoinRequest.user_id == current_user.id,
         JoinRequest.company_id == company.id,

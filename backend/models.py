@@ -70,7 +70,7 @@ class Invoice(Base):
     company = relationship("Company", back_populates="invoices")
     uploader = relationship("User", back_populates="uploaded_invoices")
 
-    # Item 17: composite indexes for analytics query performance
+    # composite indexes for analytics query performance
     __table_args__ = (
         Index("ix_invoices_company_status", "company_id", "status"),
         Index("ix_invoices_company_created", "company_id", "created_at"),

@@ -18,7 +18,7 @@ from schemas import (
 
 router = APIRouter(prefix="/api", tags=["analytics"])
 
-# ── Item 25: TTL cache keyed by company_id (5-minute TTL) ────────────
+# TTL cache keyed by company_id (5-minute TTL)
 _analytics_cache: TTLCache = TTLCache(maxsize=256, ttl=300)
 _itc_cache: TTLCache = TTLCache(maxsize=256, ttl=300)
 _cache_lock = Lock()

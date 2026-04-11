@@ -247,5 +247,3 @@ function calculateDeadlines() {
         document.getElementById(dl.id).textContent = diffDays;
     });
 }
-
-// animateCounterValue is defined in utils.js

@@ -116,12 +116,6 @@ function populateData(data) {
     animateCounterValue('totalValue', data.total || 0);
 }
 
-function animateCounterValue(id, target) {
-    const el = document.getElementById(id);
-    el.dataset.type = 'currency';
-    animateCounter(el, target);
-}
-
 function setupActions(data) {
     // Clone buttons to clear existing listeners (important for batch navigation)
     const exportBtn = document.getElementById('exportBtn');

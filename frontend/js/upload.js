@@ -191,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     alert("OCR FAILED: " + job.error);
                     overlay.style.display = 'none';
                 } else {
-                    // processing...
                     if (pollCount > 2) {
                         processStatus.textContent = 'VALIDATING GSTIN & COMPUTING TAXES...';
                         uploadProgress.style.width = '75%';

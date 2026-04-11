@@ -27,8 +27,6 @@ from slowapi.util import get_remote_address
 limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api", tags=["invoices"])
 
-# ── Item 13: all scan routes now under /api prefix ────────────────────
-
 @router.post("/scan", response_model=ScanJobResponse)
 @limiter.limit("10/minute")
 async def scan_invoice(
@@ -72,7 +70,7 @@ async def scan_invoice(
 @router.get("/scan/status/{job_id}", response_model=ScanStatusResponse)
 async def get_scan_status(
     job_id: str,
-    current_user: User = Depends(get_current_user),  # Item 12: auth required
+    current_user: User = Depends(get_current_user),  # auth required
     db: Session = Depends(get_db),
 ):
     """DB-backed status check — safe across multiple Gunicorn workers."""
@@ -80,7 +78,6 @@ async def get_scan_status(
     if not invoice:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    # Item 12: verify the job belongs to the requesting user's company
     if str(invoice.company_id) != str(current_user.company_id):
         raise HTTPException(status_code=403, detail="Access denied")
 
@@ -108,7 +105,7 @@ async def get_invoices(
     page: int = 1,
     limit: int = 50,
 ):
-    """Item 9: paginated invoice list. Item 27: excludes raw_json."""
+    """Paginated invoice list — excludes raw_json."""
     if not current_user.company_id:
         return PaginatedInvoices(items=[], total=0, page=page, pages=0)
 

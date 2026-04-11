@@ -1,8 +1,4 @@
-// API_BASE is now handled by getApiUrl() helper in config.js
-
 // ── Auth Management ──────────────────────────────────────────────────
-// We no longer manually manage the token in frontend.
-// HttpOnly Cookies manage the session automatically via apiFetch wrapper.
 function getAuthHeaders() {
     return {};
 }
@@ -126,6 +122,3 @@ document.addEventListener('DOMContentLoaded', () => {
         await logout();
     }));
 });
-
-// ── Utilities (formatCurrency, formatDate, animateCounter) ───────────
-// Defined in utils.js — loaded before this file in every HTML page.
