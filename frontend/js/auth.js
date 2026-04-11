@@ -10,16 +10,31 @@ function getAuthHeaders() {
 function checkAuth() {
     const user = getCurrentUser();
     const path = window.location.pathname;
-    // Match both /login.html and /login (Netlify serves both)
-    const isAuthPage = path.includes('login') || path.includes('register') || path === '/';
-    const isOnboarding = path.includes('onboarding');
 
-    if (!user && !isAuthPage) {
+    // Pages that don't require authentication
+    const isLoginPage     = path.includes('login');
+    const isRegisterPage  = path.includes('register');
+    const isLandingPage   = path === '/';
+    const isOnboardingPage = path.includes('onboarding');
+
+    // Unauthenticated user trying to access a protected page → send to login
+    if (!user && !isLoginPage && !isRegisterPage && !isLandingPage) {
         window.location.href = 'login.html';
-    } else if (user && isAuthPage) {
+        return;
+    }
+
+    // Logged-in user on the login page only → send to app
+    // Do NOT redirect away from register — let users visit it freely
+    if (user && isLoginPage) {
         window.location.href = 'upload.html';
-    } else if (user && !isOnboarding && !user.company_id) {
+        return;
+    }
+
+    // Logged-in user with no company → send to onboarding
+    // (except if already on onboarding, register, login, or landing)
+    if (user && !isOnboardingPage && !isRegisterPage && !isLoginPage && !isLandingPage && !user.company_id) {
         window.location.href = 'onboarding.html';
+        return;
     }
 }
 
