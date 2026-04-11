@@ -56,6 +56,105 @@
             display: none;
         }
 
+        /* Bulk Upload Queue */
+        .upload-queue {
+            margin-top: 1.5rem;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.8rem;
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .queue-item.processing {
+            border-color: var(--blue);
+            background: var(--blue-lt);
+        }
+
+        .queue-item.success {
+            border-color: var(--green);
+            background: var(--green-lt);
+        }
+
+        .queue-item.failed {
+            border-color: var(--red);
+            background: var(--red-lt);
+        }
+
+        .queue-item-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--bg2);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            flex-shrink: 0;
+        }
+
+        .queue-item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .queue-item-name {
+            font-weight: 700;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .queue-item-size {
+            font-size: 0.75rem;
+            color: var(--muted);
+            font-family: var(--mono);
+        }
+
+        .queue-item-status {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 100px;
+            font-family: var(--mono);
+            white-space: nowrap;
+        }
+
+        .queue-item-remove {
+            background: none;
+            border: none;
+            color: var(--red);
+            cursor: pointer;
+            font-size: 1.2rem;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .queue-item-remove:hover {
+            background: var(--red-lt);
+        }
+
+        .bulk-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
         .processing-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -470,9 +569,21 @@
             <div class="animate-fade-up stagger-1">
                 <div class="drop-zone" id="dropZone">
                     <div class="drop-zone-icon">⎗</div>
-                    <p class="drop-zone-text">Drag & drop invoice</p>
-                    <p style="color: var(--muted); margin-top: 1rem;">Click or drag file to start upload</p>
-                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf">
+                    <p class="drop-zone-text">Drag & drop invoices</p>
+                    <p style="color: var(--muted); margin-top: 1rem;">Click or drag files to start upload (max 20 files)</p>
+                    <input type="file" id="fileInput" accept=".jpg,.jpeg,.png,.pdf" multiple>
+                </div>
+
+                <!-- Upload Queue -->
+                <div id="uploadQueueContainer" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; margin-bottom: 0.5rem;">
+                        <strong style="font-size: 0.9rem;">Upload Queue (<span id="queueCount">0</span>)</strong>
+                        <button id="clearQueueBtn" class="btn-alt" style="font-size: 0.7rem; padding: 0.4rem 0.8rem;">Clear All</button>
+                    </div>
+                    <div class="upload-queue" id="uploadQueue"></div>
+                    <div class="bulk-actions">
+                        <button id="processQueueBtn" class="btn-prime" style="flex: 1;">Process All Invoices</button>
+                    </div>
                 </div>
 
                 <!-- GUIDELINES -->

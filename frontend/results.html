@@ -10,6 +10,44 @@
     <script src="js/utils.js?v=1.2"></script>
     <script src="js/auth.js?v=1.2"></script>
     <style>
+        /* Edit Mode Styles */
+        .edit-mode-banner {
+            background: var(--amber-lt);
+            border: 2px solid var(--amber);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .editable-field {
+            position: relative;
+            cursor: pointer;
+            padding: 0.3rem;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .editable-field:hover {
+            background: var(--amber-lt);
+        }
+        
+        .editable-field.editing {
+            background: var(--blue-lt);
+        }
+        
+        .field-input {
+            width: 100%;
+            padding: 0.5rem;
+            border: 2px solid var(--blue);
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: inherit;
+            font-weight: inherit;
+        }
+        
         .results-grid {
             display: grid;
             grid-template-columns: 1fr 400px;
@@ -187,6 +225,15 @@
     </nav>
 
     <div class="container animate-fade-up">
+        <!-- Edit Mode Banner -->
+        <div id="editModeBanner" class="edit-mode-banner" style="display: none;">
+            <div>
+                <strong>✏️ Edit Mode Active</strong>
+                <p style="font-size: 0.85rem; margin-top: 0.3rem; color: var(--muted);">Click any field to edit. Changes are saved automatically.</p>
+            </div>
+            <button id="exitEditBtn" class="btn btn-outline" style="font-size: 0.75rem;">Exit Edit Mode</button>
+        </div>
+
         <header style="display: flex; justify-content: space-between; align-items: flex-end; position: relative;">
             <div>
                 <div id="batchNav" style="display: none; align-items: center; gap: 1rem; margin-bottom: 1.5rem; border: 1px solid var(--border-color); padding: 0.6rem 1.2rem; background: #fafaf8; width: fit-content; border-left: 4px solid var(--secondary-accent);">
@@ -198,6 +245,7 @@
                 <p class="text-muted data-font">ID: <span id="invoiceId">0000</span> | Processed at <span id="processedTime">--:--</span></p>
             </div>
             <div class="action-bar">
+                <button id="editBtn" class="btn btn-outline" style="font-size: 0.7rem;">✏️ Edit Data</button>
                 <button id="exportBtn" class="btn btn-outline" style="font-size: 0.7rem;">Export to CSV</button>
                 <button id="whatsappBtn" class="btn btn-outline" style="font-size: 0.7rem;">Share on WhatsApp</button>
                 <a href="upload.html" class="btn btn-primary" style="font-size: 0.7rem;">Scan another</a>

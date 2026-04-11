@@ -1,4 +1,4 @@
-// ── Auth Management ──────────────────────────────────────────────────
+// Auth state management
 function getAuthHeaders() {
     return {};
 }
@@ -7,37 +7,33 @@ function checkAuth() {
     const user = getCurrentUser();
     const path = window.location.pathname;
 
-    // Pages that don't require authentication
     const isLoginPage     = path.includes('login');
     const isRegisterPage  = path.includes('register');
     const isLandingPage   = path === '/';
     const isOnboardingPage = path.includes('onboarding');
 
-    // Unauthenticated user trying to access a protected page → send to login
+    // Redirect unauthenticated users to login
     if (!user && !isLoginPage && !isRegisterPage && !isLandingPage) {
         window.location.href = 'login.html';
         return;
     }
 
-    // Logged-in user on the login page only → send to app
-    // Do NOT redirect away from register — let users visit it freely
+    // Logged-in users shouldn't see login page
     if (user && isLoginPage) {
         window.location.href = 'upload.html';
         return;
     }
 
-    // Logged-in user with no company → send to onboarding
-    // (except if already on onboarding, register, login, or landing)
+    // Users without company need to complete onboarding
     if (user && !isOnboardingPage && !isRegisterPage && !isLoginPage && !isLandingPage && !user.company_id) {
         window.location.href = 'onboarding.html';
         return;
     }
 }
 
-// RUN IMMEDIATELY TO PREVENT BLINK
 checkAuth();
 
-// ── Login (API-based) ────────────────────────────────────────────────
+// Login
 async function login(email, password) {
     try {
         const response = await apiFetch(getApiUrl('/api/login'), {
@@ -52,7 +48,6 @@ async function login(email, password) {
         }
 
         const data = await response.json();
-        // Store token for Bearer auth on cross-origin requests
         if (data.token) window.setToken(data.token);
         sessionStorage.setItem('currentUser', JSON.stringify(data.user));
         return { success: true };
@@ -61,7 +56,7 @@ async function login(email, password) {
     }
 }
 
-// ── Register (API-based) ─────────────────────────────────────────────
+// Register
 async function register(name, email, password, role) {
     try {
         const response = await apiFetch(getApiUrl('/api/register'), {
@@ -76,7 +71,6 @@ async function register(name, email, password, role) {
         }
 
         const data = await response.json();
-        // Store token for Bearer auth on cross-origin requests
         if (data.token) window.setToken(data.token);
         sessionStorage.setItem('currentUser', JSON.stringify(data.user));
         return { success: true };
@@ -99,7 +93,7 @@ function getCurrentUser() {
     return JSON.parse(sessionStorage.getItem('currentUser'));
 }
 
-// ── Global UI Updates ────────────────────────────────────────────────
+// Update UI with user info
 document.addEventListener('DOMContentLoaded', () => {
     const user = getCurrentUser();
     const company = JSON.parse(sessionStorage.getItem('currentCompany'));

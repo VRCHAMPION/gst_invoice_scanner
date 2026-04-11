@@ -39,7 +39,7 @@ async def scan_invoice(
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="Please associate with a company first")
 
-    # Double-check size before reading (fast path)
+    # Check file size (10MB limit)
     if file.size and file.size > 10 * 1024 * 1024:
         raise HTTPException(status_code=413, detail="File size exceeds 10MB limit")
 
@@ -49,6 +49,7 @@ async def scan_invoice(
 
     job_id = str(uuid.uuid4())
 
+    # Create placeholder record
     placeholder = Invoice(
         job_id=job_id,
         company_id=current_user.company_id,
@@ -59,6 +60,7 @@ async def scan_invoice(
     db.add(placeholder)
     db.commit()
 
+    # Process in background
     background_tasks.add_task(
         process_invoice_background,
         job_id, contents, file.content_type,
@@ -70,10 +72,10 @@ async def scan_invoice(
 @router.get("/scan/status/{job_id}", response_model=ScanStatusResponse)
 async def get_scan_status(
     job_id: str,
-    current_user: User = Depends(get_current_user),  # auth required
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """DB-backed status check — safe across multiple Gunicorn workers."""
+    """Check invoice processing status."""
     invoice = db.query(Invoice).filter(Invoice.job_id == job_id).first()
     if not invoice:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -90,7 +92,7 @@ async def get_scan_status(
             error=invoice.error_message or "Extraction failed",
         )
 
-    # SUCCESS — reconstruct the full result payload
+    # Success - return full data with health score
     data = invoice.raw_json or {}
     data["id"] = str(invoice.id)
     data["status"] = "completed"
@@ -105,11 +107,11 @@ async def get_invoices(
     page: int = 1,
     limit: int = 50,
 ):
-    """Paginated invoice list — excludes raw_json."""
+    """Get paginated invoice list."""
     if not current_user.company_id:
         return PaginatedInvoices(items=[], total=0, page=page, pages=0)
 
-    limit = min(limit, 200)  # cap at 200
+    limit = min(limit, 200)
     page = max(page, 1)
     offset = (page - 1) * limit
 
@@ -130,24 +132,19 @@ async def export_invoice(
     req: ExportRequest,
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Item 2: Export a single invoice result as a downloadable CSV.
-    Accepts the scan result payload from the frontend.
-    """
+    """Export invoice data as CSV."""
     health = req.health_score or {}
     health_score_val = health.get("score", "N/A") if isinstance(health, dict) else "N/A"
 
     output = io.StringIO()
     writer = csv.writer(output)
 
-    # Header row
     writer.writerow([
         "invoice_number", "vendor_name", "date",
         "total_amount", "cgst", "sgst", "igst",
         "status", "health_score",
     ])
 
-    # Data row
     writer.writerow([
         req.invoice_number or "",
         req.seller_name or "",

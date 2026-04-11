@@ -1,6 +1,6 @@
 """
-invoice_service.py — Background invoice processing logic.
-Isolated here so it can be tested independently and later moved to Celery.
+invoice_service.py - Background invoice processing
+TODO: migrate to Celery when we need better scalability
 """
 import uuid
 import structlog
@@ -18,12 +18,8 @@ def process_invoice_background(
     company_id: uuid.UUID,
 ) -> None:
     """
-    Run OCR + LLM extraction and persist the result to the DB.
-    Called via FastAPI BackgroundTasks — runs in a thread pool worker.
-
-    NOTE: We open a fresh SessionLocal here (not the request-scoped session)
-    because BackgroundTasks run after the request session is closed.
-    This is intentional and worker-safe across multiple Gunicorn processes.
+    Process invoice in background thread.
+    Opens fresh DB session since BackgroundTasks run after request closes.
     """
     from database import SessionLocal
     from models import Invoice
@@ -71,6 +67,6 @@ def process_invoice_background(
                 invoice.raw_json = {"error": str(e)}
                 db.commit()
         except Exception:
-            pass  # DB itself may be unavailable — nothing more we can do
+            pass
     finally:
         db.close()

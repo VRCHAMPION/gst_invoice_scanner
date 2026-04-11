@@ -1,6 +1,5 @@
 """
-main.py — App factory: middleware, router registration, startup hooks.
-All route logic lives in backend/routers/.
+main.py - FastAPI app setup with middleware and routers
 """
 import logging
 import uuid
@@ -17,10 +16,6 @@ from database import init_db, ping_db
 from routers import auth, companies, invoices, analytics
 from schemas import HealthResponse
 
-# ── Structured logging setup ──────────────────────────────────────────
-# Configures structlog to emit JSON lines with timestamp, level, and
-# request_id (injected per-request by the middleware below).
-# Exceptions are rendered inline so stack traces appear in structured output.
 structlog.configure(
     processors=[
         structlog.contextvars.merge_contextvars,
@@ -38,15 +33,14 @@ log = structlog.get_logger()
 
 APP_VERSION = "1.1.0"
 
-# ── App init ──────────────────────────────────────────────────────────
 app = FastAPI(
-    title="GST Invoice Scanner Enterprise API",
+    title="GST Invoice Scanner API",
     version=APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
 )
 
-# ── Rate limiter ──────────────────────────────────────────────────────
+# Rate limiting
 limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
@@ -59,8 +53,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
         content={"detail": "Too many requests. Please slow down."},
     )
 
-
-# ── CORS ──────────────────────────────────────────────────────────────
+# CORS - allow frontend origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -87,14 +80,13 @@ async def request_id_middleware(request: Request, call_next):
     return response
 
 
-# ── Startup ───────────────────────────────────────────────────────────
 @app.on_event("startup")
 def on_startup():
     init_db()
     log.info("app_started", version=APP_VERSION)
 
 
-# ── Routers ───────────────────────────────────────────────────────────
+# Register routers
 app.include_router(auth.router)
 app.include_router(companies.router)
 app.include_router(invoices.router)
@@ -111,7 +103,6 @@ async def health_check():
     )
 
 
-# ── Root ──────────────────────────────────────────────────────────────
 @app.get("/", tags=["system"])
 async def root():
     return {"message": "GST Invoice Scanner API", "version": APP_VERSION, "docs": "/docs"}

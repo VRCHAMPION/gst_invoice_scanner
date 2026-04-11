@@ -6,6 +6,7 @@ GSTIN_REGEX = re.compile(r'^[0-3][0-9][A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$')
 
 
 def validate_gstin(gstin: str) -> dict:
+    # TODO: add checksum digit validation
     if not gstin:
         return {"valid": False, "message": "gstin is missing"}
 
@@ -34,7 +35,7 @@ def validate_mathematics(data: dict) -> dict:
 
     if not items:
         issues.append("No items found in invoice")
-        return {"valid": True, "issues": issues}  # missing items is a warning, not a blocker
+        return {"valid": True, "issues": issues}
 
     calculated_subtotal = 0
     for item in items:
@@ -67,6 +68,7 @@ def validate_mathematics(data: dict) -> dict:
             f"= {expected_total} but total shows {total}"
         )
 
+    # CGST and SGST should be equal for intrastate transactions
     if cgst_val and sgst_val and abs(cgst_val - sgst_val) > 1:
         issues.append(
             f"CGST (₹{cgst_val}) ≠ SGST (₹{sgst_val}) — "

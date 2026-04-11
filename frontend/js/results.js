@@ -8,6 +8,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const isBatch = Array.from(Array.isArray(rawData) ? rawData : [rawData]).length > 1 || Array.isArray(rawData);
     const results = Array.isArray(rawData) ? rawData : [rawData];
     let currentIndex = 0;
+    let editMode = false;
+    let currentData = null;
 
     if (isBatch) {
         const batchNav = document.getElementById('batchNav');
@@ -21,8 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
             batchIndicator.textContent = `${currentIndex + 1} / ${results.length}`;
             prevBtn.disabled = currentIndex === 0;
             nextBtn.disabled = currentIndex === results.length - 1;
-            populateData(results[currentIndex]);
-            setupActions(results[currentIndex]);
+            currentData = results[currentIndex];
+            populateData(currentData);
+            setupActions(currentData);
         };
 
         prevBtn.addEventListener('click', () => {
@@ -41,8 +44,104 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateBatchUI();
     } else {
-        populateData(results[0]);
-        setupActions(results[0]);
+        currentData = results[0];
+        populateData(currentData);
+        setupActions(currentData);
+    }
+
+    // Edit Mode Toggle
+    const editBtn = document.getElementById('editBtn');
+    const exitEditBtn = document.getElementById('exitEditBtn');
+    const editModeBanner = document.getElementById('editModeBanner');
+
+    editBtn.addEventListener('click', () => {
+        editMode = true;
+        editModeBanner.style.display = 'flex';
+        editBtn.style.display = 'none';
+        enableEditMode();
+    });
+
+    exitEditBtn.addEventListener('click', () => {
+        editMode = false;
+        editModeBanner.style.display = 'none';
+        editBtn.style.display = 'inline-block';
+        disableEditMode();
+    });
+
+    function enableEditMode() {
+        // Make fields editable
+        makeEditable('sellerName', 'seller_name');
+        makeEditable('sellerGstin', 'seller_gstin');
+        makeEditable('buyerName', 'buyer_name');
+        makeEditable('buyerGstin', 'buyer_gstin');
+        makeEditable('invoiceNumber', 'invoice_number');
+        makeEditable('invoiceDate', 'invoice_date');
+        makeEditable('subtotalValue', 'subtotal', true);
+        makeEditable('cgstValue', 'cgst', true);
+        makeEditable('sgstValue', 'sgst', true);
+        makeEditable('igstValue', 'igst', true);
+        makeEditable('totalValue', 'total', true);
+    }
+
+    function disableEditMode() {
+        document.querySelectorAll('.editable-field').forEach(el => {
+            el.classList.remove('editable-field');
+            el.onclick = null;
+        });
+    }
+
+    function makeEditable(elementId, dataKey, isCurrency = false) {
+        const element = document.getElementById(elementId);
+        if (!element) return;
+
+        element.classList.add('editable-field');
+        element.title = 'Click to edit';
+
+        element.onclick = () => {
+            if (!editMode) return;
+
+            const currentValue = isCurrency 
+                ? currentData[dataKey] || 0 
+                : currentData[dataKey] || '';
+
+            const input = document.createElement('input');
+            input.type = isCurrency ? 'number' : 'text';
+            input.value = currentValue;
+            input.className = 'field-input';
+            input.step = isCurrency ? '0.01' : undefined;
+
+            element.classList.add('editing');
+            const originalHTML = element.innerHTML;
+            element.innerHTML = '';
+            element.appendChild(input);
+            input.focus();
+            input.select();
+
+            const saveEdit = () => {
+                const newValue = isCurrency ? parseFloat(input.value) || 0 : input.value.trim();
+                currentData[dataKey] = newValue;
+                
+                // Update session storage
+                if (isBatch) {
+                    results[currentIndex] = currentData;
+                    sessionStorage.setItem('lastScanResults', JSON.stringify(results));
+                } else {
+                    sessionStorage.setItem('lastScanResults', JSON.stringify(currentData));
+                }
+
+                element.classList.remove('editing');
+                populateData(currentData);
+            };
+
+            input.onblur = saveEdit;
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') saveEdit();
+                if (e.key === 'Escape') {
+                    element.classList.remove('editing');
+                    element.innerHTML = originalHTML;
+                }
+            };
+        };
     }
 });
 

@@ -11,23 +11,20 @@ from typing import List
 
 load_dotenv()
 
-# ── Config ────────────────────────────────────────────────────────────
 SECRET_KEY = os.getenv("JWT_SECRET")
 if not SECRET_KEY:
-    raise ValueError("CRITICAL: JWT_SECRET environment variable is missing!")
+    raise ValueError("JWT_SECRET environment variable is missing")
 SECRET_KEY = SECRET_KEY.strip()
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_HOURS = 8
 
-# Cookie security — cross-origin setup (Netlify frontend + Render backend)
-# SameSite=None + Secure=True is REQUIRED for cookies to be sent cross-origin.
-# IS_PRODUCTION gates this so local dev (http://localhost) still works.
+# Cross-origin cookie setup for Netlify frontend + Render backend
+# SameSite=None + Secure=True required for cross-origin cookies
 IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false").lower() == "true"
-COOKIE_SECURE = IS_PRODUCTION          # True on Render (HTTPS), False on localhost
-COOKIE_SAMESITE = "none" if IS_PRODUCTION else "lax"  # "none" required for cross-origin
+COOKIE_SECURE = IS_PRODUCTION
+COOKIE_SAMESITE = "none" if IS_PRODUCTION else "lax"
 
-# ── Password Hashing ──────────────────────────────────────────────────
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -38,8 +35,6 @@ def hash_password(password: str) -> str:
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-
-# ── JWT Token ─────────────────────────────────────────────────────────
 
 def create_access_token(data: dict) -> str:
     to_encode = data.copy()
@@ -61,15 +56,13 @@ def decode_access_token(token: str) -> dict:
         )
 
 
-# ── Route Protection Dependency ───────────────────────────────────────
-
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    # Try Authorization header first (Bearer token — works cross-origin reliably)
+    # Try Bearer token first (works reliably cross-origin)
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header[7:]
     else:
-        # Fallback to HttpOnly cookie (local dev)
+        # Fallback to cookie for local dev
         token = request.cookies.get("access_token")
 
     if not token:
@@ -95,8 +88,7 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
     return user
 
 
-# ── RBAC Dependency ───────────────────────────────────────────────────
-
+# Role-based access control
 class RoleChecker:
     def __init__(self, allowed_roles: List[str]):
         self.allowed_roles = allowed_roles

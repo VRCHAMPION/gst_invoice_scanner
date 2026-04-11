@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await fetchInvoices();
     setupFilters();
     setupSorting();
+    setupBulkExport();
 });
 
 async function fetchInvoices() {
@@ -174,6 +175,89 @@ function setupSorting() {
             
             renderTable();
         });
+    });
+}
+
+function setupBulkExport() {
+    const bulkExportBtn = document.getElementById('bulkExportBtn');
+    
+    bulkExportBtn.addEventListener('click', async () => {
+        if (filteredInvoices.length === 0) {
+            alert('NO INVOICES TO EXPORT');
+            return;
+        }
+
+        const confirmed = confirm(`Export ${filteredInvoices.length} invoice(s) to CSV?`);
+        if (!confirmed) return;
+
+        bulkExportBtn.disabled = true;
+        bulkExportBtn.textContent = 'Exporting...';
+
+        try {
+            // Create CSV content
+            const csvRows = [];
+            
+            // Header
+            csvRows.push([
+                'Invoice ID',
+                'Invoice Number',
+                'Seller Name',
+                'Seller GSTIN',
+                'Buyer Name',
+                'Buyer GSTIN',
+                'Invoice Date',
+                'Subtotal',
+                'CGST',
+                'SGST',
+                'IGST',
+                'Total',
+                'Status',
+                'Scanned At'
+            ].join(','));
+
+            // Data rows
+            filteredInvoices.forEach(inv => {
+                const row = [
+                    inv.id || '',
+                    `"${(inv.invoice_number || '').replace(/"/g, '""')}"`,
+                    `"${(inv.seller_name || '').replace(/"/g, '""')}"`,
+                    inv.seller_gstin || '',
+                    `"${(inv.buyer_name || '').replace(/"/g, '""')}"`,
+                    inv.buyer_gstin || '',
+                    inv.invoice_date || '',
+                    inv.subtotal || 0,
+                    inv.cgst || 0,
+                    inv.sgst || 0,
+                    inv.igst || 0,
+                    inv.total || 0,
+                    inv.status || '',
+                    new Date(inv.created_at).toISOString()
+                ];
+                csvRows.push(row.join(','));
+            });
+
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            
+            const today = new Date().toISOString().split('T')[0];
+            const filename = `invoices_export_${today}.csv`;
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+        } catch (error) {
+            console.error('Export error:', error);
+            alert('EXPORT FAILED: ' + error.message);
+        } finally {
+            bulkExportBtn.disabled = false;
+            bulkExportBtn.textContent = '📥 Export All';
+        }
     });
 }
 
