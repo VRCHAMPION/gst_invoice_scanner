@@ -16,7 +16,9 @@ async function fetchInvoices() {
         });
         if (!response.ok) throw new Error('FAILED TO FETCH INVOICES');
         
-        let data = await response.json();
+        const payload = await response.json();
+        // /api/invoices returns a paginated object {items, total, page, pages}
+        const data = Array.isArray(payload) ? payload : (payload.items || []);
         
         // Trust backend payload entirely. Database determines FAILED/SUCCESS natively now.
         allInvoices = data.map(inv => {

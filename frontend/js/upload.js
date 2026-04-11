@@ -212,7 +212,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: getAuthHeaders()
             });
             if (!response.ok) throw new Error('Fetch failed');
-            const invoices = await response.json();
+            const payload = await response.json();
+            // /api/invoices returns a paginated object {items, total, page, pages}
+            const invoices = Array.isArray(payload) ? payload : (payload.items || []);
             
             container.innerHTML = '';
             

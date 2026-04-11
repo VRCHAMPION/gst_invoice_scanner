@@ -8,10 +8,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load companies into dropdown
     window.loadCompanies = async () => {
         try {
-            const companies = await apiFetch(getApiUrl('/api/companies'), {
+            const response = await apiFetch(getApiUrl('/api/companies'), {
                 headers: getAuthHeaders()
             });
+            const companies = await response.json();
 
+            if (!companySelect) return;
             companySelect.innerHTML = '<option value="">SELECT COMPANY...</option>';
             companies.forEach(company => {
                 const option = document.createElement('option');
@@ -30,16 +32,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Modal logic
-    openModalBtn.addEventListener('click', () => {
+    // Modal logic — only bind if elements exist on this page
+    if (openModalBtn) openModalBtn.addEventListener('click', () => {
         companyModal.style.display = 'flex';
     });
 
-    closeModalBtn.addEventListener('click', () => {
+    if (closeModalBtn) closeModalBtn.addEventListener('click', () => {
         companyModal.style.display = 'none';
     });
 
-    companyForm.addEventListener('submit', async (e) => {
+    if (companyForm) companyForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const data = {
             name: document.getElementById('compName').value,
@@ -66,5 +68,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    loadCompanies();
+    if (companySelect) loadCompanies();
 });
