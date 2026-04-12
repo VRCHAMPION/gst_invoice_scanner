@@ -1,30 +1,17 @@
 {
   "version": 2,
   "name": "gst-invoice-scanner",
-  "builds": [
-    {
-      "src": "frontend/**",
-      "use": "@vercel/static"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/frontend/$1"
-    },
-    {
-      "src": "/",
-      "dest": "/frontend/index.html"
-    }
+  "rewrites": [
+    { "source": "/", "destination": "/frontend/index.html" },
+    { "source": "/(.*)\\.html", "destination": "/frontend/$1.html" },
+    { "source": "/(.*)\\.js", "destination": "/frontend/$1.js" },
+    { "source": "/(.*)\\.css", "destination": "/frontend/$1.css" },
+    { "source": "/(.*)", "destination": "/frontend/$1" }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600, must-revalidate"
-        },
         {
           "key": "X-Content-Type-Options",
           "value": "nosniff"
@@ -44,11 +31,15 @@
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://gst-invoice-scanner-api-vrc-3o7k.onrender.com; frame-ancestors 'none';"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, must-revalidate"
         }
       ]
     },
     {
-      "source": "/js/(.*)",
+      "source": "/frontend/js/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
@@ -57,7 +48,7 @@
       ]
     },
     {
-      "source": "/css/(.*)",
+      "source": "/frontend/css/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
