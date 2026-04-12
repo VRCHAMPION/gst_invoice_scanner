@@ -195,8 +195,6 @@ async def get_invoices(
     )
 
 
-# NOTE: /invoices/manual must be declared BEFORE /invoices/{invoice_id}
-# otherwise FastAPI matches "manual" as the invoice_id path parameter.
 @router.post("/invoices/manual", response_model=MessageResponse)
 async def create_manual_invoice(
     req: ManualInvoiceRequest,
@@ -207,7 +205,7 @@ async def create_manual_invoice(
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="Please associate with a company first")
 
-    # Duplicate check
+    
     existing = db.query(Invoice).filter(
         Invoice.company_id == current_user.company_id,
         Invoice.invoice_number == req.invoice_number,

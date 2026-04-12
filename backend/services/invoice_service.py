@@ -88,18 +88,11 @@ def process_invoice_background(
         buyer_gstin = (data.get("buyer_gstin") or "").upper()
 
         # Validate that either seller or buyer GSTIN matches company GSTIN
+        # Log a warning but don't reject — user may be uploading invoices from different entities
         if company_gstin:
             if seller_gstin != company_gstin and buyer_gstin != company_gstin:
-                invoice.status = "FAILED"
-                invoice.error_message = (
-                    f"Invoice rejected: Neither seller GSTIN ({seller_gstin or 'missing'}) "
-                    f"nor buyer GSTIN ({buyer_gstin or 'missing'}) matches your company GSTIN ({company_gstin})"
-                )
-                invoice.raw_json = data
-                db.commit()
-                log.warning("invoice_gstin_mismatch", job_id=job_id, company_gstin=company_gstin, 
+                log.warning("invoice_gstin_mismatch", job_id=job_id, company_gstin=company_gstin,
                            seller_gstin=seller_gstin, buyer_gstin=buyer_gstin)
-                return
 
         # Check for duplicate invoice
         invoice_number = data.get("invoice_number")
