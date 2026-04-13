@@ -12,7 +12,7 @@ services:
         value: 8000
       - key: DATABASE_URL
         sync: false # Must be set in Render dashboard
-      - key: GEMINI_API_KEY
+      - key: GROQ_API_KEY
         sync: false # Must be set in Render dashboard
       - key: JWT_SECRET
         sync: false # Must be set in Render dashboard
