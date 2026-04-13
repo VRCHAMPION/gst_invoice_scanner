@@ -39,3 +39,4 @@ ehthumbs.db
 
 # ── Internal Agent Tooling ──
 _agents/
+.kiro/
