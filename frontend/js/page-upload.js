@@ -9,14 +9,18 @@
 
     async function loadTeamPanel() {
         try {
-            const usersRes = await apiFetch(getApiUrl('/api/users'));
+            const usersRes = await apiFetch(getApiUrl('/api/users'), {
+                headers: getAuthHeaders()
+            });
             if (usersRes.ok) {
                 const users = await usersRes.json();
                 document.getElementById('empCountBadge').textContent =
                     users.length + ' member' + (users.length !== 1 ? 's' : '');
             }
 
-            const jrRes = await apiFetch(getApiUrl('/api/join-requests'));
+            const jrRes = await apiFetch(getApiUrl('/api/join-requests'), {
+                headers: getAuthHeaders()
+            });
             if (!jrRes.ok) return;
             const requests = await jrRes.json();
 
@@ -51,12 +55,24 @@
         const row = document.getElementById('req-' + requestId);
         if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; }
         try {
-            const res = await apiFetch(getApiUrl(`/api/join-requests/${requestId}/${action}`), { method: 'POST' });
+            const res = await apiFetch(getApiUrl(`/api/join-requests/${requestId}/${action}`), { 
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
             if (res.ok) {
+                const data = await res.json();
+                console.log('Request ' + action + 'd successfully:', data.message);
                 await loadTeamPanel();
             } else {
+                const error = await res.json();
+                console.error('Failed to ' + action + ' request:', error.detail);
+                alert('Error: ' + (error.detail || 'Failed to ' + action + ' request'));
                 if (row) { row.style.opacity = '1'; row.style.pointerEvents = 'auto'; }
             }
-        } catch { if (row) { row.style.opacity = '1'; row.style.pointerEvents = 'auto'; } }
+        } catch (e) { 
+            console.error('Request error:', e);
+            alert('Network error. Please try again.');
+            if (row) { row.style.opacity = '1'; row.style.pointerEvents = 'auto'; } 
+        }
     };
 }());
