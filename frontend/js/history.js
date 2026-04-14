@@ -107,7 +107,7 @@ async function fetchInvoices() {
         });
         
         filteredInvoices = [...allInvoices];
-        updateStats();
+        updateStats(payload.total !== undefined ? payload.total : allInvoices.length);
         renderTable();
     } catch (error) {
         console.error(error);
@@ -115,14 +115,15 @@ async function fetchInvoices() {
     }
 }
 
-function updateStats() {
+function updateStats(trueTotal) {
     const statTotal = document.getElementById('statTotal');
     const statSuccess = document.getElementById('statSuccess');
     const statFailed = document.getElementById('statFailed');
     
-    const total = allInvoices.length;
+    // We use the absolute total from DB pagination if available
+    const total = trueTotal !== undefined ? trueTotal : allInvoices.length;
     const failedCount = allInvoices.filter(i => i.status === 'FAILED').length;
-    const successCount = allInvoices.filter(i => i.status === 'SUCCESS').length;
+    const successCount = allInvoices.filter(i => i.status === 'SUCCESS' || i.status === 'APPROVED').length;
     
     statTotal.textContent = total;
     statFailed.textContent = failedCount;

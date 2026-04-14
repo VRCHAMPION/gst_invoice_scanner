@@ -42,15 +42,55 @@ async function loadEmployeeList() {
             card.innerHTML = `
                 <div style="font-weight: 800; font-size: 0.9rem;">${u.name.toUpperCase()}</div>
                 <div style="font-size: 0.8rem; color: var(--muted);">${u.email}</div>
-                <div style="margin-top: 0.5rem;"><span class="status-pill ${u.role==='owner'?'pill-success':'pill-processing'}">${u.role.toUpperCase()}</span></div>
+                <div style="margin-top: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
+                    <span class="status-pill ${u.role==='owner'?'pill-success':'pill-processing'}">${u.role.toUpperCase()}</span>
+                    ${u.role !== 'owner' ? `<button onclick="removeEmployee('${u.id}')" style="background:none; border:none; color:var(--red); font-size:0.75rem; font-weight:800; cursor:pointer; font-family: var(--display); letter-spacing: 0.5px;">REMOVE ✕</button>` : ''}
+                </div>
             `;
             container.appendChild(card);
         });
     } catch (e) { console.error(e); }
 }
 
+window.removeEmployee = async (userId) => {
+    if (!confirm("Are you sure you want to remove this employee from your workspace? They will lose access immediately.")) return;
+    try {
+        const res = await apiFetch(getApiUrl(`/api/users/${userId}/remove`), {
+            method: 'POST',
+            headers: getAuthHeaders()
+        });
+        if (res.ok) {
+            alert('Employee removed successfully.');
+            await loadEmployeeList();
+            await loadTeamSize();
+        } else {
+            const error = await res.json();
+            alert('Error: ' + error.detail);
+        }
+    } catch (e) {
+        console.error(e);
+        alert('Failed to remove employee.');
+    }
+};
+
 window.openInvitePrompt = () => {
-    alert("TO INVITE A TEAM MEMBER:\nAsk them to Register as 'EMPLOYEE' and enter your company name: " + JSON.parse(sessionStorage.getItem('currentCompany')).name);
+    document.getElementById('inviteModal').style.display = 'flex';
+};
+
+window.sendInvite = (method) => {
+    const company = JSON.parse(sessionStorage.getItem('currentCompany'));
+    if (!company) return;
+    
+    const message = `Join my workspace on GST Invoice Scanner!\n\n1. Go to the portal\n2. Register an account as an EMPLOYEE\n3. Request to join this exact company name: ${company.name}\n\nSee you there!`;
+    const encodedMessage = encodeURIComponent(message);
+    
+    if (method === 'whatsapp') {
+        window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
+    } else if (method === 'email') {
+        window.location.href = `mailto:?subject=Join my GST Workspace&body=${encodedMessage}`;
+    }
+    
+    document.getElementById('inviteModal').style.display = 'none';
 };
 
 async function loadAnalytics() {

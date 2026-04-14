@@ -259,3 +259,28 @@ async def list_company_users(
         UserListItem(id=str(u.id), name=u.name, email=u.email, role=u.role)
         for u in users
     ]
+
+
+@router.post("/users/{user_id}/remove", response_model=MessageResponse)
+async def remove_company_user(
+    user_id: str,
+    current_user: User = Depends(RoleChecker(["owner"])),
+    db: Session = Depends(get_db),
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User not part of a company")
+
+    if str(current_user.id) == user_id:
+        raise HTTPException(status_code=400, detail="Owner cannot remove themselves from their own workspace. Delete the workspace instead.")
+
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if str(target_user.company_id) != str(current_user.company_id):
+        raise HTTPException(status_code=403, detail="User does not belong to your company")
+
+    target_user.company_id = None
+    target_user.role = "employee"
+    db.commit()
+    return MessageResponse(message=f"Employee {target_user.name} has been removed from the workspace")
