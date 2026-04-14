@@ -43,8 +43,8 @@
                         <div class="request-email">${r.email}</div>
                     </div>
                     <div class="request-actions">
-                        <button class="btn-approve" onclick="handleRequest('${r.id}', 'approve')">Approve</button>
-                        <button class="btn-reject" onclick="handleRequest('${r.id}', 'reject')">Reject</button>
+                        <button class="btn-approve" data-id="${r.id}" data-action="approve">Approve</button>
+                        <button class="btn-reject" data-id="${r.id}" data-action="reject">Reject</button>
                     </div>
                 </div>
             `).join('');
@@ -75,4 +75,18 @@
             if (row) { row.style.opacity = '1'; row.style.pointerEvents = 'auto'; } 
         }
     };
+    // Event delegation for approve/reject buttons
+    const requestsList = document.getElementById('requestsList');
+    if (requestsList) {
+        requestsList.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button');
+            if (!btn) return;
+            
+            const action = btn.getAttribute('data-action');
+            const requestId = btn.getAttribute('data-id');
+            if (action && requestId) {
+                await handleRequest(requestId, action);
+            }
+        });
+    }
 }());
