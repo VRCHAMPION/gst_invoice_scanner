@@ -21,7 +21,7 @@ from schemas import (
     ScanJobResponse,
     ScanStatusResponse,
 )
-from services.invoice_service import process_invoice_background
+from services.invoice_service import process_invoice_background, trigger_webhook
 from validator import calculate_health_score
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -414,6 +414,7 @@ async def export_invoice(
 @router.post("/invoices/{invoice_id}/approve", response_model=MessageResponse)
 async def approve_invoice(
     invoice_id: str,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -449,6 +450,15 @@ async def approve_invoice(
         if vendor:
             vendor.total_invoices += 1
             vendor.total_amount += (invoice.total or 0.0)
+
+    # Fire webhook if configured
+    from models import Company
+    company = db.query(Company).filter(Company.id == current_user.company_id).first()
+    if company and company.webhook_url:
+        payload = dict(invoice.raw_json or {})
+        payload["id"] = str(invoice.id)
+        payload["status"] = "APPROVED"
+        background_tasks.add_task(trigger_webhook, company.webhook_url, payload)
 
     db.commit()
     return MessageResponse(message=f"Invoice {invoice.invoice_number or invoice_id} approved successfully")

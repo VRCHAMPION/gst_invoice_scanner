@@ -100,8 +100,13 @@ class CompanyOut(BaseModel):
     gstin: str
     owner_id: Optional[uuid.UUID] = None
     employee_count: Optional[int] = None
+    webhook_url: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class CompanyUpdate(BaseModel):
+    webhook_url: Optional[str] = Field(None, max_length=1000)
 
 
 class JoinRequestOut(BaseModel):

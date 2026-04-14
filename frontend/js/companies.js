@@ -69,4 +69,54 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (companySelect) loadCompanies();
+
+    // ── SETTINGS MODAL LOGIC ──
+    const settingsModal = document.getElementById('settingsModal');
+    const openSettingsBtn = document.getElementById('openSettingsBtn');
+    const closeSettingsBtn = document.getElementById('closeSettingsBtn');
+    const settingsForm = document.getElementById('settingsForm');
+    const settingsWebhookUrl = document.getElementById('settingsWebhookUrl');
+
+    if (openSettingsBtn && settingsModal) {
+        openSettingsBtn.addEventListener('click', async () => {
+            // Fetch current company settings to pre-fill
+            try {
+                const response = await apiFetch(getApiUrl('/api/companies'), { headers: getAuthHeaders() });
+                const companies = await response.json();
+                if (companies.length > 0) {
+                    settingsWebhookUrl.value = companies[0].webhook_url || '';
+                }
+            } catch (err) {
+                console.error('Failed to load settings:', err);
+            }
+            settingsModal.style.display = 'flex';
+        });
+    }
+
+    if (closeSettingsBtn && settingsModal) {
+        closeSettingsBtn.addEventListener('click', () => {
+            settingsModal.style.display = 'none';
+        });
+    }
+
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                webhook_url: settingsWebhookUrl.value.trim() || null
+            };
+
+            try {
+                await apiFetch(getApiUrl('/api/companies/me'), {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    body: JSON.stringify(data)
+                });
+                alert('Workspace settings saved successfully.');
+                settingsModal.style.display = 'none';
+            } catch (error) {
+                alert('ERROR: ' + error.message);
+            }
+        });
+    }
 });

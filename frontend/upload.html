@@ -514,6 +514,7 @@
         <div class="user-info">
             <span class="display-company-name" style="color: var(--blue); font-weight: 800; margin-right: 1rem; border-right: 1px solid var(--border-color); padding-right: 1rem;">Workspace</span>
             <span class="display-user-name">User</span>
+            <button class="nav-btn btn-settings" id="openSettingsBtn" style="border:none; cursor:pointer; background:var(--bg2); color:var(--ink); margin-right:8px;">⚙️ Settings</button>
             <button class="nav-btn logout-trigger" style="border:none; cursor:pointer;">Sign out</button>
         </div>
     </nav>
@@ -653,6 +654,31 @@
                 <div style="display: flex; gap: 1rem; margin-top: 2rem;">
                     <button type="button" class="btn-alt" id="closeModalBtn" style="flex: 1;">Cancel</button>
                     <button type="submit" class="btn-prime" style="flex: 2;">Save company</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SETTINGS MODAL -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h2 class="brand-font" style="font-size: 2rem; margin-bottom: 0.5rem;">Workspace Settings</h2>
+            <p style="color: var(--muted); margin-bottom: 2rem; font-size: 0.9rem;">Configure integrations and team preferences.</p>
+            
+            <form id="settingsForm">
+                <div class="form-group">
+                    <label class="form-label" style="display:flex; justify-content:space-between;">
+                        <span>Zapier / Webhook URL</span>
+                        <span style="color:var(--blue); font-weight:normal; cursor:pointer;" onclick="window.open('https://zapier.com/apps/webhook/integrations', '_blank')">How to set up?</span>
+                    </label>
+                    <input type="url" id="settingsWebhookUrl" class="form-input" placeholder="https://hooks.zapier.com/hooks/catch/...">
+                    <small style="color: var(--muted); display: block; margin-top: 6px; font-size: 0.75rem;">
+                        We will securely send an HTTP POST request to this URL every time an invoice is approved.
+                    </small>
+                </div>
+                <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                    <button type="button" class="btn-alt" id="closeSettingsBtn" style="flex: 1;">Cancel</button>
+                    <button type="submit" class="btn-prime" style="flex: 2;">Save settings</button>
                 </div>
             </form>
         </div>

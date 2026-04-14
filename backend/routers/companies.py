@@ -6,7 +6,7 @@ from auth import get_current_user, hash_password, RoleChecker
 from database import get_db
 from models import User, Company, JoinRequest
 from schemas import (
-    CompanyCreate, CompanyOut,
+    CompanyCreate, CompanyOut, CompanyUpdate,
     JoinCompanyRequest, JoinRequestOut, JoinRequestStatusResponse,
     InviteUserRequest, InviteResponse,
     MessageResponse, UserListItem,
@@ -44,6 +44,7 @@ async def create_company(
         gstin=company.gstin,
         owner_id=company.owner_id,
         employee_count=emp_count,
+        webhook_url=company.webhook_url,
     )
 
 
@@ -66,7 +67,38 @@ async def get_my_companies(
         gstin=company.gstin,
         owner_id=company.owner_id,
         employee_count=emp_count,
+        webhook_url=company.webhook_url,
     )]
+
+
+@router.patch("/companies/me", response_model=CompanyOut)
+async def update_my_company(
+    req: CompanyUpdate,
+    current_user: User = Depends(RoleChecker(["owner"])),
+    db: Session = Depends(get_db),
+):
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User not part of a company")
+
+    company = db.query(Company).filter(Company.id == current_user.company_id).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Company not found")
+
+    if req.webhook_url is not None:
+        company.webhook_url = req.webhook_url if req.webhook_url.strip() else None
+
+    db.commit()
+    db.refresh(company)
+
+    emp_count = db.query(User).filter(User.company_id == company.id).count()
+    return CompanyOut(
+        id=company.id,
+        name=company.name,
+        gstin=company.gstin,
+        owner_id=company.owner_id,
+        employee_count=emp_count,
+        webhook_url=company.webhook_url,
+    )
 
 
 @router.post("/join-request", response_model=MessageResponse)

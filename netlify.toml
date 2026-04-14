@@ -1,5 +1,10 @@
 [build]
-  publish = "."
+  publish = "frontend"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
 [[headers]]
   for = "/js/*"

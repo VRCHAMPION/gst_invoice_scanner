@@ -34,6 +34,7 @@ class Company(Base):
     name = Column(String, unique=True, nullable=False)
     gstin = Column(String, unique=True, index=True, nullable=False)
     owner_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True)
+    webhook_url = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     users = relationship("User", back_populates="company", foreign_keys=[User.company_id])

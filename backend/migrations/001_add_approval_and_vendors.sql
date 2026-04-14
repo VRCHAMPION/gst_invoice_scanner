@@ -1,5 +1,3 @@
--- Migration: Add approval workflow and vendor management features
--- Date: 2026-04-12
 -- Description: Adds approval status fields to invoices, creates vendors table
 
 -- Add new columns to invoices table

@@ -1,4 +1,3 @@
-# Clean URL support — /login → /login.html etc.
 /login          /login.html         200
 /register       /register.html      200
 /upload         /upload.html        200

@@ -5,9 +5,24 @@ TODO: migrate to Celery when we need better scalability
 import uuid
 import structlog
 
+import httpx
+
 from parser import extract_invoice_data
 
 log = structlog.get_logger()
+
+
+async def trigger_webhook(webhook_url: str, payload: dict) -> None:
+    """Fire and forget webhook payload delivery."""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(webhook_url, json=payload, timeout=10.0)
+            if response.status_code >= 400:
+                log.warning("webhook_error_response", url=webhook_url, status_code=response.status_code, response=response.text[:200])
+            else:
+                log.info("webhook_triggered", url=webhook_url, status_code=response.status_code)
+    except Exception as e:
+        log.error("webhook_failed", url=webhook_url, error=str(e))
 
 
 def _create_or_update_vendor(db, company_id: uuid.UUID, seller_gstin: str, seller_name: str) -> None:
