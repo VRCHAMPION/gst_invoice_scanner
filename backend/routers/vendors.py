@@ -15,7 +15,7 @@ from pydantic import BaseModel
 
 
 class VendorOut(BaseModel):
-    id: str
+    id: uuid.UUID
     gstin: str
     name: str
     total_invoices: int
@@ -25,7 +25,7 @@ class VendorOut(BaseModel):
 
 
 class VendorDetailOut(BaseModel):
-    id: str
+    id: uuid.UUID
     gstin: str
     name: str
     total_invoices: int
