@@ -113,29 +113,40 @@ def process_invoice_background(
                 db.commit()
                 return
 
-        # Check for duplicate invoice
+        # Check for duplicate invoice (by Invoice Number + Seller GSTIN)
         invoice_number = data.get("invoice_number")
+        data_seller_gstin = (data.get("seller_gstin") or "").upper().strip()
         if invoice_number:
-            existing = db.query(Invoice).filter(
+            dup_query = db.query(Invoice).filter(
                 Invoice.company_id == company_id,
                 Invoice.invoice_number == invoice_number,
                 Invoice.status != "FAILED",
                 Invoice.id != invoice.id
-            ).first()
+            )
+            # If seller GSTIN is available, use composite key for stronger match
+            if data_seller_gstin:
+                dup_query = dup_query.filter(Invoice.seller_gstin == data_seller_gstin)
+
+            existing = dup_query.first()
             
             if existing:
                 invoice.status = "FAILED"
                 invoice.is_duplicate = str(existing.id)
                 uploader_name = db.query(User).filter(User.id == existing.uploaded_by).first()
                 uploader_str = uploader_name.name if uploader_name else "Unknown"
+                invoice.invoice_number = invoice_number
+                invoice.seller_gstin = data_seller_gstin or None
+                invoice.seller_name = data.get("seller_name")
                 invoice.error_message = (
-                    f"Duplicate invoice: {invoice_number} was already uploaded on "
+                    f"Duplicate invoice: #{invoice_number} from seller "
+                    f"{data.get('seller_name') or data_seller_gstin or 'Unknown'} "
+                    f"was already uploaded on "
                     f"{existing.created_at.strftime('%Y-%m-%d %H:%M')} by {uploader_str}"
                 )
                 invoice.raw_json = data
                 db.commit()
-                log.warning("invoice_duplicate", job_id=job_id, invoice_number=invoice_number, 
-                           original_id=str(existing.id))
+                log.warning("invoice_duplicate", job_id=job_id, invoice_number=invoice_number,
+                           seller_gstin=data_seller_gstin, original_id=str(existing.id))
                 return
 
         invoice.invoice_number = data.get("invoice_number")

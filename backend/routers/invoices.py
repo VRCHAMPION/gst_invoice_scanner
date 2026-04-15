@@ -59,6 +59,58 @@ limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api", tags=["invoices"])
 
 
+class DuplicateCheckRequest(BaseModel):
+    invoice_number: str = Field(min_length=1)
+    seller_gstin: Optional[str] = None
+
+
+class DuplicateCheckResponse(BaseModel):
+    is_duplicate: bool
+    original_invoice_id: Optional[str] = None
+    original_upload_date: Optional[str] = None
+    original_uploader: Optional[str] = None
+    message: Optional[str] = None
+
+
+@router.post("/invoices/check-duplicate", response_model=DuplicateCheckResponse)
+async def check_duplicate_invoice(
+    req: DuplicateCheckRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Check if an invoice with the same number and seller GSTIN already exists."""
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="Please associate with a company first")
+
+    query = db.query(Invoice).filter(
+        Invoice.company_id == current_user.company_id,
+        Invoice.invoice_number == req.invoice_number,
+        Invoice.status != "FAILED",
+    )
+
+    if req.seller_gstin:
+        query = query.filter(Invoice.seller_gstin == req.seller_gstin.upper().strip())
+
+    existing = query.first()
+
+    if not existing:
+        return DuplicateCheckResponse(is_duplicate=False)
+
+    uploader = db.query(User).filter(User.id == existing.uploaded_by).first()
+    uploader_name = uploader.name if uploader else "Unknown"
+
+    return DuplicateCheckResponse(
+        is_duplicate=True,
+        original_invoice_id=str(existing.id),
+        original_upload_date=existing.created_at.strftime("%Y-%m-%d %H:%M") if existing.created_at else None,
+        original_uploader=uploader_name,
+        message=(
+            f"Invoice #{req.invoice_number} from this seller was already uploaded "
+            f"on {existing.created_at.strftime('%Y-%m-%d')} by {uploader_name}."
+        ),
+    )
+
+
 @router.post("/scan", response_model=ScanJobResponse)
 @limiter.limit("10/minute")
 async def scan_invoice(

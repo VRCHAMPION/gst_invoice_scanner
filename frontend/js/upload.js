@@ -192,9 +192,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await pollJobStatusSync(data.job_id);
                 
                 if (result.status === 'completed') {
+                    // Check for duplicate after successful extraction
+                    const dupInfo = await checkDuplicateFromResult(result);
+                    if (dupInfo && dupInfo.is_duplicate) {
+                        result._duplicate_info = dupInfo;
+                    }
                     item.status = 'success';
                     item.result = result;
                     results.push(result);
+                } else if (result.is_duplicate) {
+                    // Backend already detected duplicate during processing
+                    overlay.style.display = 'none';
+                    const userChoice = await showDuplicateAlert(item.file.name, result);
+                    overlay.style.display = 'flex';
+
+                    if (userChoice === 'keep') {
+                        // User chose to keep — mark result as a flagged duplicate but still show it
+                        result._user_accepted_duplicate = true;
+                        result.status = 'completed';
+                        item.status = 'success';
+                        item.result = result;
+                        results.push(result);
+                    } else {
+                        // User chose to discard
+                        item.status = 'failed';
+                        item.discarded = true;
+                    }
                 } else {
                     item.status = 'failed';
                 }
@@ -211,7 +234,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         uploadProgress.style.width = '100%';
-        processStatus.textContent = `COMPLETE! PROCESSED ${results.length}/${fileQueue.length} INVOICES`;
+        const discardedCount = fileQueue.filter(f => f.discarded).length;
+        const successMsg = discardedCount > 0
+            ? `COMPLETE! PROCESSED ${results.length}/${fileQueue.length} INVOICES (${discardedCount} DUPLICATES DISCARDED)`
+            : `COMPLETE! PROCESSED ${results.length}/${fileQueue.length} INVOICES`;
+        processStatus.textContent = successMsg;
 
         setTimeout(() => {
             overlay.style.display = 'none';
@@ -220,9 +247,150 @@ document.addEventListener('DOMContentLoaded', () => {
                 sessionStorage.setItem('lastScanResults', JSON.stringify(results));
                 window.location.href = 'results.html';
             } else {
-                alert('ALL UPLOADS FAILED. PLEASE TRY AGAIN.');
+                alert('ALL UPLOADS FAILED OR WERE DISCARDED. PLEASE TRY AGAIN.');
             }
         }, 1000);
+    }
+
+    /**
+     * Check if a completed scan result is a duplicate by calling the backend endpoint.
+     */
+    async function checkDuplicateFromResult(result) {
+        if (!result.invoice_number) return null;
+        try {
+            const res = await apiFetch(getApiUrl('/api/invoices/check-duplicate'), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                body: JSON.stringify({
+                    invoice_number: result.invoice_number,
+                    seller_gstin: result.seller_gstin || null,
+                }),
+            });
+            if (!res.ok) return null;
+            return await res.json();
+        } catch {
+            return null;
+        }
+    }
+
+    /**
+     * Show a styled duplicate warning modal and return 'keep' or 'discard'.
+     */
+    function showDuplicateAlert(fileName, result) {
+        return new Promise((resolve) => {
+            // Create modal overlay
+            const modal = document.createElement('div');
+            modal.id = 'duplicateModal';
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.6); backdrop-filter: blur(6px);
+                z-index: 3000; display: flex; justify-content: center; align-items: center;
+                animation: fadeIn 0.2s ease;
+            `;
+
+            const errorMsg = result.error_message || 'This invoice appears to be a duplicate.';
+            const invoiceNum = result.invoice_number || result.raw_json?.invoice_number || 'Unknown';
+            const sellerName = result.seller_name || result.raw_json?.seller_name || '';
+            const sellerGstin = result.seller_gstin || result.raw_json?.seller_gstin || '';
+
+            modal.innerHTML = `
+                <div style="
+                    background: white; border-radius: 16px; padding: 2.5rem;
+                    max-width: 520px; width: 90%; box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+                    animation: slideUp 0.3s ease;
+                ">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem;">
+                        <div style="
+                            width: 56px; height: 56px; border-radius: 50%;
+                            background: linear-gradient(135deg, #fff5f5, #ffe0e0);
+                            display: flex; align-items: center; justify-content: center;
+                            font-size: 1.8rem; flex-shrink: 0;
+                        ">⚠️</div>
+                        <div>
+                            <h2 style="font-size: 1.4rem; font-weight: 800; color: #dc2626; margin: 0; line-height: 1.2;">
+                                Duplicate Invoice Detected
+                            </h2>
+                            <p style="font-size: 0.8rem; color: #888; margin-top: 4px; font-family: monospace;">
+                                ${fileName}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div style="
+                        background: linear-gradient(135deg, #fef2f2, #fef9f9);
+                        border: 1px solid #fecaca; border-left: 4px solid #dc2626;
+                        border-radius: 8px; padding: 1.2rem; margin-bottom: 1.5rem;
+                    ">
+                        <p style="margin: 0; font-size: 0.9rem; color: #333; line-height: 1.5;">
+                            ${errorMsg}
+                        </p>
+                    </div>
+
+                    <div style="
+                        background: #f8f8f6; border-radius: 8px; padding: 1rem;
+                        margin-bottom: 1.5rem; border: 1px solid #e5e5e5;
+                    ">
+                        <div style="font-size: 0.7rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">
+                            Invoice Details
+                        </div>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                            <div>
+                                <div style="font-size: 0.7rem; color: #aaa;">Invoice #</div>
+                                <div style="font-weight: 700; font-family: monospace; font-size: 0.9rem;">${invoiceNum}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.7rem; color: #aaa;">Seller</div>
+                                <div style="font-weight: 700; font-size: 0.9rem;">${sellerName || sellerGstin || 'N/A'}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p style="font-size: 0.85rem; color: #666; margin-bottom: 1.5rem; line-height: 1.5;">
+                        This invoice looks like a duplicate. <strong>Are you sure you want to keep it?</strong>
+                    </p>
+
+                    <div style="display: flex; gap: 0.8rem;">
+                        <button id="dupDiscardBtn" style="
+                            flex: 1; padding: 0.9rem; border: 2px solid #e5e5e5; background: white;
+                            border-radius: 10px; font-weight: 700; font-size: 0.85rem;
+                            cursor: pointer; transition: all 0.2s; color: #333;
+                        ">Discard</button>
+                        <button id="dupKeepBtn" style="
+                            flex: 1.3; padding: 0.9rem; border: none;
+                            background: linear-gradient(135deg, #dc2626, #b91c1c);
+                            color: white; border-radius: 10px; font-weight: 700;
+                            font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
+                            box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+                        ">Keep Anyway</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            // Add animation keyframes if not present
+            if (!document.getElementById('dupModalStyles')) {
+                const style = document.createElement('style');
+                style.id = 'dupModalStyles';
+                style.textContent = `
+                    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                    @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+                    #dupDiscardBtn:hover { background: #f3f3f3; border-color: #ccc; }
+                    #dupKeepBtn:hover { box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4); transform: translateY(-1px); }
+                `;
+                document.head.appendChild(style);
+            }
+
+            modal.querySelector('#dupKeepBtn').addEventListener('click', () => {
+                modal.remove();
+                resolve('keep');
+            });
+
+            modal.querySelector('#dupDiscardBtn').addEventListener('click', () => {
+                modal.remove();
+                resolve('discard');
+            });
+        });
     }
 
     async function pollJobStatusSync(jobId) {

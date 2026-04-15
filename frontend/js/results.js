@@ -202,10 +202,14 @@ function populateData(data) {
     const duplicateWarningMessage = document.getElementById('duplicateWarningMessage');
     const viewOriginalBtn = document.getElementById('viewOriginalBtn');
 
+    // Case 1: Backend detected duplicate (FAILED status with is_duplicate)
     if (data.is_duplicate && data.status === 'FAILED') {
         duplicateWarningBanner.style.display = 'flex';
+        duplicateWarningBanner.style.borderColor = 'var(--red)';
+        duplicateWarningBanner.style.background = 'linear-gradient(135deg, #fff5f5 0%, #ffe5e5 100%)';
         duplicateWarningMessage.textContent = data.error_message || 'This invoice is a duplicate of an existing invoice.';
 
+        viewOriginalBtn.style.display = 'inline-block';
         viewOriginalBtn.onclick = async (e) => {
             e.preventDefault();
             try {
@@ -220,7 +224,40 @@ function populateData(data) {
                 alert('ERROR: Could not load original invoice. ' + error.message);
             }
         };
-    } else {
+    }
+    // Case 2: User accepted the duplicate and chose to keep it
+    else if (data._user_accepted_duplicate || data._duplicate_info) {
+        const dupInfo = data._duplicate_info || {};
+        duplicateWarningBanner.style.display = 'flex';
+        duplicateWarningBanner.style.borderColor = 'var(--amber, #f59e0b)';
+        duplicateWarningBanner.style.background = 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)';
+        duplicateWarningBanner.querySelector('strong').style.color = 'var(--amber, #d97706)';
+        duplicateWarningBanner.querySelector('strong').textContent = 'Possible Duplicate — Kept by User';
+        duplicateWarningMessage.textContent = dupInfo.message
+            || `This invoice may be a duplicate. Originally uploaded${dupInfo.original_upload_date ? ' on ' + dupInfo.original_upload_date : ''}${dupInfo.original_uploader ? ' by ' + dupInfo.original_uploader : ''}.`;
+
+        if (dupInfo.original_invoice_id) {
+            viewOriginalBtn.style.display = 'inline-block';
+            viewOriginalBtn.onclick = async (e) => {
+                e.preventDefault();
+                try {
+                    const response = await apiFetch(getApiUrl(`/api/invoices/${dupInfo.original_invoice_id}`), {
+                        headers: getAuthHeaders(),
+                    });
+                    if (!response.ok) throw new Error('Failed to load original invoice');
+                    const originalInvoice = await response.json();
+                    sessionStorage.setItem('lastScanResults', JSON.stringify(originalInvoice));
+                    window.location.href = 'results.html';
+                } catch (error) {
+                    alert('ERROR: Could not load original invoice. ' + error.message);
+                }
+            };
+        } else {
+            viewOriginalBtn.style.display = 'none';
+        }
+    }
+    // No duplicate
+    else {
         duplicateWarningBanner.style.display = 'none';
     }
 
