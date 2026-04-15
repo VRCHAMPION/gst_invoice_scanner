@@ -142,7 +142,7 @@ class ExportRequest(BaseModel):
     sgst: Optional[float] = None
     igst: Optional[float] = None
     status: Optional[str] = None
-    health_score: Optional[Dict[str, Any]] = None
+    health_score: Optional['HealthScoreOut'] = None
     # Allow any extra fields from the scan result payload
     model_config = {"extra": "allow"}
 

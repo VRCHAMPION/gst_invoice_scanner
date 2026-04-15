@@ -6,7 +6,6 @@ GSTIN_REGEX = re.compile(r'^[0-3][0-9][A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$')
 
 
 def validate_gstin(gstin: str) -> dict:
-    # TODO: add checksum digit validation
     if not gstin:
         return {"valid": False, "message": "gstin is missing"}
 

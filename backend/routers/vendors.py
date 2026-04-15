@@ -31,27 +31,32 @@ def _get_authorized_vendor(vendor_id: str, current_user: User, db: Session) -> V
     return vendor
 
 
-def _calculate_trust_score(vendor_gstin: str, company_id, db: Session) -> tuple:
-    counts = db.query(
-        Invoice.status, func.count(Invoice.id)
+def _get_vendor_stats(vendor_gstin: str, company_id, db: Session) -> dict:
+    results = db.query(
+        Invoice.status, 
+        func.count(Invoice.id).label("count"),
+        func.sum(Invoice.total).label("total")
     ).filter(
         Invoice.company_id == company_id,
         Invoice.seller_gstin == vendor_gstin,
     ).group_by(Invoice.status).all()
 
-    total = sum(c[1] for c in counts)
-    if total == 0:
-        return None, "New"
+    total_count = sum(r.count for r in results)
+    total_amount = sum((r.total or 0.0) for r in results if r.status == "APPROVED")
+    
+    if total_count == 0:
+        return {"score": None, "label": "New", "total_invoices": 0, "total_amount": 0.0, "approved_count": 0, "pending_count": 0}
 
-    status_map = {c[0]: c[1] for c in counts}
+    status_map = {r.status: r.count for r in results}
     failed = status_map.get("FAILED", 0)
     rejected = status_map.get("REJECTED", 0)
     pending = status_map.get("PENDING_REVIEW", 0)
+    approved = status_map.get("APPROVED", 0)
 
     score = 100
-    if total > 0:
-        score -= (failed / total) * 60
-        score -= ((rejected + pending) / total) * 30
+    if total_count > 0:
+        score -= (failed / total_count) * 60
+        score -= ((rejected + pending) / total_count) * 30
 
     score = max(0, int(score))
 
@@ -62,7 +67,14 @@ def _calculate_trust_score(vendor_gstin: str, company_id, db: Session) -> tuple:
     else:
         label = "Red Flag"
 
-    return score, label
+    return {
+        "score": score,
+        "label": label,
+        "total_invoices": approved, # maintain legacy behavior: vendors list shows approved count
+        "total_amount": float(total_amount),
+        "approved_count": approved,
+        "pending_count": pending
+    }
 
 
 router = APIRouter(prefix="/api/vendors", tags=["vendors"])
@@ -81,20 +93,11 @@ async def get_vendors(
     vendors = db.query(Vendor).filter(Vendor.company_id == current_user.company_id).all()
     
     for vendor in vendors:
-        stats = db.query(
-            func.count(Invoice.id).label("count"),
-            func.sum(Invoice.total).label("total")
-        ).filter(
-            Invoice.company_id == current_user.company_id,
-            Invoice.seller_gstin == vendor.gstin,
-            Invoice.status == "APPROVED"
-        ).first()
-        
-        vendor.total_invoices = stats.count or 0
-        vendor.total_amount = float(stats.total or 0.0)
-        score, label = _calculate_trust_score(vendor.gstin, current_user.company_id, db)
-        vendor.trust_score = score
-        vendor.trust_label = label
+        stats = _get_vendor_stats(vendor.gstin, current_user.company_id, db)
+        vendor.total_invoices = stats["total_invoices"]
+        vendor.total_amount = stats["total_amount"]
+        vendor.trust_score = stats["score"]
+        vendor.trust_label = stats["label"]
     
     db.commit()
     
@@ -110,33 +113,18 @@ async def get_vendor_detail(
     """Get detailed vendor information."""
     vendor = _get_authorized_vendor(vendor_id, current_user, db)
 
-    approved = db.query(
-        func.count(Invoice.id).label("count"),
-        func.sum(Invoice.total).label("total")
-    ).filter(
-        Invoice.company_id == current_user.company_id,
-        Invoice.seller_gstin == vendor.gstin,
-        Invoice.status == "APPROVED"
-    ).first()
-
-    pending = db.query(func.count(Invoice.id)).filter(
-        Invoice.company_id == current_user.company_id,
-        Invoice.seller_gstin == vendor.gstin,
-        Invoice.status == "PENDING_REVIEW"
-    ).scalar()
-
-    score, label = _calculate_trust_score(vendor.gstin, current_user.company_id, db)
+    stats = _get_vendor_stats(vendor.gstin, current_user.company_id, db)
 
     return VendorDetailOut(
         id=vendor.id,
         gstin=vendor.gstin,
         name=vendor.name,
-        total_invoices=approved.count or 0,
-        total_amount=float(approved.total or 0.0),
-        approved_invoices=approved.count or 0,
-        pending_invoices=pending or 0,
-        trust_score=score,
-        trust_label=label,
+        total_invoices=stats["total_invoices"],
+        total_amount=stats["total_amount"],
+        approved_invoices=stats["approved_count"],
+        pending_invoices=stats["pending_count"],
+        trust_score=stats["score"],
+        trust_label=stats["label"],
     )
 
 

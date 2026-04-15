@@ -1,6 +1,5 @@
 """
-invoice_service.py - Background invoice processing
-TODO: migrate to Celery when we need better scalability
+invoice_service.py - Background invoice processing and webhooks
 """
 import uuid
 import structlog
@@ -21,8 +20,10 @@ async def trigger_webhook(webhook_url: str, payload: dict) -> None:
                 log.warning("webhook_error_response", url=webhook_url, status_code=response.status_code, response=response.text[:200])
             else:
                 log.info("webhook_triggered", url=webhook_url, status_code=response.status_code)
+    except httpx.RequestError as e:
+        log.error("webhook_network_error", url=webhook_url, error=str(e))
     except Exception as e:
-        log.error("webhook_failed", url=webhook_url, error=str(e))
+        log.error("webhook_unexpected_failure", url=webhook_url, error=str(e))
 
 
 def _create_or_update_vendor(db, company_id: uuid.UUID, seller_gstin: str, seller_name: str) -> None:
@@ -71,6 +72,7 @@ def process_invoice_background(
     Opens fresh DB session since BackgroundTasks run after request closes.
     """
     from database import SessionLocal
+    from sqlalchemy.exc import SQLAlchemyError
     from models import Invoice, Company, User
 
     db = SessionLocal()
@@ -170,6 +172,9 @@ def process_invoice_background(
         
         log.info("invoice_processed", job_id=job_id, status="pending_review")
 
+    except SQLAlchemyError as database_err:
+        log.error("invoice_database_error", job_id=job_id, error=str(database_err))
+        # Hard failure on DB errors, connection closed in finally block.
     except Exception as e:
         log.error("invoice_processing_failed", job_id=job_id, error=str(e))
         try:
@@ -179,7 +184,7 @@ def process_invoice_background(
                 invoice.error_message = str(e)
                 invoice.raw_json = {"error": str(e)}
                 db.commit()
-        except Exception:
-            pass
+        except SQLAlchemyError:
+            db.rollback()
     finally:
         db.close()
