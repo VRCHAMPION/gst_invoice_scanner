@@ -27,6 +27,23 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 
 
+def _get_authorized_invoice(invoice_id: str, current_user: User, db: Session) -> Invoice:
+    """Parse UUID, fetch invoice, and verify company ownership. Raises HTTPException on failure."""
+    try:
+        invoice_uuid = uuid.UUID(invoice_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid invoice ID format")
+
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+
+    if str(invoice.company_id) != str(current_user.company_id):
+        raise HTTPException(status_code=403, detail="Access denied")
+
+    return invoice
+
+
 class InvoiceUpdateRequest(BaseModel):
     invoice_number: Optional[str] = None
     invoice_date: Optional[str] = None
@@ -322,17 +339,7 @@ async def get_invoice(
     db: Session = Depends(get_db),
 ):
     """Get a single invoice by ID."""
-    try:
-        invoice_uuid = uuid.UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID format")
-
-    invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    if str(invoice.company_id) != str(current_user.company_id):
-        raise HTTPException(status_code=403, detail="Access denied")
+    invoice = _get_authorized_invoice(invoice_id, current_user, db)
 
     data = dict(invoice.raw_json or {})
     data["id"] = str(invoice.id)
@@ -362,17 +369,7 @@ async def update_invoice(
     db: Session = Depends(get_db),
 ):
     """Update extracted invoice data (edit mode corrections)."""
-    try:
-        invoice_uuid = uuid.UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID format")
-
-    invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    if str(invoice.company_id) != str(current_user.company_id):
-        raise HTTPException(status_code=403, detail="Access denied")
+    invoice = _get_authorized_invoice(invoice_id, current_user, db)
 
     if invoice.status not in ("PENDING_REVIEW", "FAILED"):
         raise HTTPException(
@@ -400,17 +397,7 @@ async def retry_invoice(
     db: Session = Depends(get_db),
 ):
     """Delete a FAILED invoice record so the user can re-upload."""
-    try:
-        invoice_uuid = uuid.UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID format")
-
-    invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    if str(invoice.company_id) != str(current_user.company_id):
-        raise HTTPException(status_code=403, detail="Access denied")
+    invoice = _get_authorized_invoice(invoice_id, current_user, db)
 
     if invoice.status != "FAILED":
         raise HTTPException(
@@ -471,17 +458,7 @@ async def approve_invoice(
     db: Session = Depends(get_db),
 ):
     """Approve a pending invoice."""
-    try:
-        invoice_uuid = uuid.UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID format")
-
-    invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    if str(invoice.company_id) != str(current_user.company_id):
-        raise HTTPException(status_code=403, detail="Access denied")
+    invoice = _get_authorized_invoice(invoice_id, current_user, db)
 
     if invoice.status != "PENDING_REVIEW":
         raise HTTPException(
@@ -503,7 +480,6 @@ async def approve_invoice(
             vendor.total_invoices += 1
             vendor.total_amount += (invoice.total or 0.0)
 
-    # Fire webhook if configured
     from models import Company
     company = db.query(Company).filter(Company.id == current_user.company_id).first()
     if company and company.webhook_url:
@@ -523,17 +499,7 @@ async def reject_invoice(
     db: Session = Depends(get_db),
 ):
     """Reject a pending invoice."""
-    try:
-        invoice_uuid = uuid.UUID(invoice_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid invoice ID format")
-
-    invoice = db.query(Invoice).filter(Invoice.id == invoice_uuid).first()
-    if not invoice:
-        raise HTTPException(status_code=404, detail="Invoice not found")
-
-    if str(invoice.company_id) != str(current_user.company_id):
-        raise HTTPException(status_code=403, detail="Access denied")
+    invoice = _get_authorized_invoice(invoice_id, current_user, db)
 
     if invoice.status != "PENDING_REVIEW":
         raise HTTPException(

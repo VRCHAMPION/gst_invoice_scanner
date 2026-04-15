@@ -143,67 +143,106 @@
             <p class="text-muted data-font">Monitor your spending and track your ITC eligibility.</p>
         </header>
 
-        <!-- Summary Cards -->
-        <div class="stat-grid mb-2">
-            <div class="stat-card animate-fade-up stagger-1">
-                <div class="stat-label">Total invoices</div>
-                <div class="stat-value" id="totalInvoices">0</div>
+        <!-- Skeleton Loading State -->
+        <div id="analyticsSkeletonState">
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
+                <div class="skeleton-stat-card">
+                    <div class="skeleton skeleton-stat-label"></div>
+                    <div class="skeleton skeleton-stat-value"></div>
+                </div>
+                <div class="skeleton-stat-card">
+                    <div class="skeleton skeleton-stat-label"></div>
+                    <div class="skeleton skeleton-stat-value"></div>
+                </div>
+                <div class="skeleton-stat-card">
+                    <div class="skeleton skeleton-stat-label"></div>
+                    <div class="skeleton skeleton-stat-value"></div>
+                </div>
+                <div class="skeleton-stat-card">
+                    <div class="skeleton skeleton-stat-label"></div>
+                    <div class="skeleton skeleton-stat-value"></div>
+                </div>
             </div>
-            <div class="stat-card animate-fade-up stagger-2" style="border-left-color: var(--data-accent);">
-                <div class="stat-label">Total spent</div>
-                <div class="stat-value" id="totalSpend">₹0</div>
-            </div>
-            <div class="stat-card animate-fade-up stagger-3" style="border-left-color: var(--danger);">
-                <div class="stat-label">Tax paid</div>
-                <div class="stat-value" id="totalTax">₹0</div>
-            </div>
-            <div class="stat-card animate-fade-up stagger-4" style="border-left-color: var(--primary-accent);">
-                <div class="stat-label">ITC eligible</div>
-                <div class="stat-value" id="totalItc">₹0</div>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem;">
+                <div class="skeleton-chart-card">
+                    <div class="skeleton-chart-header">
+                        <div class="skeleton skeleton-text" style="width: 40%;"></div>
+                        <div class="skeleton skeleton-text xshort" style="width: 15%;"></div>
+                    </div>
+                    <div class="skeleton-chart-body">
+                        <div class="skeleton skeleton-chart-bar" style="height: 60%;"></div>
+                        <div class="skeleton skeleton-chart-bar" style="height: 80%;"></div>
+                        <div class="skeleton skeleton-chart-bar" style="height: 45%;"></div>
+                        <div class="skeleton skeleton-chart-bar" style="height: 90%;"></div>
+                        <div class="skeleton skeleton-chart-bar" style="height: 55%;"></div>
+                        <div class="skeleton skeleton-chart-bar" style="height: 70%;"></div>
+                    </div>
+                </div>
+                <div class="skeleton-chart-card">
+                    <div class="skeleton-chart-header">
+                        <div class="skeleton skeleton-text" style="width: 50%;"></div>
+                        <div class="skeleton skeleton-text xshort" style="width: 15%;"></div>
+                    </div>
+                    <div style="flex: 1; display: flex; align-items: center; justify-content: center;">
+                        <div class="skeleton" style="width: 200px; height: 200px; border-radius: 50%;"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <section class="team-management" id="ownerOnlyTeam" style="display: none; margin-top: 3rem; background: white; padding: 2.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
-                <h3 class="brand-font">Team management</h3>
-                <button class="btn btn-secondary" onclick="openInvitePrompt()">+ Invite team member</button>
+        <!-- Summary Cards (hidden until loaded) -->
+        <div id="analyticsContent" style="display: none;">
+            <div class="stat-grid mb-2">
+                <div class="stat-card animate-fade-up stagger-1">
+                    <div class="stat-label">Total invoices</div>
+                    <div class="stat-value" id="totalInvoices">0</div>
+                </div>
+                <div class="stat-card animate-fade-up stagger-2" style="border-left-color: var(--data-accent);">
+                    <div class="stat-label">Total spent</div>
+                    <div class="stat-value" id="totalSpend">₹0</div>
+                </div>
+                <div class="stat-card animate-fade-up stagger-3" style="border-left-color: var(--danger);">
+                    <div class="stat-label">Tax paid</div>
+                    <div class="stat-value" id="totalTax">₹0</div>
+                </div>
+                <div class="stat-card animate-fade-up stagger-4" style="border-left-color: var(--primary-accent);">
+                    <div class="stat-label">ITC eligible</div>
+                    <div class="stat-value" id="totalItc">₹0</div>
+                </div>
             </div>
-            <div id="employeeList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem;">
-                <!-- Populated via JS -->
-            </div>
-        </section>
 
-        <div class="analytics-grid">
-            <!-- Monthly Spend -->
-            <div class="chart-card animate-fade-up stagger-2">
-                <div class="chart-header">
-                    <h3 class="brand-font" style="font-size: 0.9rem;">Monthly Spend Trend</h3>
-                    <span class="text-muted data-font" style="font-size: 0.7rem;">in INR</span>
+            <div class="analytics-grid">
+                <!-- Monthly Spend -->
+                <div class="chart-card animate-fade-up stagger-2">
+                    <div class="chart-header">
+                        <h3 class="brand-font" style="font-size: 0.9rem;">Monthly Spend Trend</h3>
+                        <span class="text-muted data-font" style="font-size: 0.7rem;">in INR</span>
+                    </div>
+                    <div style="flex: 1; position: relative;">
+                        <canvas id="spendChart"></canvas>
+                    </div>
                 </div>
-                <div style="flex: 1; position: relative;">
-                    <canvas id="spendChart"></canvas>
-                </div>
-            </div>
 
-            <!-- Top Suppliers -->
-            <div class="chart-card animate-fade-up stagger-3">
-                <div class="chart-header">
-                    <h3 class="brand-font" style="font-size: 0.9rem;">Top Suppliers Concentration</h3>
-                    <span class="text-muted data-font" style="font-size: 0.7rem;">by amount</span>
+                <!-- Top Suppliers -->
+                <div class="chart-card animate-fade-up stagger-3">
+                    <div class="chart-header">
+                        <h3 class="brand-font" style="font-size: 0.9rem;">Top Suppliers Concentration</h3>
+                        <span class="text-muted data-font" style="font-size: 0.7rem;">by amount</span>
+                    </div>
+                    <div style="flex: 1; position: relative; padding: 1rem;">
+                        <canvas id="suppliersChart"></canvas>
+                    </div>
                 </div>
-                <div style="flex: 1; position: relative; padding: 1rem;">
-                    <canvas id="suppliersChart"></canvas>
-                </div>
-            </div>
-            
-            <!-- Invoice Volume -->
-            <div class="chart-card animate-fade-up stagger-4 chart-full-width" style="grid-column: span 2;">
-                <div class="chart-header">
-                    <h3 class="brand-font" style="font-size: 0.9rem;">Invoice Volume Activity</h3>
-                    <span class="text-muted data-font" style="font-size: 0.7rem;">count per period</span>
-                </div>
-                <div style="flex: 1; position: relative; min-height: 250px;">
-                    <canvas id="volumeChart"></canvas>
+                
+                <!-- Invoice Volume -->
+                <div class="chart-card animate-fade-up stagger-4 chart-full-width" style="grid-column: span 2;">
+                    <div class="chart-header">
+                        <h3 class="brand-font" style="font-size: 0.9rem;">Invoice Volume Activity</h3>
+                        <span class="text-muted data-font" style="font-size: 0.7rem;">count per period</span>
+                    </div>
+                    <div style="flex: 1; position: relative; min-height: 250px;">
+                        <canvas id="volumeChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>

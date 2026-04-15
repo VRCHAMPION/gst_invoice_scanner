@@ -179,8 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const response = await apiFetch(getApiUrl('/api/scan'), {
                     method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: formData
+                                        body: formData
                 });
 
                 if (!response.ok) throw new Error(`UPLOAD FAILED`);
@@ -260,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const res = await apiFetch(getApiUrl('/api/invoices/check-duplicate'), {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     invoice_number: result.invoice_number,
                     seller_gstin: result.seller_gstin || null,
@@ -400,8 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         while (pollCount < MAX_POLLS) {
             try {
                 const res = await apiFetch(getApiUrl(`/api/scan/status/${jobId}`), {
-                    headers: getAuthHeaders()
-                });
+                                    });
                 
                 if (!res.ok) throw new Error("Status check failed");
                 
@@ -436,8 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         try {
             const response = await apiFetch(getApiUrl('/api/invoices'), {
-                headers: getAuthHeaders()
-            });
+                            });
             if (!response.ok) throw new Error('Fetch failed');
             const payload = await response.json();
             const invoices = Array.isArray(payload) ? payload : (payload.items || []);

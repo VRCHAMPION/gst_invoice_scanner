@@ -257,9 +257,63 @@
         </header>
 
         <!-- Loading State -->
-        <div id="loadingState" style="text-align: center; padding: 4rem;">
-            <div class="loading-spinner"></div>
-            <p style="margin-top: 1rem; color: var(--muted); font-family: var(--mono);">Loading vendors...</p>
+        <div id="loadingState" class="vendors-grid">
+            <div class="skeleton-vendor-card">
+                <div class="skeleton skeleton-text" style="width: 60%;"></div>
+                <div class="skeleton skeleton-text xshort"></div>
+                <div class="skeleton-vendor-stats">
+                    <div>
+                        <div class="skeleton skeleton-text xshort" style="height: 10px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 24px;"></div>
+                    </div>
+                    <div>
+                        <div class="skeleton skeleton-text xshort" style="height: 10px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 24px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skeleton-vendor-card">
+                <div class="skeleton skeleton-text" style="width: 50%;"></div>
+                <div class="skeleton skeleton-text xshort"></div>
+                <div class="skeleton-vendor-stats">
+                    <div>
+                        <div class="skeleton skeleton-text xshort" style="height: 10px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 24px;"></div>
+                    </div>
+                    <div>
+                        <div class="skeleton skeleton-text xshort" style="height: 10px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 24px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skeleton-vendor-card">
+                <div class="skeleton skeleton-text" style="width: 70%;"></div>
+                <div class="skeleton skeleton-text xshort"></div>
+                <div class="skeleton-vendor-stats">
+                    <div>
+                        <div class="skeleton skeleton-text xshort" style="height: 10px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 24px;"></div>
+                    </div>
+                    <div>
+                        <div class="skeleton skeleton-text xshort" style="height: 10px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 24px;"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="skeleton-vendor-card">
+                <div class="skeleton skeleton-text" style="width: 40%;"></div>
+                <div class="skeleton skeleton-text xshort"></div>
+                <div class="skeleton-vendor-stats">
+                    <div>
+                        <div class="skeleton skeleton-text xshort" style="height: 10px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 24px;"></div>
+                    </div>
+                    <div>
+                        <div class="skeleton skeleton-text xshort" style="height: 10px;"></div>
+                        <div class="skeleton skeleton-text" style="height: 24px;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Vendors Grid -->
@@ -282,7 +336,10 @@
             <button class="close-modal" onclick="closeVendorDetail()">×</button>
             
             <div class="vendor-detail-header">
-                <h2 id="modalVendorName" class="brand-font" style="font-size: 2rem; margin-bottom: 0.5rem;"></h2>
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; flex-wrap: wrap;">
+                    <h2 id="modalVendorName" class="brand-font" style="font-size: 2rem; margin: 0;"></h2>
+                    <span id="modalTrustScore" style="display: none;"></span>
+                </div>
                 <p id="modalVendorGstin" class="data-font" style="color: var(--muted);"></p>
             </div>
 

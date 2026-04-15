@@ -48,6 +48,9 @@ function populateVendorDropdown() {
 }
 
 async function fetchInvoices() {
+    const skeletonState = document.getElementById('skeletonState');
+    const tableContainer = document.querySelector('.table-container');
+    
     try {
         // Build query parameters from filters
         const params = new URLSearchParams();
@@ -108,9 +111,16 @@ async function fetchInvoices() {
         
         filteredInvoices = [...allInvoices];
         updateStats(payload.total !== undefined ? payload.total : allInvoices.length);
+
+        // Hide skeleton, show real table
+        if (skeletonState) skeletonState.style.display = 'none';
+        if (tableContainer) tableContainer.style.display = 'block';
+
         renderTable();
     } catch (error) {
         console.error(error);
+        if (skeletonState) skeletonState.style.display = 'none';
+        if (tableContainer) tableContainer.style.display = 'block';
         alert('ERROR LOADING HISTORY: ' + error.message);
     }
 }

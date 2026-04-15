@@ -31,5 +31,44 @@ window.apiFetch = async (url, options = {}) => {
         options.headers = options.headers || {};
         options.headers['Authorization'] = `Bearer ${token}`;
     }
-    return fetch(url, options);
+    const response = await fetch(url, options);
+
+    // Intercept 401 — but not for login/register calls
+    const isAuthEndpoint = url.includes('/api/login') || url.includes('/api/register');
+    if (response.status === 401 && !isAuthEndpoint) {
+        window._handleSessionExpired();
+    }
+
+    return response;
+};
+
+// ── Session Expiration Handler ───────────────────────────────────────
+window._sessionExpiredShown = false;
+window._handleSessionExpired = () => {
+    if (window._sessionExpiredShown) return;
+    window._sessionExpiredShown = true;
+
+    // Clear all session data
+    sessionStorage.removeItem('currentUser');
+    sessionStorage.removeItem('currentCompany');
+    window.clearToken();
+
+    // Build and inject the modal
+    const overlay = document.createElement('div');
+    overlay.className = 'session-expired-overlay';
+    overlay.innerHTML = `
+        <div class="session-expired-card">
+            <div class="session-expired-icon">⏱</div>
+            <h2>Session expired</h2>
+            <p>Your session has timed out for security reasons. Please sign in again to continue where you left off.</p>
+            <button class="session-expired-btn" id="sessionExpiredBtn">
+                Sign in again →
+            </button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    document.getElementById('sessionExpiredBtn').addEventListener('click', () => {
+        window.location.href = 'login.html';
+    });
 };

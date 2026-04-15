@@ -1,7 +1,4 @@
 // Auth state management
-function getAuthHeaders() {
-    return {};
-}
 
 function checkAuth() {
     const user = getCurrentUser();

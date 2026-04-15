@@ -18,6 +18,16 @@ from schemas import (
 
 router = APIRouter(prefix="/api", tags=["analytics"])
 
+
+def _tax_sum_expr():
+    """Reusable SQLAlchemy expression: COALESCE(cgst,0) + COALESCE(sgst,0) + COALESCE(igst,0)."""
+    return (
+        func.coalesce(Invoice.cgst, 0)
+        + func.coalesce(Invoice.sgst, 0)
+        + func.coalesce(Invoice.igst, 0)
+    )
+
+
 # TTL cache keyed by company_id (5-minute TTL)
 _analytics_cache: TTLCache = TTLCache(maxsize=256, ttl=300)
 _itc_cache: TTLCache = TTLCache(maxsize=256, ttl=300)
@@ -58,12 +68,7 @@ def _build_analytics(db: Session, company_id) -> AnalyticsResponse:
     totals = base.with_entities(
         func.count(Invoice.id).label("count"),
         func.sum(Invoice.total).label("spend"),
-        # Item 15: COALESCE prevents NULL when any tax column is NULL
-        func.sum(
-            func.coalesce(Invoice.cgst, 0)
-            + func.coalesce(Invoice.sgst, 0)
-            + func.coalesce(Invoice.igst, 0)
-        ).label("tax"),
+        func.sum(_tax_sum_expr()).label("tax"),
     ).first()
 
     # Item 16: use column references instead of string literals for group_by
@@ -75,11 +80,7 @@ def _build_analytics(db: Session, company_id) -> AnalyticsResponse:
         month_col,
         func.count(Invoice.id).label("count"),
         func.sum(Invoice.total).label("total"),
-        func.sum(
-            func.coalesce(Invoice.cgst, 0)
-            + func.coalesce(Invoice.sgst, 0)
-            + func.coalesce(Invoice.igst, 0)
-        ).label("tax"),
+        func.sum(_tax_sum_expr()).label("tax"),
     ).group_by(year_col, month_col).order_by(year_col, month_col).all()
 
     monthly_spend = []
@@ -147,11 +148,7 @@ def _build_itc_summary(db: Session, company_id) -> ItcSummaryResponse:
 
     def _tax_sum(year: int, month: int) -> float:
         return db.query(
-            func.sum(
-                func.coalesce(Invoice.cgst, 0)
-                + func.coalesce(Invoice.sgst, 0)
-                + func.coalesce(Invoice.igst, 0)
-            )
+            func.sum(_tax_sum_expr())
         ).filter(
             Invoice.company_id == company_id,
             Invoice.status == "APPROVED",
@@ -177,11 +174,7 @@ def _build_itc_summary(db: Session, company_id) -> ItcSummaryResponse:
         func.sum(func.coalesce(Invoice.cgst, 0)).label("cgst"),
         func.sum(func.coalesce(Invoice.sgst, 0)).label("sgst"),
         func.sum(func.coalesce(Invoice.igst, 0)).label("igst"),
-        func.sum(
-            func.coalesce(Invoice.cgst, 0)
-            + func.coalesce(Invoice.sgst, 0)
-            + func.coalesce(Invoice.igst, 0)
-        ).label("total_itc"),
+        func.sum(_tax_sum_expr()).label("total_itc"),
     ).filter(
         Invoice.company_id == company_id,
         Invoice.status == "APPROVED",

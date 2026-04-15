@@ -15,6 +15,19 @@ from schemas import (
 router = APIRouter(prefix="/api", tags=["companies"])
 
 
+def _build_company_out(db: Session, company: Company) -> CompanyOut:
+    """Build CompanyOut with employee count from a Company model instance."""
+    emp_count = db.query(User).filter(User.company_id == company.id).count()
+    return CompanyOut(
+        id=company.id,
+        name=company.name,
+        gstin=company.gstin,
+        owner_id=company.owner_id,
+        employee_count=emp_count,
+        webhook_url=company.webhook_url,
+    )
+
+
 @router.post("/companies", response_model=CompanyOut)
 async def create_company(
     req: CompanyCreate,
@@ -37,15 +50,7 @@ async def create_company(
     db.commit()
     db.refresh(company)
 
-    emp_count = db.query(User).filter(User.company_id == company.id).count()
-    return CompanyOut(
-        id=company.id,
-        name=company.name,
-        gstin=company.gstin,
-        owner_id=company.owner_id,
-        employee_count=emp_count,
-        webhook_url=company.webhook_url,
-    )
+    return _build_company_out(db, company)
 
 
 @router.get("/companies", response_model=List[CompanyOut])
@@ -60,15 +65,7 @@ async def get_my_companies(
     if not company:
         return []
 
-    emp_count = db.query(User).filter(User.company_id == company.id).count()
-    return [CompanyOut(
-        id=company.id,
-        name=company.name,
-        gstin=company.gstin,
-        owner_id=company.owner_id,
-        employee_count=emp_count,
-        webhook_url=company.webhook_url,
-    )]
+    return [_build_company_out(db, company)]
 
 
 @router.patch("/companies/me", response_model=CompanyOut)
@@ -90,15 +87,7 @@ async def update_my_company(
     db.commit()
     db.refresh(company)
 
-    emp_count = db.query(User).filter(User.company_id == company.id).count()
-    return CompanyOut(
-        id=company.id,
-        name=company.name,
-        gstin=company.gstin,
-        owner_id=company.owner_id,
-        employee_count=emp_count,
-        webhook_url=company.webhook_url,
-    )
+    return _build_company_out(db, company)
 
 
 @router.post("/join-request", response_model=MessageResponse)

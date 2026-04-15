@@ -3,9 +3,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     Chart.defaults.font.family = "'Geist', sans-serif";
     Chart.defaults.borderColor = '#ddd9d2';
 
-    await loadAnalytics();
-    await loadItcSummary();
-    await loadTeamSize();
+    try {
+        await Promise.all([
+            loadAnalytics(),
+            loadItcSummary(),
+            loadTeamSize()
+        ]);
+    } finally {
+        const skeleton = document.getElementById('analyticsSkeletonState');
+        const content = document.getElementById('analyticsContent');
+        if (skeleton) skeleton.style.display = 'none';
+        if (content) content.style.display = 'block';
+    }
     calculateDeadlines();
 });
 

@@ -284,3 +284,33 @@ class UserListItem(BaseModel):
     name: Optional[str] = None
     email: str
     role: str
+
+
+# ══════════════════════════════════════════════════════════════════════
+# VENDOR — Response models
+# ══════════════════════════════════════════════════════════════════════
+
+class VendorOut(BaseModel):
+    id: uuid.UUID
+    gstin: str
+    name: str
+    total_invoices: int
+    total_amount: float
+    trust_score: Optional[int] = None
+    trust_label: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class VendorDetailOut(BaseModel):
+    id: uuid.UUID
+    gstin: str
+    name: str
+    total_invoices: int
+    total_amount: float
+    approved_invoices: int
+    pending_invoices: int
+    trust_score: Optional[int] = None
+    trust_label: Optional[str] = None
+
+    model_config = {"from_attributes": True}
