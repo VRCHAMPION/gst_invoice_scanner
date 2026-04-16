@@ -30,6 +30,7 @@ pip install -r backend/requirements.txt
 ```
 
 You'll need Tesseract installed:
+
 - Mac: `brew install tesseract`
 - Ubuntu: `apt-get install tesseract-ocr`
 - Windows: Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
@@ -49,12 +50,14 @@ Get your Groq API key from: https://console.groq.com/keys
 ## Running
 
 Backend:
+
 ```bash
 cd backend
 python run.py
 ```
 
 Frontend:
+
 ```bash
 cd frontend
 python -m http.server 5500
@@ -96,10 +99,10 @@ API docs: http://localhost:8000/docs
   "buyer_name": "XYZ Corp",
   "invoice_number": "INV-1045",
   "invoice_date": "15-10-2024",
-  "subtotal": 5000.00,
-  "cgst": 450.00,
-  "sgst": 450.00,
-  "total": 5900.00,
+  "subtotal": 5000.0,
+  "cgst": 450.0,
+  "sgst": 450.0,
+  "total": 5900.0,
   "health_score": {
     "score": 88,
     "grade": "B",
@@ -119,3 +122,6 @@ See `VERCEL_DEPLOYMENT.md` for deployment instructions.
 ## License
 
 MIT
+
+WITH LOVE,
+KRRISH BHANUSHALI.
