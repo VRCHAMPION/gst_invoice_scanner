@@ -44,6 +44,8 @@ async function loadEmployeeList() {
         const res = await apiFetch(getApiUrl('/api/users'), { headers: getAuthHeaders() });
         const users = await res.json();
         const container = document.getElementById('employeeList');
+        if (!container) return;
+        
         container.innerHTML = '';
         
         users.forEach(u => {
