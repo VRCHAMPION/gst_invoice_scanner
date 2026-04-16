@@ -98,7 +98,7 @@
             width: 180px;
             height: 180px;
             border-radius: 50%;
-            border: 8px solid var(--border-color);
+            background: conic-gradient(var(--primary-accent) calc(var(--score, 0) * 1%), var(--border-color) 0);
             display: flex;
             align-items: center;
             justify-content: center;
@@ -106,14 +106,13 @@
             position: relative;
         }
 
-        .score-circle::after {
+        .score-circle::before {
             content: '';
             position: absolute;
-            top: -8px; left: -8px; right: -8px; bottom: -8px;
+            top: 8px; left: 8px; right: 8px; bottom: 8px;
+            background: var(--white);
             border-radius: 50%;
-            border: 8px solid var(--primary-accent);
-            border-top-color: transparent;
-            transform: rotate(45deg);
+            z-index: 1;
         }
 
         .score-value {

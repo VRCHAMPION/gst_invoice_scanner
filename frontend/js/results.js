@@ -345,6 +345,10 @@ function populateData(data) {
     // Health Score
     const health = data.health_score || { score: 0, grade: 'F', status: 'Incomplete', issues: [], warnings: [], summary: 'No health data available' };
     animateCounter(document.getElementById('scoreValue'), health.score);
+    const scoreCircle = document.querySelector('.score-circle');
+    if (scoreCircle) {
+        scoreCircle.style.setProperty('--score', health.score);
+    }
     document.getElementById('gradeBadge').textContent = health.grade;
     document.getElementById('healthStatus').textContent = `HEALTH: ${health.status.toUpperCase()}`;
     document.getElementById('scoreSummary').textContent = health.summary;
