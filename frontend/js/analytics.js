@@ -27,7 +27,8 @@ async function loadTeamSize() {
         }
         
         // Show management area
-        document.getElementById('ownerOnlyTeam').style.display = 'block';
+        const ownerOnlyTeam = document.getElementById('ownerOnlyTeam');
+        if (ownerOnlyTeam) ownerOnlyTeam.style.display = 'block';
         loadEmployeeList();
     } else {
         const teamCard = document.getElementById('teamSize').closest('.stat-card');

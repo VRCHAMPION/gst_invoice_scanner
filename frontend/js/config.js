@@ -23,6 +23,7 @@ window.getApiUrl = (endpoint) => `${CONFIG.API_BASE_URL}${endpoint}`;
 window.getToken = () => sessionStorage.getItem('authToken');
 window.setToken = (token) => { if (token) sessionStorage.setItem('authToken', token); };
 window.clearToken = () => sessionStorage.removeItem('authToken');
+window.getAuthHeaders = () => ({ 'Authorization': `Bearer ${window.getToken()}` });
 
 window.apiFetch = async (url, options = {}) => {
     options.credentials = 'include';
