@@ -2,21 +2,19 @@
 const CONFIG = {
     API_BASE_URL: (() => {
         const hostname = window.location.hostname;
-        
+
         // Local development
         if (hostname === '127.0.0.1' || hostname === 'localhost') {
             return `http://${hostname}:8000`;
         }
-        
-        // Vercel deployment
-        if (hostname.includes('vercel.app')) {
-            return 'https://gst-invoice-scanner-api-vrc-3o7k.onrender.com';
-        }
-        
-        // Netlify or production
+
+        // Production
         return 'https://gst-invoice-scanner-api-vrc-3o7k.onrender.com';
-    })()
+    })(),
+    SUPABASE_URL: 'https://qcttkeoxdwkmdjjlsjdx.supabase.co',
+    SUPABASE_ANON_KEY: 'your-anon-key-here' // USER: Replace with your actual anon key
 };
+
 
 window.getApiUrl = (endpoint) => `${CONFIG.API_BASE_URL}${endpoint}`;
 

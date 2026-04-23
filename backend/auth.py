@@ -1,94 +1,90 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime
 from dotenv import load_dotenv
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User
 from typing import List
+import uuid
 
 load_dotenv()
 
-SECRET_KEY = os.getenv("JWT_SECRET")
+# Supabase JWT Secret is used to verify tokens issued by Supabase Auth
+SECRET_KEY = os.getenv("SUPABASE_JWT_SECRET")
 if not SECRET_KEY:
-    raise ValueError("JWT_SECRET environment variable is missing")
+    raise ValueError("SUPABASE_JWT_SECRET environment variable is missing")
 SECRET_KEY = SECRET_KEY.strip()
 
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_HOURS = 8
-
-# Cross-origin cookie setup for Netlify frontend + Render backend
-# SameSite=None + Secure=True required for cross-origin cookies
-IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false").lower() == "true"
-COOKIE_SECURE = IS_PRODUCTION
-COOKIE_SAMESITE = "none" if IS_PRODUCTION else "lax"
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def create_access_token(data: dict) -> str:
-    to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(hours=ACCESS_TOKEN_EXPIRE_HOURS)
-    to_encode.update({"exp": expire})
-    if "sub" in to_encode:
-        to_encode["sub"] = str(to_encode["sub"])
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-
 
 def decode_access_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        # Supabase uses HS256 with the JWT Secret
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_aud": False})
         return payload
-    except JWTError:
+    except JWTError as e:
+        print(f"JWT Verification Error: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
         )
 
-
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
-    # Try Bearer token first (works reliably cross-origin)
     auth_header = request.headers.get("Authorization")
+    token = None
+    
     if auth_header and auth_header.startswith("Bearer "):
         token = auth_header[7:]
     else:
-        # Fallback to cookie for local dev
+        # Fallback for local development or older clients
         token = request.cookies.get("access_token")
 
     if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing authentication cookie",
+            detail="Authentication token missing",
         )
 
     payload = decode_access_token(token)
-    user_email = payload.get("email")
-    if user_email is None:
+    
+    # Supabase tokens use 'sub' for the user's UUID
+    user_id = payload.get("sub")
+    email = payload.get("email")
+    
+    if not user_id or not email:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
         )
 
-    user = db.query(User).filter(User.email == user_email).first()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
+    # Sync Supabase user with our local database
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        # Auto-create user record in our database if it doesn't exist
+        # This ensures foreign key constraints for invoices/companies work
+        user = User(
+            id=uuid.UUID(user_id),
+            email=email,
+            name=payload.get("user_metadata", {}).get("full_name") or email.split('@')[0],
+            role="owner", # Default role for new signups
+            password_hash="SUPABASE_AUTH" # Placeholder as password is managed by Supabase
         )
+        db.add(user)
+        try:
+            db.commit()
+            db.refresh(user)
+        except Exception as e:
+            db.rollback()
+            # If email already exists but with different ID, handle it
+            user = db.query(User).filter(User.email == email).first()
+            if not user:
+                raise HTTPException(status_code=500, detail="Failed to sync user profile")
+
     return user
 
-
-# Role-based access control
 class RoleChecker:
     def __init__(self, allowed_roles: List[str]):
         self.allowed_roles = allowed_roles
@@ -100,3 +96,4 @@ class RoleChecker:
                 detail=f"Operation restricted to roles: {', '.join(self.allowed_roles)}",
             )
         return user
+

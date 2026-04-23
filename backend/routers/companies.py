@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 
-from auth import get_current_user, hash_password, RoleChecker
+from auth import get_current_user, RoleChecker
 from database import get_db
 from models import User, Company, JoinRequest
 from schemas import (
@@ -224,14 +224,14 @@ async def invite_user(
     new_employee = User(
         email=req.email,
         name=req.name,
-        password_hash=hash_password(req.password),
         role="employee",
         company_id=current_user.company_id,
+        password_hash="SUPABASE_INVITE" # Password managed by Supabase
     )
     db.add(new_employee)
     db.commit()
     db.refresh(new_employee)
-    return InviteResponse(message="User invited and added to company", id=new_employee.id)
+    return InviteResponse(message="User pre-registered in workspace. They must now sign up with Supabase using this email.", id=new_employee.id)
 
 
 @router.get("/users", response_model=List[UserListItem])
