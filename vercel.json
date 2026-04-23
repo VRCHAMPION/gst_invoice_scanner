@@ -1,6 +1,8 @@
 {
   "version": 2,
   "name": "gst-invoice-scanner",
+  "buildCommand": "sed -i 's/REPLACE_WITH_SUPABASE_ANON_KEY/'\"$SUPABASE_ANON_KEY\"'/g' frontend/js/config.js",
+  "outputDirectory": "frontend",
   "rewrites": [
     { "source": "/", "destination": "/frontend/index.html" },
     { "source": "/(.*)\\.html", "destination": "/frontend/$1.html" },
