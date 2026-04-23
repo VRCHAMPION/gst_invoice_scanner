@@ -12,7 +12,7 @@ const CONFIG = {
         return 'https://gst-invoice-scanner-api-vrc-3o7k.onrender.com';
     })(),
     SUPABASE_URL: 'https://qcttkeoxdwkmdjjlsjdx.supabase.co',
-    SUPABASE_ANON_KEY: 'your-anon-key-here' // USER: Replace with your actual anon key
+    SUPABASE_ANON_KEY: window.ENV_SUPABASE_ANON_KEY || 'REPLACE_WITH_SUPABASE_ANON_KEY'
 };
 
 

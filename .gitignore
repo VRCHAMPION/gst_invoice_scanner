@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+frontend/js/env.js
+
 *.pem
 *.key
 

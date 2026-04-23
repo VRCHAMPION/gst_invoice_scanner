@@ -10,6 +10,7 @@ async function checkAuth() {
     const isRegisterPage  = path.includes('register');
     const isLandingPage   = path === '/' || path.endsWith('index.html');
     const isOnboardingPage = path.includes('onboarding');
+    const isCallbackPage   = path.includes('auth-callback');
 
     if (user) {
         // Sync local storage with Supabase session
@@ -33,7 +34,7 @@ async function checkAuth() {
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
 
     // Redirect unauthenticated users to login
-    if (!user && !isLoginPage && !isRegisterPage && !isLandingPage) {
+    if (!user && !isLoginPage && !isRegisterPage && !isLandingPage && !isCallbackPage) {
         window.location.href = 'login.html';
         return;
     }
@@ -45,7 +46,7 @@ async function checkAuth() {
     }
 
     // Users without company need to complete onboarding
-    if (currentUser && !isOnboardingPage && !isRegisterPage && !isLoginPage && !isLandingPage && !currentUser.company_id) {
+    if (currentUser && !isOnboardingPage && !isRegisterPage && !isLoginPage && !isLandingPage && !isCallbackPage && !currentUser.company_id) {
         window.location.href = 'onboarding.html';
         return;
     }
@@ -97,6 +98,7 @@ async function register(name, email, password, role) {
             email,
             password,
             options: {
+                emailRedirectTo: window.location.origin + '/auth-callback.html',
                 data: {
                     full_name: name,
                     role: role || 'owner'

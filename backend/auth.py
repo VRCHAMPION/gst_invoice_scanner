@@ -22,7 +22,7 @@ ALGORITHM = "HS256"
 def decode_access_token(token: str) -> dict:
     try:
         # Supabase uses HS256 with the JWT Secret
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_aud": False})
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], audience="authenticated")
         return payload
     except JWTError as e:
         print(f"JWT Verification Error: {str(e)}")
