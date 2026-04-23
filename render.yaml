@@ -11,11 +11,15 @@ services:
       - key: PORT
         value: 8000
       - key: DATABASE_URL
-        sync: false # Must be set in Render dashboard
+        sync: false
       - key: GROQ_API_KEY
-        sync: false # Must be set in Render dashboard
-      - key: JWT_SECRET
-        sync: false # Must be set in Render dashboard
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
       - key: PYTHONUNBUFFERED
         value: "1"
       - key: IS_PRODUCTION
