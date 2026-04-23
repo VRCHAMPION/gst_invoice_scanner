@@ -1,8 +1,8 @@
 // Auth state management using Supabase
-const supabase = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+const _supabase = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
 async function checkAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await _supabase.auth.getSession();
     const user = session?.user;
     const path = window.location.pathname;
 
@@ -55,7 +55,7 @@ async function checkAuth() {
 checkAuth();
 
 // Listen for auth changes
-supabase.auth.onAuthStateChange((event, session) => {
+_supabase.auth.onAuthStateChange((event, session) => {
     if (event === 'SIGNED_IN') {
         window.setToken(session.access_token);
     } else if (event === 'SIGNED_OUT') {
@@ -69,7 +69,7 @@ supabase.auth.onAuthStateChange((event, session) => {
 // Login
 async function login(email, password) {
     try {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await _supabase.auth.signInWithPassword({
             email,
             password,
         });
@@ -93,7 +93,7 @@ async function login(email, password) {
 // Register
 async function register(name, email, password, role) {
     try {
-        const { data, error } = await supabase.auth.signUp({
+        const { data, error } = await _supabase.auth.signUp({
             email,
             password,
             options: {
@@ -125,7 +125,7 @@ async function register(name, email, password, role) {
 }
 
 async function logout() {
-    await supabase.auth.signOut();
+    await _supabase.auth.signOut();
     window.clearToken();
     sessionStorage.clear();
     window.location.href = 'login.html';
@@ -152,4 +152,5 @@ document.addEventListener('DOMContentLoaded', () => {
         await logout();
     }));
 });
+
 
