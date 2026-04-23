@@ -8,8 +8,6 @@ services:
     dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     envVars:
-      - key: PORT
-        value: 8000
       - key: DATABASE_URL
         sync: false
       - key: GROQ_API_KEY
