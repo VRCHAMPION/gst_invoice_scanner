@@ -91,6 +91,24 @@ async function login(email, password) {
     }
 }
 
+// Google Login
+async function loginWithGoogle() {
+    try {
+        const { data, error } = await _supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+                redirectTo: window.location.origin + '/auth-callback.html',
+            }
+        });
+        if (error) {
+            console.error('Error logging in with Google:', error.message);
+            alert('Could not log in with Google. Please try again.');
+        }
+    } catch (error) {
+        console.error('Connection failed:', error);
+    }
+}
+
 // Register
 async function register(name, email, password, role) {
     try {
