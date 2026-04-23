@@ -15,13 +15,19 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="js/env.js"></script>
     <script src="js/config.js?v=1.2"></script>
+    <script src="js/utils.js?v=1.2"></script>
     <script>
         const _supabase = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
         
         async function handleCallback() {
+            // Give Supabase SDK a tiny bit of time to parse the hash
             const { data: { session }, error } = await _supabase.auth.getSession();
             
             if (error || !session) {
+                // If there's an access_token in the URL, wait for onAuthStateChange to fire instead of redirecting immediately
+                if (window.location.hash.includes('access_token')) {
+                    return;
+                }
                 window.location.href = 'login.html';
                 return;
             }
@@ -36,31 +42,30 @@
                     const userData = await resp.json();
                     sessionStorage.setItem('currentUser', JSON.stringify(userData));
                     
-                    // Check user metadata for onboarding, or fallback to backend company_id check
                     const onboardingComplete = user.user_metadata?.onboarding_complete || userData.company_id;
                     
                     if (!onboardingComplete) {
                         window.location.href = 'onboarding.html';
                     } else {
-                        // "dashboard.html" in this app is upload.html (or history.html)
                         window.location.href = 'upload.html';
                     }
                 } else {
+                    console.error("Failed to fetch /api/me");
                     window.location.href = 'login.html';
                 }
             } catch (err) {
+                console.error("API fetch error:", err);
                 window.location.href = 'login.html';
             }
         }
         
-        // Listen for OAuth callback hash fragment or just check session
         _supabase.auth.onAuthStateChange((event, session) => {
-            if (event === 'SIGNED_IN') {
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
                 handleCallback();
             }
         });
         
-        // Also run immediately in case it's a standard redirect
+        // Run immediately
         handleCallback();
     </script>
 </body>
