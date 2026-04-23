@@ -1,115 +1,107 @@
-// Auth state management using Supabase
+// Auth state management — Supabase + HttpOnly cookie session
 const _supabase = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
+// ── Session Establishment ─────────────────────────────────────────────────────
+// Exchanges a Supabase access_token for a secure HttpOnly cookie.
+// Returns the UserOut object on success, or null on failure.
+async function _establishSession(accessToken) {
+    try {
+        const resp = await fetch(window.getApiUrl('/api/auth/session'), {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ access_token: accessToken }),
+        });
+        if (!resp.ok) return null;
+        const userData = await resp.json();
+        sessionStorage.setItem('currentUser', JSON.stringify(userData));
+        return userData;
+    } catch {
+        return null;
+    }
+}
+
+// ── Page Guard ────────────────────────────────────────────────────────────────
 async function checkAuth() {
     const { data: { session } } = await _supabase.auth.getSession();
     const user = session?.user;
     const path = window.location.pathname;
 
-    const isLoginPage     = path.includes('login');
-    const isRegisterPage  = path.includes('register');
-    const isLandingPage   = path === '/' || path.endsWith('index.html');
+    const isLoginPage      = path.includes('login');
+    const isRegisterPage   = path.includes('register');
+    const isLandingPage    = path === '/' || path.endsWith('index.html');
     const isOnboardingPage = path.includes('onboarding');
     const isCallbackPage   = path.includes('auth-callback');
 
-    if (user) {
-        // Sync local storage with Supabase session
-        window.setToken(session.access_token);
-        
-        // Fetch profile from our backend to check company_id
-        if (!sessionStorage.getItem('currentUser')) {
-            try {
-                const resp = await apiFetch(getApiUrl('/api/me'));
-                if (resp.ok) {
-                    const userData = await resp.json();
-                    sessionStorage.setItem('currentUser', JSON.stringify(userData));
-                    if (userData.company_id) {
-                         // Fetch company info if needed
-                    }
-                }
-            } catch (e) { console.error("Sync error", e); }
-        }
+    if (user && !sessionStorage.getItem('currentUser')) {
+        // Supabase session exists but no local profile — establish HttpOnly cookie + fetch profile
+        await _establishSession(session.access_token);
     }
 
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
 
-    // Redirect unauthenticated users to login
     if (!user && !isLoginPage && !isRegisterPage && !isLandingPage && !isCallbackPage) {
         window.location.href = 'login.html';
         return;
     }
 
-    // Logged-in users shouldn't see login page
     if (user && isLoginPage) {
         window.location.href = 'upload.html';
         return;
     }
 
-    // Users without company need to complete onboarding
     if (currentUser && !isOnboardingPage && !isRegisterPage && !isLoginPage && !isLandingPage && !isCallbackPage && !currentUser.company_id) {
         window.location.href = 'onboarding.html';
         return;
     }
 }
 
-// Initial check
 checkAuth();
 
-// Listen for auth changes
-_supabase.auth.onAuthStateChange((event, session) => {
-    if (event === 'SIGNED_IN') {
-        window.setToken(session.access_token);
+// ── Auth State Listener ───────────────────────────────────────────────────────
+_supabase.auth.onAuthStateChange(async (event, session) => {
+    if (event === 'TOKEN_REFRESHED' && session) {
+        // Supabase auto-refreshed the JWT — keep the HttpOnly cookie in sync
+        await _establishSession(session.access_token);
     } else if (event === 'SIGNED_OUT') {
-        window.clearToken();
         sessionStorage.clear();
+        window.clearToken();
         window.location.href = 'login.html';
     }
 });
 
-
-// Login
+// ── Login ─────────────────────────────────────────────────────────────────────
 async function login(email, password) {
     try {
-        const { data, error } = await _supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
-
+        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
         if (error) return { success: false, message: error.message };
 
-        window.setToken(data.session.access_token);
-        // Backend will sync on the first /api/me call
-        const resp = await apiFetch(getApiUrl('/api/me'));
-        if (resp.ok) {
-            const userData = await resp.json();
-            sessionStorage.setItem('currentUser', JSON.stringify(userData));
-        }
+        const userData = await _establishSession(data.session.access_token);
+        if (!userData) return { success: false, message: 'Failed to establish session. Please try again.' };
 
         return { success: true };
-    } catch (error) {
+    } catch {
         return { success: false, message: 'Connection failed' };
     }
 }
 
-// Google Login
+// ── Google OAuth ──────────────────────────────────────────────────────────────
 async function loginWithGoogle() {
     try {
-        const { data, error } = await _supabase.auth.signInWithOAuth({
+        const { error } = await _supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: {
-                redirectTo: window.location.origin + '/auth-callback.html',
-            }
+            options: { redirectTo: window.location.origin + '/auth-callback.html' },
         });
         if (error) {
-            console.error('Error logging in with Google:', error.message);
+            console.error('Google login error:', error.message);
             alert('Could not log in with Google. Please try again.');
         }
-    } catch (error) {
-        console.error('Connection failed:', error);
+    } catch (err) {
+        console.error('Connection failed:', err);
     }
 }
 
-// Register
+// ── Register ──────────────────────────────────────────────────────────────────
 async function register(name, email, password, role) {
     try {
         const { data, error } = await _supabase.auth.signUp({
@@ -117,60 +109,52 @@ async function register(name, email, password, role) {
             password,
             options: {
                 emailRedirectTo: window.location.origin + '/auth-callback.html',
-                data: {
-                    full_name: name,
-                    role: role || 'owner'
-                }
-            }
+                data: { full_name: name, role: role || 'owner' },
+            },
         });
-
-
         if (error) return { success: false, message: error.message };
 
+        // If email confirmation is disabled, a session is returned immediately
         if (data.session) {
-            window.setToken(data.session.access_token);
-            const resp = await apiFetch(getApiUrl('/api/me'));
-            if (resp.ok) {
-                const userData = await resp.json();
-                sessionStorage.setItem('currentUser', JSON.stringify(userData));
-            }
-        } else {
-            return { success: true, message: 'Check your email for confirmation link' };
+            const userData = await _establishSession(data.session.access_token);
+            if (!userData) return { success: false, message: 'Failed to establish session.' };
+            return { success: true };
         }
 
-        return { success: true };
-    } catch (error) {
+        return { success: true, message: 'Check your email to confirm your account' };
+    } catch {
         return { success: false, message: 'Connection failed' };
     }
 }
 
+// ── Logout ────────────────────────────────────────────────────────────────────
 async function logout() {
+    // 1. Clear backend HttpOnly cookie
+    try { await window.apiFetch(window.getApiUrl('/api/logout'), { method: 'POST' }); } catch {}
+    // 2. Sign out from Supabase (clears its internal storage)
     await _supabase.auth.signOut();
+    // 3. Clear all local state
     window.clearToken();
     sessionStorage.clear();
     window.location.href = 'login.html';
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function getCurrentUser() {
     return JSON.parse(sessionStorage.getItem('currentUser'));
 }
 
-// Update UI with user info
 document.addEventListener('DOMContentLoaded', () => {
     const user = getCurrentUser();
-    
     if (user) {
-        const userNameDisplays = document.querySelectorAll('.display-user-name');
-        userNameDisplays.forEach(el => {
+        document.querySelectorAll('.display-user-name').forEach(el => {
             el.textContent = `${user.name} (${user.role.toUpperCase()})`;
         });
     }
-
-    const logoutBtns = document.querySelectorAll('.logout-trigger');
-    logoutBtns.forEach(btn => btn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        await logout();
-    }));
+    document.querySelectorAll('.logout-trigger').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            e.preventDefault();
+            await logout();
+        });
+    });
 });
-
-

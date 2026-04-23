@@ -2,13 +2,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const user = getCurrentUser();
     if (!user) return;
 
-    const intendedRole = sessionStorage.getItem('intendedRole') || user.role;
+    // Google sign-in users won't have intendedRole or a meaningful role from metadata,
+    // so default to 'owner' (create workspace) view
+    const intendedRole = sessionStorage.getItem('intendedRole') || user.role || 'owner';
 
     if (intendedRole === 'owner') {
         document.getElementById('ownerView').classList.add('active');
     } else {
         checkPendingStatus();
     }
+
+    // Toggle between Create and Join views
+    document.getElementById('switchToJoin')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('ownerView').classList.remove('active');
+        document.getElementById('employeeView').classList.add('active');
+    });
+
+    document.getElementById('switchToCreate')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.getElementById('employeeView').classList.remove('active');
+        document.getElementById('ownerView').classList.add('active');
+    });
 });
 
 async function checkPendingStatus() {
