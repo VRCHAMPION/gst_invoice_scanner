@@ -1,7 +1,7 @@
 {
   "version": 2,
   "name": "gst-invoice-scanner",
-  "buildCommand": "node -e \"const fs=require('fs');const f='frontend/js/config.js';fs.writeFileSync(f,fs.readFileSync(f,'utf8').replace('REPLACE_WITH_SUPABASE_ANON_KEY',process.env.SUPABASE_ANON_KEY))\"",
+  "buildCommand": "npm run build",
   "outputDirectory": "frontend",
   "rewrites": [
     { "source": "/", "destination": "/frontend/index.html" },
