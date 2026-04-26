@@ -37,10 +37,19 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     const result = await register(name, email, pass, role);
     if (result.success) {
         sessionStorage.setItem('intendedRole', role);
-        window.location.href = 'upload.html';
+        if (result.message) {
+            error.textContent = result.message;
+            error.style.display = 'block';
+            error.style.color = '#10B981'; // Green color for success
+            submitBtn.textContent = 'Get started';
+            submitBtn.disabled = false;
+        } else {
+            window.location.href = 'onboarding.html';
+        }
     } else {
         error.textContent = result.message;
         error.style.display = 'block';
+        error.style.color = 'var(--red)'; // Reset to red for errors
         submitBtn.textContent = 'Get started';
         submitBtn.disabled = false;
     }

@@ -19,19 +19,27 @@
     <script>
         const _supabase = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
+        let isHandling = false;
+
         async function handleCallback() {
-            const { data: { session }, error } = await _supabase.auth.getSession();
+            if (isHandling) return;
+            isHandling = true;
 
-            if (error || !session) {
-                // If access_token is in the URL hash, wait for onAuthStateChange to fire
-                if (window.location.hash.includes('access_token')) return;
-                window.location.href = 'login.html';
-                return;
-            }
-
-            // Exchange Supabase token for a secure HttpOnly cookie on the backend
-            let userData;
             try {
+                const { data: { session }, error } = await _supabase.auth.getSession();
+
+                if (error || !session) {
+                    // If access_token is in the URL hash or code in query, wait for onAuthStateChange to fire
+                    if (window.location.hash.includes('access_token') || window.location.search.includes('code=')) {
+                        isHandling = false;
+                        return;
+                    }
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // Exchange Supabase token for a secure HttpOnly cookie on the backend
+                let userData;
                 const resp = await fetch(window.getApiUrl('/api/auth/session'), {
                     method: 'POST',
                     credentials: 'include',
@@ -45,19 +53,29 @@
                     return;
                 }
                 userData = await resp.json();
+
+                sessionStorage.setItem('currentUser', JSON.stringify(userData));
+
+                // Check if the user signed up with Google and hasn't set a password yet
+                const providers = session?.user?.app_metadata?.providers || [];
+                const isGoogleOnly = providers.includes('google') && !providers.includes('email');
+                const hasSetPassword = session?.user?.user_metadata?.password_set;
+
+                if (isGoogleOnly && !hasSetPassword) {
+                    window.location.href = 'set-password.html';
+                    return;
+                }
+
+                // Route based on onboarding state
+                const onboardingComplete = session?.user?.user_metadata?.onboarding_complete || userData?.company_id;
+
+                window.location.href = onboardingComplete ? 'upload.html' : 'onboarding.html';
             } catch (err) {
-                console.error('Network error during session establishment:', err);
-                window.location.href = 'login.html';
-                return;
+                console.error('Error during callback:', err);
+                // Show error briefly before redirecting
+                document.body.innerHTML += `<div style="position:fixed;top:20px;left:50%;transform:translateX(-50%);background:red;color:white;padding:10px;border-radius:5px;z-index:9999;">Authentication Error: ${err.message}</div>`;
+                setTimeout(() => { window.location.href = 'login.html'; }, 3000);
             }
-
-            sessionStorage.setItem('currentUser', JSON.stringify(userData));
-
-            // Route based on onboarding state
-            const onboardingComplete =
-                session.user.user_metadata?.onboarding_complete || userData.company_id;
-
-            window.location.href = onboardingComplete ? 'upload.html' : 'onboarding.html';
         }
 
         _supabase.auth.onAuthStateChange((event, session) => {

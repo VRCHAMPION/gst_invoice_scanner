@@ -32,6 +32,7 @@ async function checkAuth() {
     const isLandingPage    = path === '/' || path.endsWith('index.html');
     const isOnboardingPage = path.includes('onboarding');
     const isCallbackPage   = path.includes('auth-callback');
+    const isSetPasswordPage = path.includes('set-password');
 
     if (user && !sessionStorage.getItem('currentUser')) {
         // Supabase session exists but no local profile — establish HttpOnly cookie + fetch profile
@@ -50,7 +51,7 @@ async function checkAuth() {
         return;
     }
 
-    if (currentUser && !isOnboardingPage && !isRegisterPage && !isLoginPage && !isLandingPage && !isCallbackPage && !currentUser.company_id) {
+    if (currentUser && !isOnboardingPage && !isRegisterPage && !isLoginPage && !isLandingPage && !isCallbackPage && !isSetPasswordPage && !currentUser.company_id) {
         window.location.href = 'onboarding.html';
         return;
     }
@@ -86,8 +87,11 @@ async function login(email, password) {
 }
 
 // ── Google OAuth ──────────────────────────────────────────────────────────────
-async function loginWithGoogle() {
+async function loginWithGoogle(role) {
     try {
+        if (role) {
+            sessionStorage.setItem('intendedRole', role);
+        }
         const { error } = await _supabase.auth.signInWithOAuth({
             provider: 'google',
             options: { redirectTo: window.location.origin + '/auth-callback.html' },
