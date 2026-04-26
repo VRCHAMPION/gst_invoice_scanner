@@ -80,8 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 cgst: currentData.cgst || null,
                 sgst: currentData.sgst || null,
                 igst: currentData.igst || null,
-                total: currentData.total || null,
-            };
+                total: currentData.total || null};
 
             saveEditBtn.disabled = true;
             saveEditBtn.textContent = 'Saving...';
@@ -89,9 +88,8 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const response = await apiFetch(getApiUrl(`/api/invoices/${currentData.id}`), {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                    body: JSON.stringify(payload),
-                });
+                    headers: { 'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)});
 
                 if (!response.ok) {
                     const err = await response.json();
@@ -214,7 +212,7 @@ function populateData(data) {
             e.preventDefault();
             try {
                 const response = await apiFetch(getApiUrl(`/api/invoices/${data.is_duplicate}`), {
-                    headers: getAuthHeaders(),
+                    
                 });
                 if (!response.ok) throw new Error('Failed to load original invoice');
                 const originalInvoice = await response.json();
@@ -242,7 +240,7 @@ function populateData(data) {
                 e.preventDefault();
                 try {
                     const response = await apiFetch(getApiUrl(`/api/invoices/${dupInfo.original_invoice_id}`), {
-                        headers: getAuthHeaders(),
+                        
                     });
                     if (!response.ok) throw new Error('Failed to load original invoice');
                     const originalInvoice = await response.json();
@@ -272,9 +270,7 @@ function populateData(data) {
                 retryBtn.textContent = 'Removing...';
                 try {
                     const response = await apiFetch(getApiUrl(`/api/invoices/${data.id}/retry`), {
-                        method: 'POST',
-                        headers: getAuthHeaders(),
-                    });
+                        method: 'POST'});
                     if (!response.ok) {
                         const err = await response.json();
                         throw new Error(err.detail || 'Retry failed');
@@ -392,9 +388,7 @@ function setupActions(data) {
             if (!confirm('Approve this invoice?')) return;
             try {
                 const response = await apiFetch(getApiUrl(`/api/invoices/${data.id}/approve`), {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                });
+                    method: 'POST'});
                 if (!response.ok) {
                     const err = await response.json();
                     throw new Error(err.detail || 'Approval failed');
@@ -413,9 +407,7 @@ function setupActions(data) {
             if (!confirm('Reject this invoice?')) return;
             try {
                 const response = await apiFetch(getApiUrl(`/api/invoices/${data.id}/reject`), {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                });
+                    method: 'POST'});
                 if (!response.ok) {
                     const err = await response.json();
                     throw new Error(err.detail || 'Rejection failed');
@@ -434,9 +426,8 @@ function setupActions(data) {
             try {
                 const response = await apiFetch(getApiUrl('/api/export'), {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-                    body: JSON.stringify(data),
-                });
+                    headers: { 'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)});
                 if (!response.ok) throw new Error('EXPORT FAILED');
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);

@@ -262,9 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     invoice_number: result.invoice_number,
-                    seller_gstin: result.seller_gstin || null,
-                }),
-            });
+                    seller_gstin: result.seller_gstin || null})});
             if (!res.ok) return null;
             return await res.json();
         } catch {

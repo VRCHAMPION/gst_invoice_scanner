@@ -41,7 +41,7 @@ async function loadTeamSize() {
 
 async function loadEmployeeList() {
     try {
-        const res = await apiFetch(getApiUrl('/api/users'), { headers: getAuthHeaders() });
+        const res = await apiFetch(getApiUrl('/api/users'), );
         const users = await res.json();
         const container = document.getElementById('employeeList');
         if (!container) return;
@@ -68,9 +68,7 @@ window.removeEmployee = async (userId) => {
     if (!confirm("Are you sure you want to remove this employee from your workspace? They will lose access immediately.")) return;
     try {
         const res = await apiFetch(getApiUrl(`/api/users/${userId}/remove`), {
-            method: 'POST',
-            headers: getAuthHeaders()
-        });
+            method: 'POST'});
         if (res.ok) {
             alert('Employee removed successfully.');
             await loadEmployeeList();
@@ -107,9 +105,7 @@ window.sendInvite = (method) => {
 
 async function loadAnalytics() {
     try {
-        const response = await apiFetch(getApiUrl('/api/analytics'), {
-            headers: getAuthHeaders()
-        });
+        const response = await apiFetch(getApiUrl('/api/analytics'), );
         if (!response.ok) throw new Error('FAILED TO FETCH ANALYTICS');
         const data = await response.json();
 
@@ -129,9 +125,7 @@ async function loadAnalytics() {
 
 async function loadItcSummary() {
     try {
-        const response = await apiFetch(getApiUrl('/api/itc-summary'), {
-            headers: getAuthHeaders()
-        });
+        const response = await apiFetch(getApiUrl('/api/itc-summary'), );
         if (!response.ok) throw new Error('FAILED TO FETCH ITC');
         const data = await response.json();
 

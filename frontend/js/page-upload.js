@@ -9,18 +9,14 @@
 
     async function loadTeamPanel() {
         try {
-            const usersRes = await apiFetch(getApiUrl('/api/users'), {
-                headers: getAuthHeaders()
-            });
+            const usersRes = await apiFetch(getApiUrl('/api/users'), );
             if (usersRes.ok) {
                 const users = await usersRes.json();
                 document.getElementById('empCountBadge').textContent =
                     users.length + ' member' + (users.length !== 1 ? 's' : '');
             }
 
-            const jrRes = await apiFetch(getApiUrl('/api/join-requests'), {
-                headers: getAuthHeaders()
-            });
+            const jrRes = await apiFetch(getApiUrl('/api/join-requests'), );
             if (!jrRes.ok) return;
             const requests = await jrRes.json();
 
@@ -56,9 +52,7 @@
         if (row) { row.style.opacity = '0.4'; row.style.pointerEvents = 'none'; }
         try {
             const res = await apiFetch(getApiUrl(`/api/join-requests/${requestId}/${action}`), { 
-                method: 'POST',
-                headers: getAuthHeaders()
-            });
+                method: 'POST'});
             if (res.ok) {
                 const data = await res.json();
                 console.log('Request ' + action + 'd successfully:', data.message);

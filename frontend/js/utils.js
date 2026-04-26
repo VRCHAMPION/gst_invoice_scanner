@@ -10,8 +10,7 @@ function formatCurrency(amount) {
     return new Intl.NumberFormat('en-IN', {
         style: 'currency',
         currency: 'INR',
-        maximumFractionDigits: 2,
-    }).format(amount);
+        maximumFractionDigits: 2}).format(amount);
 }
 
 // ── Format Date ───────────────────────────────────────────────────────
@@ -23,8 +22,7 @@ function formatDate(dateString) {
         return date.toLocaleDateString('en-IN', {
             day: '2-digit',
             month: '2-digit',
-            year: 'numeric',
-        });
+            year: 'numeric'});
     } catch (e) {
         return dateString;
     }

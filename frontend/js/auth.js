@@ -10,8 +10,7 @@ async function _establishSession(accessToken) {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ access_token: accessToken }),
-        });
+            body: JSON.stringify({ access_token: accessToken })});
         if (!resp.ok) return null;
         const userData = await resp.json();
         sessionStorage.setItem('currentUser', JSON.stringify(userData));
@@ -95,8 +94,7 @@ async function loginWithGoogle(role) {
         }
         const { error } = await _supabase.auth.signInWithOAuth({
             provider: 'google',
-            options: { redirectTo: window.location.origin + '/auth-callback.html' },
-        });
+            options: { redirectTo: window.location.origin + '/auth-callback.html' }});
         if (error) {
             console.error('Google login error:', error.message);
             alert('Could not log in with Google. Please try again.');
@@ -114,9 +112,7 @@ async function register(name, email, password, role) {
             password,
             options: {
                 emailRedirectTo: window.location.origin + '/auth-callback.html',
-                data: { full_name: name, role: role || 'owner' },
-            },
-        });
+                data: { full_name: name, role: role || 'owner' }}});
         if (error) return { success: false, message: error.message };
 
         // If email confirmation is disabled, a session is returned immediately

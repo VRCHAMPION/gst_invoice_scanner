@@ -8,9 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load companies into dropdown
     window.loadCompanies = async () => {
         try {
-            const response = await apiFetch(getApiUrl('/api/companies'), {
-                headers: getAuthHeaders()
-            });
+            const response = await apiFetch(getApiUrl('/api/companies'), );
             const companies = await response.json();
 
             if (!companySelect) return;
@@ -53,9 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await apiFetch(getApiUrl('/api/companies'), {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    ...getAuthHeaders()
-                },
+                    'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
             });
 
@@ -81,7 +77,7 @@ document.addEventListener('DOMContentLoaded', () => {
         openSettingsBtn.addEventListener('click', async () => {
             // Fetch current company settings to pre-fill
             try {
-                const response = await apiFetch(getApiUrl('/api/companies'), { headers: getAuthHeaders() });
+                const response = await apiFetch(getApiUrl('/api/companies'), );
                 const companies = await response.json();
                 if (companies.length > 0) {
                     settingsWebhookUrl.value = companies[0].webhook_url || '';
@@ -109,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await apiFetch(getApiUrl('/api/companies/me'), {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+                    headers: { 'Content-Type': 'application/json'},
                     body: JSON.stringify(data)
                 });
                 alert('Workspace settings saved successfully.');

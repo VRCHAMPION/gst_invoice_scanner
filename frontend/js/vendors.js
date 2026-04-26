@@ -143,8 +143,7 @@ function renderStatusBadge(status) {
         'APPROVED': { class: 'status-approved', label: 'Approved' },
         'REJECTED': { class: 'status-rejected', label: 'Rejected' },
         'PROCESSING': { class: 'status-processing', label: 'Processing' },
-        'FAILED': { class: 'status-failed', label: 'Failed' },
-    };
+        'FAILED': { class: 'status-failed', label: 'Failed' }};
 
     const statusInfo = statusMap[status] || { class: 'status-processing', label: status };
     return `<span class="status-badge ${statusInfo.class}">${statusInfo.label}</span>`;
