@@ -15,9 +15,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function fetchVendors() {
     try {
-        const response = await apiFetch(getApiUrl('/api/vendors'), {
-            headers: getAuthHeaders()
-        });
+        const response = await apiFetch(getApiUrl('/api/vendors'));
         if (!response.ok) {
             console.error('Failed to fetch vendors');
             return;
@@ -94,9 +92,7 @@ async function fetchInvoices() {
         params.append('limit', '1000');
         
         const url = getApiUrl('/api/invoices') + '?' + params.toString();
-        const response = await apiFetch(url, {
-            headers: getAuthHeaders()
-        });
+        const response = await apiFetch(url);
         
         if (!response.ok) throw new Error('FAILED TO FETCH INVOICES');
         
