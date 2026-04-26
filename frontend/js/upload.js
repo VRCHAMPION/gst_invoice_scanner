@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Poll for result
                 const result = await pollJobStatusSync(data.job_id);
                 
-                if (result.status === 'completed') {
+                if (result.status === 'completed' || result.status === 'PENDING_REVIEW' || result.status === 'APPROVED' || result.status === 'SUCCESS') {
                     // Check for duplicate after successful extraction
                     const dupInfo = await checkDuplicateFromResult(result);
                     if (dupInfo && dupInfo.is_duplicate) {
@@ -403,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const job = await res.json();
 
-                if (job.status === "completed" || job.status === "failed") {
+                if (job.status === "completed" || job.status === "failed" || job.status === "PENDING_REVIEW" || job.status === "APPROVED" || job.status === "SUCCESS") {
                     return job;
                 }
 
