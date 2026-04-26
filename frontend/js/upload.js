@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Poll for result
                 const result = await pollJobStatusSync(data.job_id);
                 
-                if (result.status === 'completed' || result.status === 'PENDING_REVIEW' || result.status === 'APPROVED' || result.status === 'SUCCESS') {
+                if (result.status === 'PENDING_REVIEW' || result.status === 'APPROVED' || result.status === 'SUCCESS' || result.status === 'COMPLETED') {
                     // Check for duplicate after successful extraction
                     const dupInfo = await checkDuplicateFromResult(result);
                     if (dupInfo && dupInfo.is_duplicate) {
@@ -391,31 +391,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function pollJobStatusSync(jobId) {
-        const MAX_POLLS = 30;
+        const MAX_POLLS = 60;   // 60 × 3s = 3 minutes max
         let pollCount = 0;
 
         while (pollCount < MAX_POLLS) {
             try {
-                const res = await apiFetch(getApiUrl(`/api/scan/status/${jobId}`), {
-                                    });
+                const res = await apiFetch(getApiUrl(`/api/scan/status/${jobId}`));
                 
                 if (!res.ok) throw new Error("Status check failed");
                 
                 const job = await res.json();
+                const st = (job.status || '').toUpperCase();
 
-                if (job.status === "completed" || job.status === "failed" || job.status === "PENDING_REVIEW" || job.status === "APPROVED" || job.status === "SUCCESS") {
+                // Terminal states — stop polling
+                if (st === 'PENDING_REVIEW' || st === 'APPROVED' || st === 'SUCCESS' ||
+                    st === 'COMPLETED' || st === 'FAILED') {
+                    job.status = st;   // normalise to uppercase for the rest of the code
                     return job;
                 }
 
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise(resolve => setTimeout(resolve, 3000));
                 pollCount++;
             } catch (err) {
                 console.error("Polling error:", err);
+                await new Promise(resolve => setTimeout(resolve, 3000));
                 pollCount++;
             }
         }
 
-        return { status: 'failed', error: 'Timeout' };
+        return { status: 'FAILED', error: 'Timeout — invoice may still be processing. Check History page.' };
     }
 
     // Legacy single file support (kept for backward compatibility)

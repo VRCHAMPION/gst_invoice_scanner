@@ -34,4 +34,4 @@ HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
 # Production start: Gunicorn + Uvicorn workers
 # Reduced to 1 worker for 512MB free tier (each worker ~150-200MB)
 # Use --max-requests to recycle workers and prevent memory leaks
-CMD ["sh", "-c", "cd backend && gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --max-requests 100 --max-requests-jitter 20 --timeout 120"]
+CMD ["sh", "-c", "cd backend && gunicorn main:app --workers 1 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:${PORT:-8000} --max-requests 1000 --max-requests-jitter 100 --timeout 120"]
