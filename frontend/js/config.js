@@ -36,7 +36,7 @@ window.apiFetch = async (url, options = {}) => {
     let response;
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s hard timeout
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s hard timeout to accommodate OCR + LLM
         response = await fetch(url, { ...options, signal: controller.signal });
         clearTimeout(timeoutId);
     } catch (err) {
