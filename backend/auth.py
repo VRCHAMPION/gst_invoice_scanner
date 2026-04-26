@@ -1,7 +1,9 @@
-import os
+import json
+import urllib.request
 import uuid
 from typing import List, Optional
 
+from cachetools import TTLCache, cached
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, Request, Response, status
 from jose import JWTError, jwt
@@ -17,6 +19,11 @@ if not SECRET_KEY:
     raise ValueError("SUPABASE_JWT_SECRET environment variable is missing")
 SECRET_KEY = SECRET_KEY.strip()
 
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+if not SUPABASE_URL:
+    raise ValueError("SUPABASE_URL environment variable is missing")
+SUPABASE_URL = SUPABASE_URL.strip().rstrip("/")
+
 ALGORITHM = "HS256"
 COOKIE_NAME = "sb_session"
 COOKIE_MAX_AGE = 3600  # matches Supabase default JWT expiry
@@ -24,17 +31,48 @@ COOKIE_MAX_AGE = 3600  # matches Supabase default JWT expiry
 IS_PRODUCTION = os.getenv("IS_PRODUCTION", "false").lower() == "true"
 
 
-# ── Token Decoding ────────────────────────────────────────────────────────────
+# ── JWKS & Token Decoding ─────────────────────────────────────────────────────
+
+@cached(cache=TTLCache(maxsize=1, ttl=600))
+def get_jwks() -> dict:
+    """Fetch and cache the JSON Web Key Set from Supabase for 10 minutes."""
+    jwks_url = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
+    req = urllib.request.Request(jwks_url)
+    with urllib.request.urlopen(req) as response:
+        return json.loads(response.read().decode())
 
 def decode_access_token(token: str) -> dict:
     try:
-        return jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM],
-            audience="authenticated",
-        )
-    except JWTError:
+        header = jwt.get_unverified_header(token)
+        alg = header.get("alg")
+        
+        if alg == "HS256":
+            # Legacy symmetric token
+            return jwt.decode(
+                token,
+                SECRET_KEY,
+                algorithms=["HS256"],
+                audience="authenticated",
+            )
+        else:
+            # Asymmetric token (ES256, RS256, etc.)
+            jwks = get_jwks()
+            kid = header.get("kid")
+            key = next((k for k in jwks.get("keys", []) if k.get("kid") == kid), None)
+            
+            if not key:
+                raise JWTError(f"Signing key {kid} not found in JWKS")
+                
+            return jwt.decode(
+                token,
+                key,
+                algorithms=["RS256", "ES256", "EdDSA"],
+                audience="authenticated",
+            )
+            
+    except JWTError as e:
+        import structlog
+        structlog.get_logger().error("jwt_decode_error", error=str(e))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",

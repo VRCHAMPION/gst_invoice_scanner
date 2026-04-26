@@ -47,7 +47,7 @@ async function checkAuth() {
         return;
     }
 
-    if (user && isLoginPage) {
+    if (user && currentUser && isLoginPage) {
         window.location.href = 'upload.html';
         return;
     }
