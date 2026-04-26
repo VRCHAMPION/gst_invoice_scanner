@@ -498,7 +498,7 @@ async def reject_invoice(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Reject a pending invoice."""
+    """Reject and delete a pending invoice."""
     invoice = _get_authorized_invoice(invoice_id, current_user, db)
 
     if invoice.status != "PENDING_REVIEW":
@@ -507,9 +507,19 @@ async def reject_invoice(
             detail=f"Cannot reject invoice with status: {invoice.status}. Only PENDING_REVIEW invoices can be rejected.",
         )
 
-    invoice.status = "REJECTED"
-    invoice.approval_status = "rejected"
-    invoice.approved_by = current_user.id
-    invoice.approved_at = datetime.utcnow()
+    db.delete(invoice)
     db.commit()
-    return MessageResponse(message=f"Invoice {invoice.invoice_number or invoice_id} rejected successfully")
+    return MessageResponse(message=f"Invoice {invoice.invoice_number or invoice_id} rejected and deleted successfully")
+
+@router.delete("/invoices/{invoice_id}", response_model=MessageResponse)
+async def delete_invoice(
+    invoice_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete an invoice completely from history."""
+    invoice = _get_authorized_invoice(invoice_id, current_user, db)
+    db.delete(invoice)
+    db.commit()
+    return MessageResponse(message=f"Invoice {invoice_id} deleted successfully")
+

@@ -412,8 +412,8 @@ function setupActions(data) {
                     const err = await response.json();
                     throw new Error(err.detail || 'Rejection failed');
                 }
-                data.status = 'REJECTED';
-                populateData(data);
+                alert('Invoice rejected and completely deleted.');
+                window.location.href = 'history.html';
             } catch (error) {
                 alert('ERROR: ' + error.message);
             }

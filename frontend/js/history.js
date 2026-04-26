@@ -199,6 +199,13 @@ function renderTable() {
             <td>${pillHtml}</td>
             <td class="data-font" style="color: var(--muted);">${formatDate(inv.invoice_date)}</td>
             <td class="data-font" style="color: var(--muted); font-size: 0.85rem;">${new Date(inv.created_at).toLocaleString('en-IN')}</td>
+            <td style="text-align: center;">
+                <button class="delete-history-btn" style="background: none; border: none; cursor: pointer; padding: 4px;" title="Delete Invoice">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                </button>
+            </td>
         `;
         
         // Only allow viewing if not failed
@@ -209,6 +216,29 @@ function renderTable() {
             row.style.cursor = 'not-allowed';
             row.addEventListener('click', () => alert('CANNOT VIEW FAILED SCANS. RECORD BLOCK HAS BEEN QUARANTINED.'));
         }
+        
+        // Delete button listener
+        const deleteBtn = row.querySelector('.delete-history-btn');
+        deleteBtn.addEventListener('click', async (e) => {
+            e.stopPropagation(); // Prevent viewing invoice details
+            if (!confirm('Are you sure you want to permanently delete this invoice?')) return;
+            
+            try {
+                const response = await apiFetch(getApiUrl(`/api/invoices/${inv.id}`), { method: 'DELETE' });
+                if (!response.ok) {
+                    const err = await response.json();
+                    throw new Error(err.detail || 'Failed to delete invoice');
+                }
+                
+                // Remove from local arrays
+                allInvoices = allInvoices.filter(i => i.id !== inv.id);
+                filteredInvoices = filteredInvoices.filter(i => i.id !== inv.id);
+                updateStats();
+                renderTable();
+            } catch (error) {
+                alert('ERROR DELETING INVOICE: ' + error.message);
+            }
+        });
         
         tbody.appendChild(row);
     });
