@@ -55,6 +55,7 @@
                 userData = await resp.json();
 
                 sessionStorage.setItem('currentUser', JSON.stringify(userData));
+                window.setToken(session.access_token); // Save token for Incognito fallback
 
                 // Check if the user signed up with Google and hasn't set a password yet
                 const providers = session?.user?.app_metadata?.providers || [];

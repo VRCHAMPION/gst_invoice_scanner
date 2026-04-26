@@ -27,6 +27,12 @@ window.apiFetch = async (url, options = {}) => {
     options.credentials = 'include';   // Always send the HttpOnly cookie
     options.headers = options.headers || {};
 
+    // Fallback for Incognito/Safari where third-party cookies are blocked
+    const token = window.getToken();
+    if (token) {
+        options.headers['Authorization'] = `Bearer ${token}`;
+    }
+
     let response;
     try {
         const controller = new AbortController();

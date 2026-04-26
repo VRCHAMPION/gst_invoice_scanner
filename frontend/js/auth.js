@@ -15,6 +15,7 @@ async function _establishSession(accessToken) {
         if (!resp.ok) return null;
         const userData = await resp.json();
         sessionStorage.setItem('currentUser', JSON.stringify(userData));
+        window.setToken(accessToken); // Save token for Incognito fallback
         return userData;
     } catch {
         return null;
