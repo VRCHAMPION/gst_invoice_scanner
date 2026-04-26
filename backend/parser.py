@@ -118,12 +118,22 @@ def extract_invoice_data(file_bytes: bytes, content_type: str) -> dict:
     # Use Groq LLM to parse OCR text into structured JSON
     # XML tags prevent prompt injection from malicious PDFs
     prompt = f"""You are a JSON data extractor for Indian GST invoices. Extract invoice data from the text inside <raw_text> tags.
-Return ONLY valid JSON with these keys (use null if not found):
-  "seller_name", "seller_gstin", "buyer_name", "buyer_gstin", 
+Return ONLY valid JSON with exactly these keys (use null if not found):
+  "seller_name", "seller_gstin", "buyer_name", "buyer_gstin",
   "invoice_number", "invoice_date", "subtotal", "cgst", "sgst", "igst", "total"
 
+Key rules:
+- "subtotal" = taxable value / net amount BEFORE taxes
+- "cgst" = Central GST amount (look for CGST, C-GST, Central Tax)
+- "sgst" = State GST amount (look for SGST, S-GST, State Tax, UTGST)
+- "igst" = Integrated GST (look for IGST, I-GST, Integrated Tax)
+- "total" = final grand total AFTER all taxes
+- Extract numeric values only (no currency symbols)
+- For GSTIN: 15-character alphanumeric code (e.g. 27ABCDE1234F1Z5)
+- invoice_date: preserve the exact format found (DD/MM/YYYY or DD-MM-YYYY)
+
 Example:
-Input: "ABC Tech GSTIN 27ABCDE1234F1Z5 Invoice INV-1045 Date 15-10-2024 To XYZ Corp GSTIN 27XYZAB5678C1Z2 Taxable 5000 CGST 450 SGST 450 Total 5900"
+Input: "ABC Tech GSTIN 27ABCDE1234F1Z5 Invoice INV-1045 Date 15-10-2024 To XYZ Corp GSTIN 27XYZAB5678C1Z2 Taxable Value 5000 CGST @9% 450 SGST @9% 450 Grand Total 5900"
 Output: {{"seller_name":"ABC Tech","seller_gstin":"27ABCDE1234F1Z5","buyer_name":"XYZ Corp","buyer_gstin":"27XYZAB5678C1Z2","invoice_number":"INV-1045","invoice_date":"15-10-2024","subtotal":5000.0,"cgst":450.0,"sgst":450.0,"igst":null,"total":5900.0}}
 
 <raw_text>
@@ -144,15 +154,24 @@ Output: {{"seller_name":"ABC Tech","seller_gstin":"27ABCDE1234F1Z5","buyer_name"
         data = json.loads(cleaned_json)
         data["status"] = "completed"
 
+        subtotal = data.get("subtotal") or 0
+        cgst     = data.get("cgst") or 0
+        sgst     = data.get("sgst") or 0
+        igst     = data.get("igst") or 0
+        total    = data.get("total") or 0
+
+        # If taxes are all zero but total > subtotal, back-calculate assuming equal CGST+SGST split
+        if subtotal > 0 and total > subtotal and cgst == 0 and sgst == 0 and igst == 0:
+            tax_amount = round(total - subtotal, 2)
+            data["cgst"] = round(tax_amount / 2, 2)
+            data["sgst"] = round(tax_amount / 2, 2)
+
         # Auto-calculate total when LLM failed to extract it
-        if not data.get("total") and data.get("subtotal"):
-            subtotal = data.get("subtotal") or 0
-            cgst    = data.get("cgst") or 0
-            sgst    = data.get("sgst") or 0
-            igst    = data.get("igst") or 0
+        if not data.get("total") and subtotal:
             data["total"] = round(subtotal + cgst + sgst + igst, 2)
 
         return data
+
 
     except json.JSONDecodeError as e:
         log.error("llm_json_decode_failed", error=str(e), raw_response=raw_json[:200] if 'raw_json' in locals() else "N/A")
