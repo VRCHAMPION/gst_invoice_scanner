@@ -78,6 +78,7 @@ def process_invoice_background(
     db = SessionLocal()
     try:
         data = extract_invoice_data(file_bytes, content_type)
+        del file_bytes  # free RAM immediately — no longer needed
 
         invoice = db.query(Invoice).filter(Invoice.job_id == job_id).first()
         if not invoice:

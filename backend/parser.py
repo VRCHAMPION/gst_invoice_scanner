@@ -143,6 +143,15 @@ Output: {{"seller_name":"ABC Tech","seller_gstin":"27ABCDE1234F1Z5","buyer_name"
         cleaned_json = raw_json[start_idx:end_idx + 1]
         data = json.loads(cleaned_json)
         data["status"] = "completed"
+
+        # Auto-calculate total when LLM failed to extract it
+        if not data.get("total") and data.get("subtotal"):
+            subtotal = data.get("subtotal") or 0
+            cgst    = data.get("cgst") or 0
+            sgst    = data.get("sgst") or 0
+            igst    = data.get("igst") or 0
+            data["total"] = round(subtotal + cgst + sgst + igst, 2)
+
         return data
 
     except json.JSONDecodeError as e:
