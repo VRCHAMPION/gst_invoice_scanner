@@ -1,17 +1,20 @@
+from PIL import Image, ImageFilter, ImageOps
 import os
 import io
 import json
 import time
 import structlog
 from dotenv import load_dotenv
-from groq import Groq
-
-import pytesseract
-import fitz  # PyMuPDF
-from PIL import Image, ImageFilter, ImageOps
 
 load_dotenv()
 
+# Restrict Tesseract to a single thread to prevent CPU starvation on low-resource machines
+os.environ["OMP_THREAD_LIMIT"] = "1"
+os.environ["OMP_NUM_THREADS"] = "1"
+
+from groq import Groq
+import pytesseract
+import fitz  # PyMuPDF
 _GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not _GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY environment variable is missing")

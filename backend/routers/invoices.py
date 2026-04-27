@@ -9,6 +9,11 @@ from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Re
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+import asyncio
+import concurrent.futures
+
+# Executor with 1 worker to prevent OOM / CPU starvation on the free tier
+ocr_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
 
 from auth import get_current_user
 from database import get_db
@@ -159,11 +164,16 @@ async def scan_invoice(
     db.add(placeholder)
     db.commit()
 
-    background_tasks.add_task(
-        process_invoice_background,
-        job_id, contents, file.content_type,
-        current_user.id, current_user.company_id,
-    )
+    async def run_ocr_safe():
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(
+            ocr_executor,
+            process_invoice_background,
+            job_id, contents, file.content_type,
+            current_user.id, current_user.company_id
+        )
+
+    background_tasks.add_task(run_ocr_safe)
     return ScanJobResponse(job_id=job_id, status="processing")
 
 
