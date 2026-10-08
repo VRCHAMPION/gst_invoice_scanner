@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 if (result.status === 'PENDING_REVIEW' || result.status === 'APPROVED' || result.status === 'SUCCESS' || result.status === 'COMPLETED') {
                     // Check for duplicate after successful extraction
-                    const dupInfo = await checkDuplicateFromResult(result);
+                    const dupInfo = await checkDuplicateFromResult(result, data.job_id);
                     if (dupInfo && dupInfo.is_duplicate) {
                         result._duplicate_info = dupInfo;
                     }
@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /**
      * Check if a completed scan result is a duplicate by calling the backend endpoint.
      */
-    async function checkDuplicateFromResult(result) {
+    async function checkDuplicateFromResult(result, jobId) {
         if (!result.invoice_number) return null;
         try {
             const res = await apiFetch(getApiUrl('/api/invoices/check-duplicate'), {
@@ -262,7 +262,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     invoice_number: result.invoice_number,
-                    seller_gstin: result.seller_gstin || null})});
+                    seller_gstin: result.seller_gstin || null,
+                    job_id: jobId || null})});
             if (!res.ok) return null;
             return await res.json();
         } catch {
