@@ -327,8 +327,8 @@ function populateData(data) {
         data.items.forEach(item => {
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td style="font-weight: 600;">${(item.description || 'Item').toUpperCase()}</td>
-                <td class="data-font">${item.quantity || 0}</td>
+                <td style="font-weight: 600;">${esc((item.description || 'Item').toUpperCase())}</td>
+                <td class="data-font">${esc(item.quantity || 0)}</td>
                 <td class="data-font">${formatCurrency(item.rate)}</td>
                 <td class="data-font" style="color: var(--primary-accent); font-weight: 700;">${formatCurrency(item.amount)}</td>
             `;
@@ -354,13 +354,13 @@ function populateData(data) {
     health.issues.forEach(issue => {
         const div = document.createElement('div');
         div.className = 'issue-card';
-        div.innerHTML = `<span style="color: var(--danger); font-weight: 1000;">●</span> ${issue.toUpperCase()}`;
+        div.innerHTML = `<span style="color: var(--danger); font-weight: 1000;">●</span> ${esc(String(issue).toUpperCase())}`;
         issuesContainer.appendChild(div);
     });
     health.warnings.forEach(warning => {
         const div = document.createElement('div');
         div.className = 'warning-card';
-        div.innerHTML = `<span style="color: var(--secondary-accent); font-weight: 1000;">●</span> ${warning.toUpperCase()}`;
+        div.innerHTML = `<span style="color: var(--secondary-accent); font-weight: 1000;">●</span> ${esc(String(warning).toUpperCase())}`;
         issuesContainer.appendChild(div);
     });
 
