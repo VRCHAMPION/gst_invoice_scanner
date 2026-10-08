@@ -120,6 +120,9 @@ router = APIRouter(prefix="/api", tags=["invoices"])
 class DuplicateCheckRequest(BaseModel):
     invoice_number: str = Field(min_length=1)
     seller_gstin: Optional[str] = None
+    # The scan just processed: excluded so an invoice is never reported
+    # as a duplicate of itself.
+    job_id: Optional[str] = None
 
 
 class DuplicateCheckResponse(BaseModel):
@@ -148,6 +151,9 @@ async def check_duplicate_invoice(
 
     if req.seller_gstin:
         query = query.filter(Invoice.seller_gstin == req.seller_gstin.upper().strip())
+
+    if req.job_id:
+        query = query.filter(Invoice.job_id != req.job_id)
 
     existing = query.first()
 
