@@ -10,7 +10,8 @@ load_dotenv('backend/.env')
 
 SUPABASE_URL = os.getenv('SUPABASE_URL')
 SUPABASE_ANON_KEY = os.getenv('SUPABASE_ANON_KEY')
-API_BASE = 'https://gst-invoice-scanner-api-vrc-3o7k.onrender.com/api'
+# Local development only: never point this script at the production API.
+API_BASE = os.getenv('TEST_API_BASE', 'http://localhost:8000/api')
 
 COMPANIES = [
     {"email": "owner1@gmail.com", "name": "Owner 1", "company": "TechCorp India", "gstin": "27AADCB2230M1Z2"},
@@ -20,9 +21,13 @@ COMPANIES = [
     {"email": "owner5@gmail.com", "name": "Owner 5", "company": "NextGen Tech", "gstin": "19AAAAA0000A1Z5"}
 ]
 
-PASSWORD = "Owner@123"
+# Set TEST_USER_PASSWORD in backend/.env; no default so nothing weak is hardcoded.
+PASSWORD = os.getenv('TEST_USER_PASSWORD')
 
 def register_and_onboard():
+    if not PASSWORD:
+        print("Set TEST_USER_PASSWORD in backend/.env first.")
+        return
     for c in COMPANIES:
         print(f"Registering {c['email']}...")
         
