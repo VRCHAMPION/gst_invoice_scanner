@@ -33,14 +33,14 @@
             badge.style.display = 'inline-block';
 
             list.innerHTML = requests.map(r => `
-                <div class="request-item" id="req-${r.id}">
+                <div class="request-item" id="req-${esc(r.id)}">
                     <div>
-                        <div class="request-name">${r.name}</div>
-                        <div class="request-email">${r.email}</div>
+                        <div class="request-name">${esc(r.name)}</div>
+                        <div class="request-email">${esc(r.email)}</div>
                     </div>
                     <div class="request-actions">
-                        <button class="btn-approve" data-id="${r.id}" data-action="approve">Approve</button>
-                        <button class="btn-reject" data-id="${r.id}" data-action="reject">Reject</button>
+                        <button class="btn-approve" data-id="${esc(r.id)}" data-action="approve">Approve</button>
+                        <button class="btn-reject" data-id="${esc(r.id)}" data-action="reject">Reject</button>
                     </div>
                 </div>
             `).join('');

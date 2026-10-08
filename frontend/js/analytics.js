@@ -52,11 +52,11 @@ async function loadEmployeeList() {
             const card = document.createElement('div');
             card.style.cssText = 'padding: 1rem; background: var(--surface-light); border-radius: var(--radius-sm); border: 1px solid var(--border-color);';
             card.innerHTML = `
-                <div style="font-weight: 800; font-size: 0.9rem;">${u.name.toUpperCase()}</div>
-                <div style="font-size: 0.8rem; color: var(--muted);">${u.email}</div>
+                <div style="font-weight: 800; font-size: 0.9rem;">${esc(String(u.name ?? '').toUpperCase())}</div>
+                <div style="font-size: 0.8rem; color: var(--muted);">${esc(u.email)}</div>
                 <div style="margin-top: 0.8rem; display: flex; align-items: center; justify-content: space-between;">
-                    <span class="status-pill ${u.role==='owner'?'pill-success':'pill-processing'}">${u.role.toUpperCase()}</span>
-                    ${u.role !== 'owner' ? `<button onclick="removeEmployee('${u.id}')" style="background:none; border:none; color:var(--red); font-size:0.75rem; font-weight:800; cursor:pointer; font-family: var(--display); letter-spacing: 0.5px;">REMOVE ✕</button>` : ''}
+                    <span class="status-pill ${u.role==='owner'?'pill-success':'pill-processing'}">${esc(String(u.role ?? '').toUpperCase())}</span>
+                    ${u.role !== 'owner' ? `<button onclick="removeEmployee('${esc(u.id)}')" style="background:none; border:none; color:var(--red); font-size:0.75rem; font-weight:800; cursor:pointer; font-family: var(--display); letter-spacing: 0.5px;">REMOVE ✕</button>` : ''}
                 </div>
             `;
             container.appendChild(card);
@@ -144,8 +144,8 @@ async function loadItcSummary() {
         data.supplier_breakdown.forEach(row => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td style="font-weight: 700;">${row.seller_name.toUpperCase()}</td>
-                <td class="data-font text-muted">${row.seller_gstin}</td>
+                <td style="font-weight: 700;">${esc(String(row.seller_name ?? '').toUpperCase())}</td>
+                <td class="data-font text-muted">${esc(row.seller_gstin)}</td>
                 <td class="data-font">${formatCurrency(row.cgst)}</td>
                 <td class="data-font">${formatCurrency(row.sgst)}</td>
                 <td class="data-font">${formatCurrency(row.igst)}</td>
