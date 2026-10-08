@@ -5,6 +5,11 @@ const CONFIG = {
         if (hostname === '127.0.0.1' || hostname === 'localhost') {
             return `http://${hostname}:8000`;
         }
+        // On Vercel, /api/* is proxied to Render (see vercel.json), so the API is
+        // same-origin and the HttpOnly session cookie is first-party.
+        if (hostname.endsWith('.vercel.app')) {
+            return '';
+        }
         return 'https://gst-invoice-scanner-api-vrc-3o7k.onrender.com';
     })(),
     SUPABASE_URL: 'https://qcttkeoxdwkmdjjlsjdx.supabase.co',

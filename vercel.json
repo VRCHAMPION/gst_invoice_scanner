@@ -5,6 +5,10 @@
   "outputDirectory": "frontend",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://gst-invoice-scanner-api-vrc-3o7k.onrender.com/api/:path*"
+    },
+    {
       "source": "/",
       "destination": "/frontend/index.html"
     },
@@ -83,6 +87,15 @@
         {
           "key": "Cache-Control",
           "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
         }
       ]
     }
