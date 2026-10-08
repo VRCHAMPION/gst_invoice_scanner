@@ -233,3 +233,59 @@ def calculate_health_score(data: dict) -> dict:
         "passed_checks": [],
         "summary": f"Invoice scored {score}/100 — {status}",
     }
+
+
+_GSTIN_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+
+def _gstin_checksum_ok(gstin: str) -> bool:
+    """Official GSTIN check-digit (mod 36) validation."""
+    total = 0
+    for i, ch in enumerate(gstin[:14]):
+        value = _GSTIN_CHARS.index(ch) * (1 if i % 2 == 0 else 2)
+        total += value // 36 + value % 36
+    return _GSTIN_CHARS[(36 - total % 36) % 36] == gstin[14]
+
+
+def _edit_distance(a: str, b: str) -> int:
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+def repair_gstin(raw, expected: str = None):
+    """Fix common OCR mistakes in a GSTIN read from a scanned invoice.
+
+    Tesseract often inserts or swaps a character (e.g. '1Z' -> '12Z'), which
+    made genuine invoices fail the company-GSTIN check. Order of repair:
+      1. Strip spaces/punctuation and uppercase.
+      2. If it is within 2 edits of the company's own GSTIN, use that.
+      3. If it is already a valid GSTIN, keep it.
+      4. If it is 16 chars, drop the one character that makes it valid
+         (format + check digit).
+    Returns the repaired value, or the cleaned input if nothing fits.
+    """
+    if not raw:
+        return raw
+    s = re.sub(r"[^A-Z0-9]", "", str(raw).upper())
+    if expected:
+        expected = expected.upper().strip()
+        # Same state code required, so another branch (different state) of
+        # the same PAN is never silently treated as this company.
+        if s == expected or (len(s) >= 13 and s[:2] == expected[:2]
+                             and _edit_distance(s, expected) <= 2):
+            return expected
+    if len(s) == 15 and GSTIN_REGEX.match(s):
+        return s
+    if len(s) == 16:
+        candidates = {
+            c for c in (s[:i] + s[i + 1:] for i in range(16))
+            if GSTIN_REGEX.match(c) and _gstin_checksum_ok(c)
+        }
+        if len(candidates) == 1:
+            return candidates.pop()
+    return s

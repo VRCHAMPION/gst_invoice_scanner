@@ -17,6 +17,7 @@ import structlog
 import httpx
 
 from parser import extract_invoice_data
+from validator import repair_gstin
 
 log = structlog.get_logger()
 
@@ -142,6 +143,10 @@ def process_invoice_background(
             return
 
         company_gstin = company.gstin.upper() if company.gstin else None
+        # Repair OCR misreads (e.g. '1Z' read as '12Z') before validating
+        for key in ("seller_gstin", "buyer_gstin"):
+            if data.get(key):
+                data[key] = repair_gstin(data[key], company_gstin)
         seller_gstin = (data.get("seller_gstin") or "").upper()
         buyer_gstin = (data.get("buyer_gstin") or "").upper()
 
