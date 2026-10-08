@@ -2,7 +2,12 @@
 invoice_service.py - Background invoice processing and webhooks
 """
 import asyncio
+import hashlib
+import hmac
 import ipaddress
+import json
+import os
+import time
 import socket
 import uuid
 from urllib.parse import urlparse
@@ -41,7 +46,16 @@ async def trigger_webhook(webhook_url: str, payload: dict) -> None:
         return
     try:
         async with httpx.AsyncClient(follow_redirects=False) as client:
-            response = await client.post(webhook_url, json=payload, timeout=10.0)
+            body = json.dumps(payload, separators=(",", ":"), default=str).encode()
+            headers = {"Content-Type": "application/json"}
+            secret = os.getenv("WEBHOOK_SECRET")
+            if secret:
+                # Receivers verify: HMAC_SHA256(secret, f"{timestamp}.{raw_body}") == X-GST-Signature
+                ts = str(int(time.time()))
+                sig = hmac.new(secret.encode(), ts.encode() + b"." + body, hashlib.sha256).hexdigest()
+                headers["X-GST-Timestamp"] = ts
+                headers["X-GST-Signature"] = f"sha256={sig}"
+            response = await client.post(webhook_url, content=body, headers=headers, timeout=10.0)
             if response.status_code >= 400:
                 log.warning("webhook_error_response", url=webhook_url, status_code=response.status_code, response=response.text[:200])
             else:
