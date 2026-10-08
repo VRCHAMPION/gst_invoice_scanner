@@ -1,5 +1,6 @@
 import csv
 import io
+import re
 import uuid
 from datetime import datetime
 from math import ceil
@@ -27,9 +28,44 @@ from schemas import (
     ScanStatusResponse,
 )
 from services.invoice_service import process_invoice_background, trigger_webhook
-from validator import calculate_health_score
+from validator import calculate_health_score, GSTIN_REGEX
+from routers.analytics import invalidate_company_cache
 from slowapi import Limiter
 from slowapi.util import get_remote_address
+from jose import jwt as _jose_jwt
+
+
+def rate_limit_key(request: Request) -> str:
+    """
+    Rate-limit key shared by the whole app.
+    Logged-in requests are keyed per user (the token's 'sub'); a forged sub fails
+    auth anyway, so it can't be used to dodge the limit on real requests.
+    Anonymous requests use the client IP from X-Forwarded-For, because on Render
+    request.client is the proxy and every user would share one bucket.
+    """
+    token = request.cookies.get("sb_session")
+    auth_header = request.headers.get("Authorization", "")
+    if not token and auth_header.startswith("Bearer "):
+        token = auth_header[7:]
+    if token:
+        try:
+            sub = _jose_jwt.get_unverified_claims(token).get("sub")
+            if sub:
+                return f"user:{sub}"
+        except Exception:
+            pass
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
+
+def _csv_safe(value) -> str:
+    """Neutralise spreadsheet formulas (=, +, -, @, tab, CR) in exported cells."""
+    text = "" if value is None else str(value)
+    if text and text[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + text
+    return text
 
 
 def _get_authorized_invoice(invoice_id: str, current_user: User, db: Session) -> Invoice:
@@ -77,7 +113,7 @@ class ManualInvoiceRequest(BaseModel):
     total: float = Field(gt=0)
 
 
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=rate_limit_key)
 router = APIRouter(prefix="/api", tags=["invoices"])
 
 
@@ -284,7 +320,10 @@ async def create_manual_invoice(
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="Please associate with a company first")
 
-    
+    for label, gstin in (("Seller", req.seller_gstin), ("Buyer", req.buyer_gstin)):
+        if gstin and not GSTIN_REGEX.match(gstin.strip().upper()):
+            raise HTTPException(status_code=422, detail=f"{label} GSTIN '{gstin}' is not a valid GSTIN format")
+
     existing = db.query(Invoice).filter(
         Invoice.company_id == current_user.company_id,
         Invoice.invoice_number == req.invoice_number,
@@ -426,8 +465,13 @@ async def export_invoice(
     current_user: User = Depends(get_current_user),
 ):
     """Export invoice data as CSV."""
-    health = req.health_score or {}
-    health_score_val = health.get("score", "N/A") if isinstance(health, dict) else "N/A"
+    health = req.health_score
+    if isinstance(health, dict):
+        health_score_val = health.get("score", "N/A")
+    else:
+        health_score_val = getattr(health, "score", None)
+        if health_score_val is None:
+            health_score_val = "N/A"
 
     output = io.StringIO()
     writer = csv.writer(output)
@@ -439,19 +483,20 @@ async def export_invoice(
     ])
 
     writer.writerow([
-        req.invoice_number or "",
-        req.seller_name or "",
-        req.invoice_date or "",
+        _csv_safe(req.invoice_number),
+        _csv_safe(req.seller_name),
+        _csv_safe(req.invoice_date),
         req.total or 0,
         req.cgst or 0,
         req.sgst or 0,
         req.igst or 0,
-        req.status or "",
+        _csv_safe(req.status),
         health_score_val,
     ])
 
     output.seek(0)
-    filename = f"invoice_{req.invoice_number or 'export'}.csv"
+    safe_number = re.sub(r"[^A-Za-z0-9._-]", "_", req.invoice_number or "export")[:80]
+    filename = f"invoice_{safe_number}.csv"
 
     return StreamingResponse(
         iter([output.getvalue()]),
@@ -499,6 +544,7 @@ async def approve_invoice(
         background_tasks.add_task(trigger_webhook, company.webhook_url, payload)
 
     db.commit()
+    invalidate_company_cache(current_user.company_id)
     return MessageResponse(message=f"Invoice {invoice.invoice_number or invoice_id} approved successfully")
 
 
@@ -519,6 +565,7 @@ async def reject_invoice(
 
     db.delete(invoice)
     db.commit()
+    invalidate_company_cache(current_user.company_id)
     return MessageResponse(message=f"Invoice {invoice.invoice_number or invoice_id} rejected and deleted successfully")
 
 @router.delete("/invoices/{invoice_id}", response_model=MessageResponse)
@@ -529,7 +576,19 @@ async def delete_invoice(
 ):
     """Delete an invoice completely from history."""
     invoice = _get_authorized_invoice(invoice_id, current_user, db)
+
+    # Approved invoices were added to the vendor's running totals; take them back out
+    if invoice.status == "APPROVED" and invoice.seller_gstin:
+        vendor = db.query(Vendor).filter(
+            Vendor.company_id == current_user.company_id,
+            Vendor.gstin == invoice.seller_gstin.upper(),
+        ).first()
+        if vendor:
+            vendor.total_invoices = max((vendor.total_invoices or 0) - 1, 0)
+            vendor.total_amount = max((vendor.total_amount or 0.0) - (invoice.total or 0.0), 0.0)
+
     db.delete(invoice)
     db.commit()
+    invalidate_company_cache(current_user.company_id)
     return MessageResponse(message=f"Invoice {invoice_id} deleted successfully")
 

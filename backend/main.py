@@ -3,17 +3,18 @@ main.py - FastAPI app setup with middleware and routers
 """
 import logging
 import uuid
+from contextlib import asynccontextmanager
+
 import structlog
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
-from slowapi.util import get_remote_address
 
 from database import init_db, ping_db
 from routers import auth, companies, invoices, analytics, vendors
+from routers.invoices import limiter  # one shared limiter for the whole app
 from schemas import HealthResponse
 
 structlog.configure(
@@ -33,15 +34,22 @@ log = structlog.get_logger()
 
 APP_VERSION = "1.1.0"
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()
+    log.info("app_started", version=APP_VERSION)
+    yield
+
+
 app = FastAPI(
     title="GST Invoice Scanner API",
     version=APP_VERSION,
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
-# Rate limiting
-limiter = Limiter(key_func=get_remote_address)
+# Rate limiting (key: user id when logged in, else client IP from X-Forwarded-For)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
@@ -59,7 +67,6 @@ app.add_middleware(
     allow_origins=[
         "https://gst-invoice-scanner.vercel.app",
         "https://gstinvoicescanner.netlify.app",
-        "https://gstinvoicescanner.netlify.app/",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://localhost:5500",
@@ -79,12 +86,6 @@ async def request_id_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     return response
-
-
-@app.on_event("startup")
-def on_startup():
-    init_db()
-    log.info("app_started", version=APP_VERSION)
 
 
 # Register routers

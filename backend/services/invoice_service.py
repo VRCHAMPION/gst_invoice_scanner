@@ -1,7 +1,12 @@
 """
 invoice_service.py - Background invoice processing and webhooks
 """
+import asyncio
+import ipaddress
+import socket
 import uuid
+from urllib.parse import urlparse
+
 import structlog
 
 import httpx
@@ -11,10 +16,31 @@ from parser import extract_invoice_data
 log = structlog.get_logger()
 
 
+async def _is_safe_webhook_url(webhook_url: str) -> bool:
+    """Only allow https URLs whose host resolves to public IP addresses (blocks SSRF)."""
+    parsed = urlparse(webhook_url)
+    if parsed.scheme != "https" or not parsed.hostname:
+        return False
+    try:
+        loop = asyncio.get_running_loop()
+        infos = await loop.getaddrinfo(parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM)
+    except socket.gaierror:
+        return False
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0].split("%")[0])
+        if (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+                or ip.is_multicast or ip.is_unspecified):
+            return False
+    return True
+
+
 async def trigger_webhook(webhook_url: str, payload: dict) -> None:
     """Fire and forget webhook payload delivery."""
+    if not await _is_safe_webhook_url(webhook_url):
+        log.warning("webhook_blocked_unsafe_url", url=webhook_url)
+        return
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(follow_redirects=False) as client:
             response = await client.post(webhook_url, json=payload, timeout=10.0)
             if response.status_code >= 400:
                 log.warning("webhook_error_response", url=webhook_url, status_code=response.status_code, response=response.text[:200])

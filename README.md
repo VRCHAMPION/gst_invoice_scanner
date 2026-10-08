@@ -17,7 +17,7 @@ Manual invoice data entry is tedious. This automates it. Works with varying invo
 - **OCR**: Tesseract + PyMuPDF
 - **AI**: Groq (Llama 3.3 70B)
 - **Frontend**: Vanilla JS (no framework)
-- **Auth**: JWT + Bcrypt
+- **Auth**: Supabase Auth (JWT in an HttpOnly cookie)
 
 ## Setup
 
@@ -41,9 +41,14 @@ Create `backend/.env`:
 
 ```env
 GROQ_API_KEY=your_groq_api_key
-JWT_SECRET=your_secret_key
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_JWT_SECRET=your_supabase_jwt_secret
 DATABASE_URL=postgresql://user:pass@host/db
+IS_PRODUCTION=false
 ```
+
+See `backend/.env.example` for the full list with comments.
 
 Get your Groq API key from: https://console.groq.com/keys
 
@@ -117,7 +122,7 @@ API docs: http://localhost:8000/docs
 - **Backend**: Render
 - **Database**: Supabase PostgreSQL
 
-See `VERCEL_DEPLOYMENT.md` for deployment instructions.
+The backend deploys to Render from `render.yaml` (Docker). Set the environment variables above in the Render dashboard.
 
 ## License
 

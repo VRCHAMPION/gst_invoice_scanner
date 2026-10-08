@@ -4,6 +4,13 @@
  * Eliminates duplicate definitions of formatCurrency, formatDate, animateCounter.
  */
 
+// ── Escape HTML (use for any data placed into innerHTML) ─────────────
+function esc(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+}
+
 // ── Format Indian Currency ────────────────────────────────────────────
 function formatCurrency(amount) {
     if (amount === undefined || amount === null) return '₹0.00';
@@ -18,13 +25,13 @@ function formatDate(dateString) {
     if (!dateString) return '-';
     try {
         const date = new Date(dateString);
-        if (isNaN(date)) return dateString;
+        if (isNaN(date)) return esc(dateString);
         return date.toLocaleDateString('en-IN', {
             day: '2-digit',
             month: '2-digit',
             year: 'numeric'});
     } catch (e) {
-        return dateString;
+        return esc(dateString);
     }
 }
 

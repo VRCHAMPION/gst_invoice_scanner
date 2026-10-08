@@ -193,8 +193,8 @@ function renderTable() {
         const pillHtml = `<span class="status-pill ${pillClass}">${statusText}</span>`;
 
         row.innerHTML = `
-            <td class="data-font" style="color: var(--blue); font-weight: 800;">#${inv.id}</td>
-            <td style="font-weight: 800; font-family: var(--display); font-size: 1.1rem; color: var(--ink);">${(inv.seller_name || 'UNKNOWN').toUpperCase()}</td>
+            <td class="data-font" style="color: var(--blue); font-weight: 800;">#${esc(inv.id)}</td>
+            <td style="font-weight: 800; font-family: var(--display); font-size: 1.1rem; color: var(--ink);">${esc((inv.seller_name || 'UNKNOWN').toUpperCase())}</td>
             <td class="data-font" style="color: var(--ink); font-weight: 800;">${formatCurrency(inv.total)}</td>
             <td>${pillHtml}</td>
             <td class="data-font" style="color: var(--muted);">${formatDate(inv.invoice_date)}</td>
@@ -360,12 +360,12 @@ function setupBulkExport() {
             filteredInvoices.forEach(inv => {
                 const row = [
                     inv.id || '',
-                    `"${(inv.invoice_number || '').replace(/"/g, '""')}"`,
-                    `"${(inv.seller_name || '').replace(/"/g, '""')}"`,
-                    inv.seller_gstin || '',
-                    `"${(inv.buyer_name || '').replace(/"/g, '""')}"`,
-                    inv.buyer_gstin || '',
-                    inv.invoice_date || '',
+                    csvCell(inv.invoice_number),
+                    csvCell(inv.seller_name),
+                    csvCell(inv.seller_gstin),
+                    csvCell(inv.buyer_name),
+                    csvCell(inv.buyer_gstin),
+                    csvCell(inv.invoice_date),
                     inv.subtotal || 0,
                     inv.cgst || 0,
                     inv.sgst || 0,
@@ -409,4 +409,12 @@ async function viewInvoiceDetail(invoiceSummary) {
     };
     sessionStorage.setItem('lastScanResults', JSON.stringify(partialData));
     window.location.href = 'results.html';
+}
+
+
+// Quote a CSV cell and neutralise spreadsheet formulas (=, +, -, @, tab, CR)
+function csvCell(value) {
+    let v = String(value ?? '');
+    if (/^[=+\-@\t\r]/.test(v)) v = "'" + v;
+    return `"${v.replace(/"/g, '""')}"`;
 }

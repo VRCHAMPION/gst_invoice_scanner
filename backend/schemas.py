@@ -108,6 +108,17 @@ class CompanyOut(BaseModel):
 class CompanyUpdate(BaseModel):
     webhook_url: Optional[str] = Field(None, max_length=1000)
 
+    @field_validator("webhook_url")
+    @classmethod
+    def webhook_must_be_https(cls, v: Optional[str]) -> Optional[str]:
+        # Empty string is allowed: it clears the webhook
+        if v is None or not v.strip():
+            return v
+        v = v.strip()
+        if not v.lower().startswith("https://"):
+            raise ValueError("Webhook URL must start with https://")
+        return v
+
 
 class JoinRequestOut(BaseModel):
     id: str

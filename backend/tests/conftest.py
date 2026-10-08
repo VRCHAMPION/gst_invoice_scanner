@@ -12,7 +12,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Set env vars BEFORE importing any app modules (they read env at import time)
 os.environ.setdefault("DATABASE_URL", "sqlite:///./test_ci.db")
-os.environ.setdefault("JWT_SECRET", "test-secret-key-for-ci-only")
+os.environ.setdefault("SUPABASE_JWT_SECRET", "test-secret-key-for-ci-only")
+os.environ.setdefault("SUPABASE_URL", "https://test-project.supabase.co")
 os.environ.setdefault("GROQ_API_KEY", "fake-key-for-tests")
 os.environ.setdefault("IS_PRODUCTION", "false")
 

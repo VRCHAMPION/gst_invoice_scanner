@@ -34,6 +34,14 @@ _itc_cache: TTLCache = TTLCache(maxsize=256, ttl=300)
 _cache_lock = Lock()
 
 
+def invalidate_company_cache(company_id) -> None:
+    """Drop cached analytics/ITC for a company after its invoices change."""
+    key = str(company_id)
+    with _cache_lock:
+        _analytics_cache.pop(key, None)
+        _itc_cache.pop(key, None)
+
+
 @router.get("/analytics", response_model=AnalyticsResponse)
 async def get_analytics(
     current_user: User = Depends(get_current_user),
