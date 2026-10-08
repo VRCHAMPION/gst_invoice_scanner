@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
         div.innerHTML = `
             <div class="queue-item-icon" style="font-size: 0.7rem; font-weight: 700; color: var(--muted); font-family: var(--mono);">FILE</div>
             <div class="queue-item-info">
-                <div class="queue-item-name">${item.file.name}</div>
+                <div class="queue-item-name">${esc(item.file.name)}</div>
                 <div class="queue-item-size">${fileSize}</div>
             </div>
             ${statusBadge}
@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 Duplicate Invoice Detected
                             </h2>
                             <p style="font-size: 0.8rem; color: #888; margin-top: 4px; font-family: monospace;">
-                                ${fileName}
+                                ${esc(fileName)}
                             </p>
                         </div>
                     </div>
@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         border-radius: 8px; padding: 1.2rem; margin-bottom: 1.5rem;
                     ">
                         <p style="margin: 0; font-size: 0.9rem; color: #333; line-height: 1.5;">
-                            ${errorMsg}
+                            ${esc(errorMsg)}
                         </p>
                     </div>
 
@@ -333,11 +333,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
                             <div>
                                 <div style="font-size: 0.7rem; color: #aaa;">Invoice #</div>
-                                <div style="font-weight: 700; font-family: monospace; font-size: 0.9rem;">${invoiceNum}</div>
+                                <div style="font-weight: 700; font-family: monospace; font-size: 0.9rem;">${esc(invoiceNum)}</div>
                             </div>
                             <div>
                                 <div style="font-size: 0.7rem; color: #aaa;">Seller</div>
-                                <div style="font-weight: 700; font-size: 0.9rem;">${sellerName || sellerGstin || 'N/A'}</div>
+                                <div style="font-weight: 700; font-size: 0.9rem;">${esc(sellerName || sellerGstin || 'N/A')}</div>
                             </div>
                         </div>
                     </div>
@@ -460,8 +460,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 const itemHTML = `
                     <div class="recent-item">
-                        <div class="recent-title" title="${fileName}">${fileName}</div>
-                        <div class="status-pill ${pillClass}">${st}</div>
+                        <div class="recent-title" title="${esc(fileName)}">${esc(fileName)}</div>
+                        <div class="status-pill ${pillClass}">${esc(st)}</div>
                     </div>
                 `;
                 container.insertAdjacentHTML('beforeend', itemHTML);
