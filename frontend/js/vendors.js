@@ -44,9 +44,9 @@ function renderVendors() {
 
     vendorsGrid.innerHTML = allVendors.map((vendor, index) => `
         <div class="vendor-card animate-fade-up stagger-${Math.min(index + 1, 4)}" 
-             onclick="showVendorDetail('${vendor.id}')">
-            <div class="vendor-name">${vendor.name}</div>
-            <div class="vendor-gstin">${vendor.gstin}</div>
+             data-vendor-id="${esc(vendor.id)}">
+            <div class="vendor-name">${esc(vendor.name)}</div>
+            <div class="vendor-gstin">${esc(vendor.gstin)}</div>
             <div class="vendor-stats">
                 <div class="vendor-stat">
                     <div class="vendor-stat-label">Invoices</div>
@@ -60,6 +60,10 @@ function renderVendors() {
             ${renderTrustBadge(vendor.trust_score, vendor.trust_label, true)}
         </div>
     `).join('');
+
+    vendorsGrid.querySelectorAll('.vendor-card').forEach(card => {
+        card.addEventListener('click', () => showVendorDetail(card.dataset.vendorId));
+    });
 }
 
 async function showVendorDetail(vendorId) {
@@ -122,13 +126,19 @@ async function showVendorDetail(vendorId) {
     } else {
         noInvoices.style.display = 'none';
         tableBody.innerHTML = invoices.map(invoice => `
-            <tr onclick="window.location.href='results.html?id=${invoice.id}'" style="cursor: pointer;">
-                <td class="data-font">${invoice.invoice_number || 'N/A'}</td>
+            <tr data-invoice-id="${esc(invoice.id)}" style="cursor: pointer;">
+                <td class="data-font">${esc(invoice.invoice_number || 'N/A')}</td>
                 <td>${formatDate(invoice.invoice_date)}</td>
                 <td class="data-font" style="font-weight: 700;">${formatCurrency(invoice.total)}</td>
                 <td>${renderStatusBadge(invoice.status)}</td>
             </tr>
         `).join('');
+
+        tableBody.querySelectorAll('tr[data-invoice-id]').forEach(row => {
+            row.addEventListener('click', () => {
+                window.location.href = `results.html?id=${encodeURIComponent(row.dataset.invoiceId)}`;
+            });
+        });
     }
 }
 
