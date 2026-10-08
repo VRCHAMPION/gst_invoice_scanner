@@ -34,6 +34,13 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+# SQLite has no PostgreSQL "~" regex operator; drop those CHECKs for the in-memory test DB only.
+from sqlalchemy import CheckConstraint as _CC
+for _table in Base.metadata.tables.values():
+    for _c in list(_table.constraints):
+        if isinstance(_c, _CC) and "~" in str(_c.sqltext):
+            _table.constraints.discard(_c)
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
