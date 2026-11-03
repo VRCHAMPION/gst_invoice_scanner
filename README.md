@@ -15,7 +15,7 @@ Manual invoice data entry is tedious. This automates it. Works with varying invo
 - **Backend**: FastAPI + Python
 - **Database**: PostgreSQL (Supabase)
 - **OCR**: Tesseract + PyMuPDF
-- **AI**: Groq (Llama 3.3 70B)
+- **AI**: Groq (gpt-oss-120b)
 - **Frontend**: Vanilla JS (no framework)
 - **Auth**: Supabase Auth (JWT in an HttpOnly cookie)
 

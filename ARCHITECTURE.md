@@ -28,7 +28,7 @@ flowchart LR
     C --> D[PDF-to-Image via PyMuPDF]
     D --> E[Grayscale + Threshold Preprocessing]
     E --> F[Tesseract OCR]
-    F --> G[Google Gemini 1.5 Flash Semantic Parse]
+    F --> G[Groq gpt-oss-120b Semantic Parse]
     G --> H[Neon Serverless PostgreSQL Persistence]
     H --> I[JSON / CSV Output to Client]
 ```
@@ -65,7 +65,7 @@ flowchart LR
 
 ### c. NLP Intelligence Layer (Field Extractor)
 
-This is the **core differentiator**. Instead of fragile regex chains, raw OCR text is sent to **Google Gemini 1.5 Flash** with a strict structural prompt wrapped in XML safeguards.
+This is the **core differentiator**. Instead of fragile regex chains, raw OCR text is sent to **Groq gpt-oss-120b** with a strict structural prompt wrapped in XML safeguards.
 
 ```
 Prompt Strategy:
@@ -80,8 +80,8 @@ Prompt Strategy:
 
 | Aspect | Detail |
 |---|---|
-| Provider | Google GenAI SDK |
-| Model | `gemini-1.5-flash` |
+| Provider | Groq Python SDK |
+| Model | `openai/gpt-oss-120b` |
 | Retry | Exponential backoff — 3 attempts, delays 2s / 4s / 8s on 429/503 |
 | Security | XML wrapping prevents Prompt Injection from malicious PDF payloads |
 
@@ -152,7 +152,7 @@ sequenceDiagram
     participant W as Background Worker
     participant P as Preprocessor
     participant O as Tesseract OCR
-    participant L as Gemini 1.5 Flash
+    participant L as Groq gpt-oss-120b
     participant D as Neon Postgres DB
 
     U->>A: POST /api/scan (PDF bytes)
@@ -188,7 +188,7 @@ sequenceDiagram
 | `backend/models.py` | SQLAlchemy ORM models with composite indexes |
 | `backend/database.py` | Engine, session factory, `ping_db()`, `init_db()` |
 | `backend/validator.py` | GSTIN validation, math checks, fraud signals, health score |
-| `backend/parser.py` | OCR pipeline: PyMuPDF → Pillow preprocessing → Tesseract → Gemini |
+| `backend/parser.py` | OCR pipeline: PyMuPDF → Pillow preprocessing → Tesseract → Groq |
 | `backend/routers/auth.py` | Login, register, logout, /me routes |
 | `backend/routers/companies.py` | Company CRUD, join requests, invite user |
 | `backend/routers/invoices.py` | Scan upload, status poll, paginated list, CSV export |
@@ -211,7 +211,7 @@ sequenceDiagram
 
 | Decision | Chosen | Alternative | Rationale |
 |---|---|---|---|
-| **Field Extraction** | LLM (Gemini 1.5 Flash) | Regex + NLP pipeline | Invoices have wildly varying formats — LLM generalizes across layouts |
+| **Field Extraction** | LLM (Groq gpt-oss-120b) | Regex + NLP pipeline | Invoices have wildly varying formats — LLM generalizes across layouts |
 | **OCR Engine** | Tesseract + Pillow preprocessing | EasyOCR / PaddleOCR | Lightest footprint; preprocessing compensates for noise |
 | **Async Strategy** | FastAPI BackgroundTasks | Celery + Redis | Avoids infrastructure overhead at current scale; Celery is the documented migration path |
 | **PDF Handling** | PyMuPDF (in-memory, 300 DPI) | pdf2image + Poppler | Zero disk writes — PDF bytes → RAM → PIL Image directly |
@@ -264,7 +264,7 @@ graph TD
     H[pytesseract] --> I[Tesseract Binary - OS Level]
     J[PyMuPDF - fitz] --> K[PDF Rendering at 300 DPI]
     L[Pillow] --> M[Image Preprocessing - grayscale + threshold]
-    N[Google GenAI] --> O[Gemini 1.5 Flash]
+    N[Groq API] --> O[gpt-oss-120b]
     P[cachetools] --> Q[TTL Analytics Cache]
     R[structlog] --> S[Structured JSON Logging]
 ```
@@ -275,7 +275,7 @@ graph TD
 | `pytesseract` | Python wrapper for Tesseract OCR binary |
 | `PyMuPDF (fitz)` | In-memory PDF → Image conversion at 300 DPI |
 | `Pillow` | Image preprocessing (grayscale, threshold) + PyMuPDF bridge |
-| `google-genai` | SDK for Google Gemini LLM inference |
+| `groq` | SDK for Groq LLM inference |
 | `sqlalchemy` | ORM for database operations |
 | `python-jose` | JWT token creation and verification |
 | `passlib[bcrypt]` | Secure password hashing |
