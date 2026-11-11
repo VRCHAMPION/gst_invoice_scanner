@@ -7,6 +7,7 @@ import hmac
 import ipaddress
 import json
 import os
+import ssl
 import time
 import socket
 import uuid
@@ -40,28 +41,84 @@ async def _is_safe_webhook_url(webhook_url: str) -> bool:
     return True
 
 
+async def _post_to_validated_ip(webhook_url: str, body: bytes, headers: dict[str, str]) -> int:
+    """Connect to a validated public IP so DNS cannot change between check and use."""
+    parsed = urlparse(webhook_url)
+    if parsed.port not in (None, 443):
+        raise ValueError("Webhook URLs must use port 443")
+
+    loop = asyncio.get_running_loop()
+    infos = await loop.getaddrinfo(parsed.hostname, 443, type=socket.SOCK_STREAM)
+    public_ips = []
+    for info in infos:
+        ip = ipaddress.ip_address(info[4][0].split("%")[0])
+        if not (ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved
+                or ip.is_multicast or ip.is_unspecified):
+            public_ips.append(str(ip))
+    if not public_ips:
+        raise ValueError("Webhook hostname does not resolve to a public IP")
+
+    target = parsed.path or "/"
+    if parsed.query:
+        target += f"?{parsed.query}"
+    if "\r" in target or "\n" in target or "\r" in parsed.hostname or "\n" in parsed.hostname:
+        raise ValueError("Webhook URL contains invalid characters")
+    request_headers = {
+        **headers,
+        "Host": parsed.hostname,
+        "Content-Length": str(len(body)),
+        "Connection": "close",
+    }
+    request = (
+        f"POST {target} HTTP/1.1\r\n"
+        + "".join(f"{key}: {value}\r\n" for key, value in request_headers.items())
+        + "\r\n"
+    ).encode() + body
+    ssl_context = ssl.create_default_context()
+
+    last_error = None
+    for ip in public_ips:
+        try:
+            reader, writer = await asyncio.wait_for(
+                asyncio.open_connection(ip, 443, ssl=ssl_context, server_hostname=parsed.hostname),
+                timeout=10.0,
+            )
+            try:
+                writer.write(request)
+                await writer.drain()
+                response = await asyncio.wait_for(reader.read(64 * 1024), timeout=10.0)
+            finally:
+                writer.close()
+                await writer.wait_closed()
+            status_line = response.split(b"\r\n", 1)[0].decode("latin-1")
+            return int(status_line.split(" ", 2)[1])
+        except (IndexError, OSError, asyncio.TimeoutError, ValueError) as exc:
+            last_error = exc
+
+    raise ConnectionError(f"Unable to deliver webhook: {last_error}")
+
+
 async def trigger_webhook(webhook_url: str, payload: dict) -> None:
     """Fire and forget webhook payload delivery."""
     if not await _is_safe_webhook_url(webhook_url):
         log.warning("webhook_blocked_unsafe_url", url=webhook_url)
         return
     try:
-        async with httpx.AsyncClient(follow_redirects=False) as client:
-            body = json.dumps(payload, separators=(",", ":"), default=str).encode()
-            headers = {"Content-Type": "application/json"}
-            secret = os.getenv("WEBHOOK_SECRET")
-            if secret:
-                # Receivers verify: HMAC_SHA256(secret, f"{timestamp}.{raw_body}") == X-GST-Signature
-                ts = str(int(time.time()))
-                sig = hmac.new(secret.encode(), ts.encode() + b"." + body, hashlib.sha256).hexdigest()
-                headers["X-GST-Timestamp"] = ts
-                headers["X-GST-Signature"] = f"sha256={sig}"
-            response = await client.post(webhook_url, content=body, headers=headers, timeout=10.0)
-            if response.status_code >= 400:
-                log.warning("webhook_error_response", url=webhook_url, status_code=response.status_code, response=response.text[:200])
-            else:
-                log.info("webhook_triggered", url=webhook_url, status_code=response.status_code)
-    except httpx.RequestError as e:
+        body = json.dumps(payload, separators=(",", ":"), default=str).encode()
+        headers = {"Content-Type": "application/json"}
+        secret = os.getenv("WEBHOOK_SECRET")
+        if secret:
+            # Receivers verify: HMAC_SHA256(secret, f"{timestamp}.{raw_body}") == X-GST-Signature
+            ts = str(int(time.time()))
+            sig = hmac.new(secret.encode(), ts.encode() + b"." + body, hashlib.sha256).hexdigest()
+            headers["X-GST-Timestamp"] = ts
+            headers["X-GST-Signature"] = f"sha256={sig}"
+        status_code = await _post_to_validated_ip(webhook_url, body, headers)
+        if status_code >= 400:
+            log.warning("webhook_error_response", url=webhook_url, status_code=status_code)
+        else:
+            log.info("webhook_triggered", url=webhook_url, status_code=status_code)
+    except (httpx.RequestError, OSError, asyncio.TimeoutError, ValueError, ConnectionError) as e:
         log.error("webhook_network_error", url=webhook_url, error=str(e))
     except Exception as e:
         log.error("webhook_unexpected_failure", url=webhook_url, error=str(e))
